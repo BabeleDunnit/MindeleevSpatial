@@ -20,7 +20,8 @@ MonoBehaviour:
     type: 2}
   worldID: dg1xrc2ofynzfxev0l3p2
   scene: {fileID: 102900000, guid: f72f3c75600e0473f85942f117b0ceec, type: 3}
-  csharpAssembly: {fileID: 0}
+  csharpAssembly: {fileID: 5897886265953266890, guid: a3215713d817b49d3857450bf04d8ef8,
+    type: 3}
   embeddedPackageAssets: []
   networkPrefabs: []
   settings:
