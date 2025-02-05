@@ -9,8 +9,9 @@ public class Polytron : MonoBehaviour
     private Rigidbody rb;
     private float stableOrbitRadius;
     private float timeElapsed = 0f;
+    private Vector3 nucleusPosition;
 
-    public void Initialize(int qNumber, float radius, int shape)
+    public void Initialize(int qNumber, float radius, int shape, Vector3 nucleusPos)
     {
         quantumNumber = qNumber;
         orbitalShape = shape;
@@ -18,24 +19,26 @@ public class Polytron : MonoBehaviour
         rb.useGravity = false;
         rb.mass = 1f / qNumber; // I polytroni più alti hanno massa minore
         stableOrbitRadius = radius;
+        nucleusPosition = nucleusPos;
     }
 
-    void Update()
+    void FixedUpdate()
     {
-        timeElapsed += Time.deltaTime;
+        timeElapsed += Time.fixedDeltaTime;
         ApplyOrbitalMotion();
     }
 
     void ApplyOrbitalMotion()
     {
-        Vector3 nucleusPosition = Vector3.zero;
-        float x, y;
-        float freqX = 1f + orbitalShape * 0.5f;
-        float freqY = 1f + (orbitalShape + 1) * 0.3f;
+        float x, y, z;
+        float freqX = (orbitalShape + 1f) / (orbitalShape + 2f);
+        float freqY = (orbitalShape + 2f) / (orbitalShape + 3f);
+        float freqZ = (orbitalShape + 3f) / (orbitalShape + 4f);
 
-        x = stableOrbitRadius * Mathf.Sin(freqX * timeElapsed);
-        y = stableOrbitRadius * Mathf.Cos(freqY * timeElapsed);
+        x = stableOrbitRadius * Mathf.Sin(freqX * timeElapsed * Mathf.PI * 2);
+        y = stableOrbitRadius * Mathf.Cos(freqY * timeElapsed * Mathf.PI * 2);
+        z = stableOrbitRadius * Mathf.Sin(freqZ * timeElapsed * Mathf.PI * 2);
         
-        transform.position = new Vector3(x, y, 0);
+        transform.position = nucleusPosition + new Vector3(x, y, z);
     }
 }

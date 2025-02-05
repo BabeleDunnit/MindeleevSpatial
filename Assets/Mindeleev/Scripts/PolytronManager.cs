@@ -12,7 +12,7 @@ public class PolytronManager : MonoBehaviour
 
     void Update()
     {
-        if (Input.GetKeyDown(KeyCode.Alpha0)) // Creazione di un nuovo polytrone
+        if (Input.GetKeyDown(KeyCode.Space)) // Creazione di un nuovo polytrone
         {
             CreateNewPolytron();
         }
@@ -28,11 +28,12 @@ public class PolytronManager : MonoBehaviour
         float radius = nucleusRadius + n; // Orbite discrete basate su numeri interi
         float angle = (n * 137.5f) % 360; // Disposizione a spirale (Golden Angle)
 
-        Vector3 position = new Vector3(radius * Mathf.Cos(angle), radius * Mathf.Sin(angle), 0);
+        Vector3 nucleusPosition = transform.position;
+        Vector3 position = nucleusPosition + new Vector3(radius * Mathf.Cos(angle), 0, radius * Mathf.Sin(angle));
         GameObject newPolytron = Instantiate(polytronPrefab, position, Quaternion.identity);
         
         Polytron polytronComponent = newPolytron.AddComponent<Polytron>();
-        polytronComponent.Initialize(n, radius, l);
+        polytronComponent.Initialize(n, radius, l, nucleusPosition);
         polytrons.Add(polytronComponent);
     }
 }
