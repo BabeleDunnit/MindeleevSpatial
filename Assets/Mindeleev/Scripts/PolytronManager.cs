@@ -1,9 +1,9 @@
 using UnityEngine;
 using System.Collections.Generic;
 
+
 public class PolytronManager : MonoBehaviour
 {
-    public GameObject polytronPrefab; // Prefab di base per i polytroni
     private List<Polytron> polytrons = new List<Polytron>();
     private float nucleusRadius = 2.0f; // Distanza base degli orbitali
 
@@ -21,17 +21,26 @@ public class PolytronManager : MonoBehaviour
 
     void CreateNewPolytron(float customTimeElapsed = -1f, int primaryAxisOverride = -1)
     {
-        // float radius = nucleusRadius + polytrons.Count + 1; // Orbite discrete basate su numeri interi
         float radius = nucleusRadius; // Orbite discrete basate su numeri interi
-        // float angle = (polytrons.Count * 137.5f) % 360; // Disposizione a spirale (Golden Angle)
+         // Disposizione a spirale (Golden Angle)
 
         Vector3 nucleusPosition = transform.position;
-        // Vector3 position = nucleusPosition + new Vector3(radius * Mathf.Cos(angle), 0, radius * Mathf.Sin(angle));
         Vector3 position = nucleusPosition;
-        GameObject newPolytron = Instantiate(polytronPrefab, position, Quaternion.identity);
-        
+
+        GameObject newPolytron = new GameObject("Polytron");
+        newPolytron.transform.SetParent(transform);
+        newPolytron.transform.position = position;
+        newPolytron.transform.localScale = Vector3.one * 0.5f; // Imposta la scala di base dei polytroni
+        //newPolytron.AddComponent<MeshFilter>();
+        //newPolytron.AddComponent<MeshRenderer>();
+        newPolytron.AddComponent<Rigidbody>().useGravity = false;
+
         Polytron polytronComponent = newPolytron.AddComponent<Polytron>();
         polytronComponent.Initialize(radius, nucleusPosition, primaryAxisOverride >= 0 ? primaryAxisOverride : polytrons.Count % 3, customTimeElapsed);
+        // polytronComponent.ApplyShapeAndColor();
+
+        GameObject newInstancePolytron = Instantiate(newPolytron, position, Quaternion.identity);
+
         polytrons.Add(polytronComponent);
     }
 
