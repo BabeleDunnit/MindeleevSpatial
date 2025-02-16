@@ -1,6 +1,5 @@
-using System.Collections;
-using System.Collections.Generic;
 using UnityEngine;
+using System.Collections.Generic;
 
 public class PolytronManager : MonoBehaviour
 {
@@ -14,19 +13,33 @@ public class PolytronManager : MonoBehaviour
         {
             CreateNewPolytron();
         }
+        if (Input.GetKeyDown(KeyCode.Alpha0)) // Creazione di 100 polytroni in posizioni stazionarie
+        {
+            CreateMultiplePolytrons(5000, 0.05f, 0);
+        }
     }
 
-    void CreateNewPolytron()
+    void CreateNewPolytron(float customTimeElapsed = -1f, int primaryAxisOverride = -1)
     {
-        float radius = nucleusRadius + polytrons.Count + 1; // Orbite discrete basate su numeri interi
-        float angle = (polytrons.Count * 137.5f) % 360; // Disposizione a spirale (Golden Angle)
+        // float radius = nucleusRadius + polytrons.Count + 1; // Orbite discrete basate su numeri interi
+        float radius = nucleusRadius; // Orbite discrete basate su numeri interi
+        // float angle = (polytrons.Count * 137.5f) % 360; // Disposizione a spirale (Golden Angle)
 
         Vector3 nucleusPosition = transform.position;
-        Vector3 position = nucleusPosition + new Vector3(radius * Mathf.Cos(angle), 0, radius * Mathf.Sin(angle));
+        // Vector3 position = nucleusPosition + new Vector3(radius * Mathf.Cos(angle), 0, radius * Mathf.Sin(angle));
+        Vector3 position = nucleusPosition;
         GameObject newPolytron = Instantiate(polytronPrefab, position, Quaternion.identity);
         
         Polytron polytronComponent = newPolytron.AddComponent<Polytron>();
-        polytronComponent.Initialize(radius, nucleusPosition, polytrons.Count % 3);
+        polytronComponent.Initialize(radius, nucleusPosition, primaryAxisOverride >= 0 ? primaryAxisOverride : polytrons.Count % 3, customTimeElapsed);
         polytrons.Add(polytronComponent);
+    }
+
+    private void CreateMultiplePolytrons(int count, float interval, int primaryAxis)
+    {
+        for (int i = 0; i < count; i++)
+        {
+            CreateNewPolytron(i * interval, primaryAxis);
+        }
     }
 }
