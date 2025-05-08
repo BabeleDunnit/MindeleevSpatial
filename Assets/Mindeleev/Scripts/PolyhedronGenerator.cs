@@ -120,6 +120,7 @@ public class PolyhedronGenerator : MonoBehaviour
     {
         float phi = (1 + Mathf.Sqrt(5)) / 2f;
 
+        // Create the base vertices (20 vertices)
         Vector3[] vertices = new Vector3[]
         {
             new Vector3( 1,  1,  1), new Vector3( 1,  1, -1), new Vector3( 1, -1,  1), new Vector3( 1, -1, -1),
@@ -129,28 +130,31 @@ public class PolyhedronGenerator : MonoBehaviour
             new Vector3( phi, 0,  1 / phi), new Vector3( phi, 0, -1 / phi), new Vector3(-phi, 0,  1 / phi), new Vector3(-phi, 0, -1 / phi)
         };
 
+        // Define all 12 faces of the dodecahedron properly
+        // Each face is a pentagon defined by 5 vertex indices in counter-clockwise order
         int[][] faces = new int[][]
         {
-            new int[] {0, 8, 10, 2, 16}, // giusta
-            // new int[] {0, 12, 1, 9, 8}, // rotta, non complanare
-            new int[] {0, 16, 17, 1, 12}, // giusta
-            
-            new int[] {1, 17, 3, 11, 9}, // giusta
-            // new int[] {2, 10, 6, 14, 16}, // rotta, non complanare
-            // new int[] {3, 13, 2, 16, 17}, // giusta ma normali invertite
-            // new int[] {3, 11, 7, 15, 13}, // giusta ma normali invertite
-            // new int[] {4, 8, 9, 5, 14}, // rotta, non complanare
-            new int[] {5, 9, 11, 7, 19}, // giusta
-            // new int[] {4, 14, 6, 18, 8}, // rotta, non complanare e non connessa
-            // new int[] {6, 10, 8, 18, 19}, // rotta, non complanare
-            new int[] {7, 11, 3, 13, 15} // giusta
+            new int[] {0, 8, 10, 2, 16},       // Face 1
+            new int[] {0, 16, 17, 1, 12},      // Face 2
+            new int[] {0, 12, 14, 4, 8},       // Face 3
+            new int[] {1, 17, 3, 11, 9},       // Face 4
+            new int[] {1, 9, 5, 14, 12},       // Face 5
+            new int[] {2, 10, 6, 15, 13},      // Face 6
+            new int[] {2, 13, 3, 17, 16},      // Face 7
+            new int[] {3, 13, 15, 7, 11},      // Face 8
+            new int[] {4, 14, 5, 19, 18},      // Face 9
+            new int[] {4, 18, 6, 10, 8},       // Face 10
+            new int[] {5, 9, 11, 7, 19},       // Face 11
+            new int[] {6, 18, 19, 7, 15}       // Face 12
         };
 
         List<Vector3> verts = new List<Vector3>();
         List<int> tris = new List<int>();
 
+        // Process each pentagonal face
         foreach (var face in faces)
         {
+            // Calculate the center of the face
             Vector3 center = Vector3.zero;
             foreach (int idx in face)
                 center += vertices[idx];
@@ -159,6 +163,7 @@ public class PolyhedronGenerator : MonoBehaviour
             int centerIndex = verts.Count;
             verts.Add(center);
 
+            // Create triangles from center to each edge
             for (int i = 0; i < face.Length; i++)
             {
                 Vector3 v0 = vertices[face[i]];
