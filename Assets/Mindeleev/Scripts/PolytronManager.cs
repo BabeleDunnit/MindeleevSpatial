@@ -13,7 +13,7 @@ public class PolytronManager : MonoBehaviour
         {
             CreateNewPolytron();
         }
-        if (Input.GetKeyDown(KeyCode.Alpha0)) // Creazione di 100 polytroni in posizioni stazionarie
+        if (Input.GetKeyDown(KeyCode.Alpha0)) // Creazione di molti polytroni in posizioni stazionarie
         {
             CreateMultiplePolytrons(5000, 0.05f, 0);
         }
@@ -39,7 +39,8 @@ public class PolytronManager : MonoBehaviour
         polytronComponent.Initialize(radius, nucleusPosition, primaryAxisOverride >= 0 ? primaryAxisOverride : polytrons.Count % 3, customTimeElapsed);
         // polytronComponent.ApplyShapeAndColor();
 
-        GameObject newInstancePolytron = Instantiate(newPolytron, position, Quaternion.identity);
+        // si puo anche instanziare di botto così
+        // GameObject newInstancePolytron = Instantiate(newPolytron, position, Quaternion.identity);
 
         polytrons.Add(polytronComponent);
     }
