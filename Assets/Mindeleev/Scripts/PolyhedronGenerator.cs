@@ -65,12 +65,12 @@ public class PolyhedronGenerator : MonoBehaviour
         };
 
         int[] faceIndices = {
-            0, 2, 1, 0, 3, 2, // back
-            4, 5, 6, 4, 6, 7, // front
-            0, 1, 5, 0, 5, 4, // bottom
-            2, 3, 7, 2, 7, 6, // top
-            0, 4, 7, 0, 7, 3, // left
-            1, 2, 6, 1, 6, 5  // right
+            0, 2, 1, 0, 3, 2,
+            4, 5, 6, 4, 6, 7,
+            0, 1, 5, 0, 5, 4,
+            2, 3, 7, 2, 7, 6,
+            0, 4, 7, 0, 7, 3,
+            1, 2, 6, 1, 6, 5
         };
 
         return CreateFlatShadedMesh(baseVertices, faceIndices);
@@ -79,14 +79,14 @@ public class PolyhedronGenerator : MonoBehaviour
     Mesh CreateTetrahedron()
     {
         Vector3[] baseVertices = {
-            new Vector3(1, 1, 1),     // 0
-            new Vector3(-1, -1, 1),  // 1
-            new Vector3(-1, 1, -1),  // 2
-            new Vector3(1, -1, -1)   // 3
+            new Vector3(1, 1, 1),
+            new Vector3(-1, -1, 1),
+            new Vector3(-1, 1, -1),
+            new Vector3(1, -1, -1)
         };
 
         int[] faceIndices = {
-            0, 2, 1,  // base
+            0, 2, 1,
             0, 1, 3,
             0, 3, 2,
             1, 2, 3
@@ -194,12 +194,10 @@ public class PolyhedronGenerator : MonoBehaviour
             new Vector3(1, t, 0).normalized,
             new Vector3(-1, -t, 0).normalized,
             new Vector3(1, -t, 0).normalized,
-
             new Vector3(0, -1, t).normalized,
             new Vector3(0, 1, t).normalized,
             new Vector3(0, -1, -t).normalized,
             new Vector3(0, 1, -t).normalized,
-
             new Vector3(t, 0, -1).normalized,
             new Vector3(t, 0, 1).normalized,
             new Vector3(-t, 0, -1).normalized,
