@@ -63,11 +63,16 @@ public class PolyhedronGenerator : MonoBehaviour
     private static readonly (Vector3[], int[][]) Dodecahedron = (
         new Vector3[]
         {
-            new Vector3( 1,  1,  1), new Vector3( 1,  1, -1), new Vector3( 1, -1,  1), new Vector3( 1, -1, -1),
-            new Vector3(-1,  1,  1), new Vector3(-1,  1, -1), new Vector3(-1, -1,  1), new Vector3(-1, -1, -1),
-            new Vector3( 0,  0.618034f,  1.618034f), new Vector3( 0,  0.618034f, -1.618034f), new Vector3( 0, -0.618034f,  1.618034f), new Vector3( 0, -0.618034f, -1.618034f),
-            new Vector3( 0.618034f,  1.618034f, 0), new Vector3( 0.618034f, -1.618034f, 0), new Vector3(-0.618034f,  1.618034f, 0), new Vector3(-0.618034f, -1.618034f, 0),
-            new Vector3( 1.618034f, 0,  0.618034f), new Vector3( 1.618034f, 0, -0.618034f), new Vector3(-1.618034f, 0,  0.618034f), new Vector3(-1.618034f, 0, -0.618034f)
+            new Vector3( 0.618034f,  0.618034f,  0.618034f), new Vector3( 0.618034f,  0.618034f, -0.618034f),
+            new Vector3( 0.618034f, -0.618034f,  0.618034f), new Vector3( 0.618034f, -0.618034f, -0.618034f),
+            new Vector3(-0.618034f,  0.618034f,  0.618034f), new Vector3(-0.618034f,  0.618034f, -0.618034f),
+            new Vector3(-0.618034f, -0.618034f,  0.618034f), new Vector3(-0.618034f, -0.618034f, -0.618034f),
+            new Vector3( 0f,  0.381966f,  1.0f),      new Vector3( 0f,  0.381966f, -1.0f),
+            new Vector3( 0f, -0.381966f,  1.0f),      new Vector3( 0f, -0.381966f, -1.0f),
+            new Vector3( 0.381966f,  1.0f, 0f),       new Vector3( 0.381966f, -1.0f, 0f),
+            new Vector3(-0.381966f,  1.0f, 0f),       new Vector3(-0.381966f, -1.0f, 0f),
+            new Vector3( 1.0f, 0f,  0.381966f),       new Vector3( 1.0f, 0f, -0.381966f),
+            new Vector3(-1.0f, 0f,  0.381966f),       new Vector3(-1.0f, 0f, -0.381966f)
         },
         new int[][]
         {
