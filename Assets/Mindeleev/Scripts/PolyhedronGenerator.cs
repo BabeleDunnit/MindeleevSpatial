@@ -1,6 +1,7 @@
 using UnityEngine;
 using System.Collections.Generic;
 using System.Linq;
+using System.Globalization;
 
 [RequireComponent(typeof(MeshFilter), typeof(MeshRenderer))]
 public class PolyhedronGenerator : MonoBehaviour
@@ -147,12 +148,14 @@ public class PolyhedronGenerator : MonoBehaviour
     Mesh ParsePolyhedronRecipe(string recipe)
     {
         if (string.IsNullOrWhiteSpace(recipe)) recipe = "C";
-
-        // Trim and uppercase/lowercase consistency
         recipe = recipe.Trim();
 
-        // Identify base polyhedron (last uppercase char)
-        char baseChar = recipe.Last(c => char.IsUpper(c));
+        // Locate last uppercase letter = base polyhedron
+        int basePos = recipe.Length - 1;
+        while (basePos >= 0 && !char.IsUpper(recipe[basePos])) basePos--;
+        if (basePos < 0) { Debug.LogError("No base polyhedron in recipe – defaulting to Cube"); recipe += "C"; basePos = recipe.Length - 1; }
+
+        char baseChar = recipe[basePos];
         (Vector3[], int[][]) current = baseChar switch
         {
             'C' => Cube,
@@ -163,23 +166,45 @@ public class PolyhedronGenerator : MonoBehaviour
             _   => Cube
         };
 
-        // Apply operators from right‑to‑left (excluding the base char)
-        for (int idx = recipe.Length - 2; idx >= 0; idx--)
+        // Parse tokens to the left of base char (left -> right), collect list
+        var tokens = new List<(char op, float factor)>();
+        int i = 0;
+        while (i < basePos)
         {
-            char op = recipe[idx];
+            char c = recipe[i];
+            if (char.IsLower(c))
+            {
+                // read optional signed decimal right after operator
+                int j = i + 1;
+                while (j < basePos && (char.IsDigit(recipe[j]) || recipe[j] == '.' || recipe[j] == '-')) j++;
+                string numStr = recipe.Substring(i + 1, j - (i + 1));
+                float factor = 0.2f;
+                if (!string.IsNullOrEmpty(numStr))
+                {
+                    if (!float.TryParse(numStr, NumberStyles.Float, CultureInfo.InvariantCulture, out factor)) factor = 0.2f;
+                }
+                tokens.Add((c, factor));
+                i = j;
+            }
+            else { i++; }
+        }
+
+        // Apply operators in reverse order (right‑to‑left)
+        for (int t = tokens.Count - 1; t >= 0; t--)
+        {
+            var (op, factor) = tokens[t];
             current = op switch
             {
-                'k' => ApplyKis(current),
-                _   => current // unknown operator → ignore
+                'k' => ApplyKis(current, factor),
+                _   => current
             };
         }
 
-        // Always finish with flat‑shading triangulation
         return ApplyFlatShade(current);
     }
 
     /* ---------------------- OPERATORS -------------------------------- */
-    public static (Vector3[], int[][]) ApplyKis((Vector3[], int[][]) input, float heightFactor = 1f)
+    public static (Vector3[], int[][]) ApplyKis((Vector3[], int[][]) input, float heightFactor = 0.2f)
     {
         var (vertices, faces) = input;
         var newVertices = new List<Vector3>(vertices);
