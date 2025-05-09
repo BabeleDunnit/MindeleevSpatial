@@ -73,7 +73,7 @@ public class PolyhedronGenerator : MonoBehaviour
             1, 2, 6, 1, 6, 5
         };
 
-        return CreateFlatShadedMesh(baseVertices, faceIndices);
+        return ApplyKis(baseVertices, faceIndices);
     }
 
     Mesh CreateTetrahedron()
@@ -92,7 +92,7 @@ public class PolyhedronGenerator : MonoBehaviour
             1, 2, 3
         };
 
-        return CreateFlatShadedMesh(baseVertices, faceIndices);
+        return ApplyKis(baseVertices, faceIndices);
     }
 
     Mesh CreateOctahedron()
@@ -113,14 +113,13 @@ public class PolyhedronGenerator : MonoBehaviour
             0, 3, 5
         };
 
-        return CreateFlatShadedMesh(baseVertices, faceIndices);
+        return ApplyKis(baseVertices, faceIndices);
     }
 
     Mesh CreateDodecahedron()
     {
         float phi = (1 + Mathf.Sqrt(5)) / 2f;
 
-        // Create the base vertices (20 vertices)
         Vector3[] vertices = new Vector3[]
         {
             new Vector3( 1,  1,  1), new Vector3( 1,  1, -1), new Vector3( 1, -1,  1), new Vector3( 1, -1, -1),
@@ -130,31 +129,27 @@ public class PolyhedronGenerator : MonoBehaviour
             new Vector3( phi, 0,  1 / phi), new Vector3( phi, 0, -1 / phi), new Vector3(-phi, 0,  1 / phi), new Vector3(-phi, 0, -1 / phi)
         };
 
-        // Define all 12 faces of the dodecahedron properly
-        // Each face is a pentagon defined by 5 vertex indices in counter-clockwise order
         int[][] faces = new int[][]
         {
-            new int[] {0, 8, 10, 2, 16},       // Face 1
-            new int[] {0, 16, 17, 1, 12},      // Face 2
-            new int[] {0, 12, 14, 4, 8},       // Face 3
-            new int[] {1, 17, 3, 11, 9},       // Face 4
-            new int[] {1, 9, 5, 14, 12},       // Face 5
-            new int[] {2, 10, 6, 15, 13},      // Face 6
-            new int[] {2, 13, 3, 17, 16},      // Face 7
-            new int[] {3, 13, 15, 7, 11},      // Face 8
-            new int[] {4, 14, 5, 19, 18},      // Face 9
-            new int[] {4, 18, 6, 10, 8},       // Face 10
-            new int[] {5, 9, 11, 7, 19},       // Face 11
-            new int[] {6, 18, 19, 7, 15}       // Face 12
+            new int[] {0, 8, 10, 2, 16},
+            new int[] {0, 16, 17, 1, 12},
+            new int[] {0, 12, 14, 4, 8},
+            new int[] {1, 17, 3, 11, 9},
+            new int[] {1, 9, 5, 14, 12},
+            new int[] {2, 10, 6, 15, 13},
+            new int[] {2, 13, 3, 17, 16},
+            new int[] {3, 13, 15, 7, 11},
+            new int[] {4, 14, 5, 19, 18},
+            new int[] {4, 18, 6, 10, 8},
+            new int[] {5, 9, 11, 7, 19},
+            new int[] {6, 18, 19, 7, 15}
         };
 
         List<Vector3> verts = new List<Vector3>();
         List<int> tris = new List<int>();
 
-        // Process each pentagonal face
         foreach (var face in faces)
         {
-            // Calculate the center of the face
             Vector3 center = Vector3.zero;
             foreach (int idx in face)
                 center += vertices[idx];
@@ -163,7 +158,6 @@ public class PolyhedronGenerator : MonoBehaviour
             int centerIndex = verts.Count;
             verts.Add(center);
 
-            // Create triangles from center to each edge
             for (int i = 0; i < face.Length; i++)
             {
                 Vector3 v0 = vertices[face[i]];
@@ -178,11 +172,7 @@ public class PolyhedronGenerator : MonoBehaviour
             }
         }
 
-        Mesh mesh = new Mesh();
-        mesh.SetVertices(verts);
-        mesh.SetTriangles(tris, 0);
-        mesh.RecalculateNormals();
-        return mesh;
+        return ApplyKis(verts.ToArray(), tris.ToArray());
     }
 
     Mesh CreateIcosahedron()
@@ -211,7 +201,42 @@ public class PolyhedronGenerator : MonoBehaviour
             4, 9, 5, 2, 4, 11, 6, 2, 10, 8, 6, 7, 9, 8, 1
         };
 
-        return CreateFlatShadedMesh(verts.ToArray(), triangles);
+        return ApplyKis(verts.ToArray(), triangles);
+    }
+
+    Mesh ApplyKis(Vector3[] vertices, int[] triangles, float heightFactor = 0.1f)
+    {
+        List<Vector3> newVertices = new List<Vector3>();
+        List<int> newTriangles = new List<int>();
+
+        for (int i = 0; i < triangles.Length; i += 3)
+        {
+            int i0 = triangles[i];
+            int i1 = triangles[i + 1];
+            int i2 = triangles[i + 2];
+
+            Vector3 v0 = vertices[i0];
+            Vector3 v1 = vertices[i1];
+            Vector3 v2 = vertices[i2];
+
+            // Centroide
+            Vector3 center = (v0 + v1 + v2) / 3f;
+            Vector3 normal = Vector3.Cross(v1 - v0, v2 - v0).normalized;
+            center += normal * heightFactor;
+
+            int centerIndex = newVertices.Count;
+            newVertices.Add(center);
+
+            int i0n = newVertices.Count; newVertices.Add(v0);
+            int i1n = newVertices.Count; newVertices.Add(v1);
+            int i2n = newVertices.Count; newVertices.Add(v2);
+
+            newTriangles.Add(centerIndex); newTriangles.Add(i0n); newTriangles.Add(i1n);
+            newTriangles.Add(centerIndex); newTriangles.Add(i1n); newTriangles.Add(i2n);
+            newTriangles.Add(centerIndex); newTriangles.Add(i2n); newTriangles.Add(i0n);
+        }
+
+        return CreateFlatShadedMesh(newVertices.ToArray(), newTriangles.ToArray());
     }
 
     Mesh CreateFlatShadedMesh(Vector3[] baseVertices, int[] faceIndices)
