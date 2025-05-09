@@ -64,16 +64,32 @@ public class PolyhedronGenerator : MonoBehaviour
             new Vector3(-1, -1, 1),  new Vector3(1, -1, 1),  new Vector3(1, 1, 1),  new Vector3(-1, 1, 1)
         };
 
-        int[] faceIndices = {
-            0, 2, 1, 0, 3, 2,
-            4, 5, 6, 4, 6, 7,
-            0, 1, 5, 0, 5, 4,
-            2, 3, 7, 2, 7, 6,
-            0, 4, 7, 0, 7, 3,
-            1, 2, 6, 1, 6, 5
+        // Definire le facce in senso orario (visto dall'esterno del cubo)
+        int[][] faces = new int[][]
+        {
+            new int[] {3, 2, 1, 0}, // back (faccia -Z)
+            new int[] {4, 5, 6, 7}, // front (faccia +Z)
+            new int[] {1, 5, 4, 0}, // bottom (faccia -Y)
+            new int[] {3, 7, 6, 2}, // top (faccia +Y)
+            new int[] {4, 7, 3, 0}, // left (faccia -X)
+            new int[] {2, 6, 5, 1}  // right (faccia +X)
         };
 
-        return ApplyKis(baseVertices, faceIndices);
+        List<Vector3> verts = new List<Vector3>();
+        List<int> tris = new List<int>();
+
+        foreach (var face in faces)
+        {
+            // Triangolazione delle facce in senso antiorario per garantire normali corrette
+            for (int i = 1; i < face.Length - 1; i++)
+            {
+                tris.Add(face[0]);
+                tris.Add(face[i]);
+                tris.Add(face[i + 1]);
+            }
+        }
+
+        return CreateFlatShadedMesh(baseVertices, tris.ToArray());
     }
 
     Mesh CreateTetrahedron()
@@ -85,14 +101,23 @@ public class PolyhedronGenerator : MonoBehaviour
             new Vector3(1, -1, -1)
         };
 
-        int[] faceIndices = {
-            0, 2, 1,
-            0, 1, 3,
-            0, 3, 2,
-            1, 2, 3
+        int[][] faces = new int[][]
+        {
+            new int[] {0, 2, 1},
+            new int[] {0, 1, 3},
+            new int[] {0, 3, 2},
+            new int[] {1, 2, 3}
         };
 
-        return ApplyKis(baseVertices, faceIndices);
+        List<int> tris = new List<int>();
+        foreach (var face in faces)
+        {
+            tris.Add(face[0]);
+            tris.Add(face[1]);
+            tris.Add(face[2]);
+        }
+
+        return CreateFlatShadedMesh(baseVertices, tris.ToArray());
     }
 
     Mesh CreateOctahedron()
@@ -102,18 +127,27 @@ public class PolyhedronGenerator : MonoBehaviour
             new Vector3(0, -1, 0), new Vector3(0, 0, 1), new Vector3(0, 0, -1)
         };
 
-        int[] faceIndices = {
-            0, 2, 4,
-            2, 1, 4,
-            1, 3, 4,
-            3, 0, 4,
-            2, 0, 5,
-            1, 2, 5,
-            3, 1, 5,
-            0, 3, 5
+        int[][] faces = new int[][]
+        {
+            new int[] {0, 2, 4},
+            new int[] {2, 1, 4},
+            new int[] {1, 3, 4},
+            new int[] {3, 0, 4},
+            new int[] {2, 0, 5},
+            new int[] {1, 2, 5},
+            new int[] {3, 1, 5},
+            new int[] {0, 3, 5}
         };
 
-        return ApplyKis(baseVertices, faceIndices);
+        List<int> tris = new List<int>();
+        foreach (var face in faces)
+        {
+            tris.Add(face[0]);
+            tris.Add(face[1]);
+            tris.Add(face[2]);
+        }
+
+        return CreateFlatShadedMesh(baseVertices, tris.ToArray());
     }
 
     Mesh CreateDodecahedron()
@@ -172,13 +206,13 @@ public class PolyhedronGenerator : MonoBehaviour
             }
         }
 
-        return ApplyKis(verts.ToArray(), tris.ToArray());
+        return CreateFlatShadedMesh(verts.ToArray(), tris.ToArray());
     }
 
     Mesh CreateIcosahedron()
     {
         float t = (1 + Mathf.Sqrt(5)) / 2;
-        List<Vector3> verts = new List<Vector3>
+        Vector3[] baseVertices = new Vector3[]
         {
             new Vector3(-1, t, 0).normalized,
             new Vector3(1, t, 0).normalized,
@@ -194,17 +228,26 @@ public class PolyhedronGenerator : MonoBehaviour
             new Vector3(-t, 0, 1).normalized
         };
 
-        int[] triangles = {
-            0, 11, 5, 0, 5, 1, 0, 1, 7, 0, 7, 10, 0, 10, 11,
-            1, 5, 9, 5, 11, 4, 11, 10, 2, 10, 7, 6, 7, 1, 8,
-            3, 9, 4, 3, 4, 2, 3, 2, 6, 3, 6, 8, 3, 8, 9,
-            4, 9, 5, 2, 4, 11, 6, 2, 10, 8, 6, 7, 9, 8, 1
+        int[][] faces = new int[][]
+        {
+            new int[] {0, 11, 5}, new int[] {0, 5, 1}, new int[] {0, 1, 7}, new int[] {0, 7, 10}, new int[] {0, 10, 11},
+            new int[] {1, 5, 9}, new int[] {5, 11, 4}, new int[] {11, 10, 2}, new int[] {10, 7, 6}, new int[] {7, 1, 8},
+            new int[] {3, 9, 4}, new int[] {3, 4, 2}, new int[] {3, 2, 6}, new int[] {3, 6, 8}, new int[] {3, 8, 9},
+            new int[] {4, 9, 5}, new int[] {2, 4, 11}, new int[] {6, 2, 10}, new int[] {8, 6, 7}, new int[] {9, 8, 1}
         };
 
-        return ApplyKis(verts.ToArray(), triangles);
+        List<int> tris = new List<int>();
+        foreach (var face in faces)
+        {
+            tris.Add(face[0]);
+            tris.Add(face[1]);
+            tris.Add(face[2]);
+        }
+
+        return CreateFlatShadedMesh(baseVertices, tris.ToArray());
     }
 
-    Mesh ApplyKis(Vector3[] vertices, int[] triangles, float heightFactor = 0.1f)
+    Mesh ApplyKis(Vector3[] vertices, int[] triangles, float heightFactor = 1f)
     {
         List<Vector3> newVertices = new List<Vector3>();
         List<int> newTriangles = new List<int>();
