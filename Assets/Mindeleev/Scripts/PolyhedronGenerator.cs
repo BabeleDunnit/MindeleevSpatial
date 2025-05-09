@@ -89,7 +89,7 @@ public class PolyhedronGenerator : MonoBehaviour
             }
         }
 
-        return CreateFlatShadedMesh(baseVertices, tris.ToArray());
+        return ApplyKis(baseVertices, faces);
     }
 
     Mesh CreateTetrahedron()
@@ -117,7 +117,7 @@ public class PolyhedronGenerator : MonoBehaviour
             tris.Add(face[2]);
         }
 
-        return CreateFlatShadedMesh(baseVertices, tris.ToArray());
+        return ApplyKis(baseVertices, faces);
     }
 
     Mesh CreateOctahedron()
@@ -147,7 +147,7 @@ public class PolyhedronGenerator : MonoBehaviour
             tris.Add(face[2]);
         }
 
-        return CreateFlatShadedMesh(baseVertices, tris.ToArray());
+        return ApplyKis(baseVertices, faces);
     }
 
     Mesh CreateDodecahedron()
@@ -206,7 +206,7 @@ public class PolyhedronGenerator : MonoBehaviour
             }
         }
 
-        return CreateFlatShadedMesh(verts.ToArray(), tris.ToArray());
+        return ApplyKis(vertices, faces);
     }
 
     Mesh CreateIcosahedron()
@@ -244,39 +244,46 @@ public class PolyhedronGenerator : MonoBehaviour
             tris.Add(face[2]);
         }
 
-        return CreateFlatShadedMesh(baseVertices, tris.ToArray());
+        return ApplyKis(baseVertices, faces);
     }
 
-    Mesh ApplyKis(Vector3[] vertices, int[] triangles, float heightFactor = 1f)
+    Mesh ApplyKis(Vector3[] vertices, int[][] faces, float heightFactor = 1f)
     {
         List<Vector3> newVertices = new List<Vector3>();
         List<int> newTriangles = new List<int>();
 
-        for (int i = 0; i < triangles.Length; i += 3)
+        foreach (var face in faces)
         {
-            int i0 = triangles[i];
-            int i1 = triangles[i + 1];
-            int i2 = triangles[i + 2];
+            Vector3 center = Vector3.zero;
+            foreach (int i in face)
+                center += vertices[i];
+            center /= face.Length;
 
-            Vector3 v0 = vertices[i0];
-            Vector3 v1 = vertices[i1];
-            Vector3 v2 = vertices[i2];
-
-            // Centroide
-            Vector3 center = (v0 + v1 + v2) / 3f;
-            Vector3 normal = Vector3.Cross(v1 - v0, v2 - v0).normalized;
-            center += normal * heightFactor;
+            Vector3 normal = Vector3.zero;
+            for (int i = 0; i < face.Length; i++)
+            {
+                Vector3 v0 = vertices[face[i]];
+                Vector3 v1 = vertices[face[(i + 1) % face.Length]];
+                normal += Vector3.Cross(v1 - center, v0 - center);
+            }
+            normal = normal.normalized;
+            center -= normal * heightFactor;
 
             int centerIndex = newVertices.Count;
             newVertices.Add(center);
 
-            int i0n = newVertices.Count; newVertices.Add(v0);
-            int i1n = newVertices.Count; newVertices.Add(v1);
-            int i2n = newVertices.Count; newVertices.Add(v2);
+            for (int i = 0; i < face.Length; i++)
+            {
+                Vector3 v0 = vertices[face[i]];
+                Vector3 v1 = vertices[face[(i + 1) % face.Length]];
 
-            newTriangles.Add(centerIndex); newTriangles.Add(i0n); newTriangles.Add(i1n);
-            newTriangles.Add(centerIndex); newTriangles.Add(i1n); newTriangles.Add(i2n);
-            newTriangles.Add(centerIndex); newTriangles.Add(i2n); newTriangles.Add(i0n);
+                int i0 = newVertices.Count; newVertices.Add(v0);
+                int i1 = newVertices.Count; newVertices.Add(v1);
+
+                newTriangles.Add(centerIndex);
+                newTriangles.Add(i0);
+                newTriangles.Add(i1);
+            }
         }
 
         return CreateFlatShadedMesh(newVertices.ToArray(), newTriangles.ToArray());
