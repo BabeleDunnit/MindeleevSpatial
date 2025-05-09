@@ -75,8 +75,7 @@ public class PolyhedronGenerator : MonoBehaviour
             new int[] {2, 6, 5, 1}  // right (faccia +X)
         };
 
-        var (v, f) = ApplyKis(baseVertices, faces);
-        return ApplyFlatShade(v, f);
+        return ApplyFlatShade(ApplyKis(ApplyKis((baseVertices, faces), 0.1f), 0.3f));
     }
 
     Mesh CreateTetrahedron()
@@ -96,7 +95,7 @@ public class PolyhedronGenerator : MonoBehaviour
             new int[] {1, 2, 3}
         };
 
-        return ApplyFlatShade(baseVertices, faces);
+        return ApplyFlatShade((baseVertices, faces));
     }
 
     Mesh CreateOctahedron()
@@ -118,7 +117,7 @@ public class PolyhedronGenerator : MonoBehaviour
             new int[] {0, 3, 5}
         };
 
-        return ApplyFlatShade(baseVertices, faces);
+        return ApplyFlatShade((baseVertices, faces));
     }
 
     Mesh CreateDodecahedron()
@@ -150,7 +149,7 @@ public class PolyhedronGenerator : MonoBehaviour
             new int[] {6, 18, 19, 7, 15}
         };
 
-        return ApplyFlatShade(vertices, faces);
+        return ApplyFlatShade((vertices, faces));
     }
 
     Mesh CreateIcosahedron()
@@ -180,13 +179,15 @@ public class PolyhedronGenerator : MonoBehaviour
             new int[] {4, 9, 5}, new int[] {2, 4, 11}, new int[] {6, 2, 10}, new int[] {8, 6, 7}, new int[] {9, 8, 1}
         };
 
-        return ApplyFlatShade(baseVertices, faces);
+        return ApplyFlatShade((baseVertices, faces));
     }
 
-    public (Vector3[], int[][]) ApplyKis(Vector3[] vertices, int[][] faces, float heightFactor = 1f)
+    public static (Vector3[], int[][]) ApplyKis((Vector3[], int[][]) input, float heightFactor = 1f)
     {
         List<Vector3> newVertices = new List<Vector3>();
         List<int[]> newFaces = new List<int[]>();
+
+        var (vertices, faces) = input;
 
         foreach (var face in faces)
         {
@@ -221,8 +222,10 @@ public class PolyhedronGenerator : MonoBehaviour
         return (newVertices.ToArray(), newFaces.ToArray());
     }
 
-    Mesh ApplyFlatShade(Vector3[] baseVertices, int[][] faces)
+    public static Mesh ApplyFlatShade((Vector3[], int[][]) input)
     {
+        var (baseVertices, faces) = input;
+
         List<Vector3> vertices = new List<Vector3>();
         List<int> triangles = new List<int>();
         List<Vector3> normals = new List<Vector3>();
