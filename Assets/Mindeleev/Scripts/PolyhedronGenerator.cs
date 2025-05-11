@@ -351,10 +351,40 @@ public static (Vector3[], int[][], FaceKind[]) ApplyTruncate((Vector3[], int[][]
             }
             sorted.Sort((a, b) => a.angle.CompareTo(b.angle));
             int[] vertexFace = sorted.Select(p => newVertices.IndexOf(p.point)).ToArray();
+
+            // Calcolo della normale media attorno al vertice originale
+            Vector3 avgNormal = Vector3.zero;
+            foreach (var fIdx in faceIndices)
+            {
+                var fVerts = faces[fIdx];
+                int n = fVerts.Length;
+                for (int i = 0; i < n; i++)
+                {
+                    if (fVerts[i] == v)
+                    {
+                        Vector3 v0 = vertices[fVerts[i]];
+                        Vector3 v1 = vertices[fVerts[(i + 1) % n]];
+                        Vector3 v2 = vertices[fVerts[(i + n - 1) % n]];
+                        avgNormal += Vector3.Cross(v1 - v0, v2 - v0);
+                    }
+                }
+            }
+            avgNormal.Normalize();
+
+            // Normale della faccia triangolare appena costruita
+            if (vertexFace.Length >= 3)
+            {
+                Vector3 a = newVertices[vertexFace[0]];
+                Vector3 b = newVertices[vertexFace[1]];
+                Vector3 c = newVertices[vertexFace[2]];
+                Vector3 faceNormal = Vector3.Cross(b - a, c - a).normalized;
+                if (Vector3.Dot(faceNormal, avgNormal) < 0)
+                    vertexFace = vertexFace.Reverse().ToArray();
+            }
             newFaces.Add(vertexFace);
             newKinds.Add(FaceKind.Vertex);
         }
-
+     
         // Step 4: Create edge faces (between truncated points along shared edges)
         var seenEdges = new HashSet<(int, int)>();
         foreach (var face in faces)
