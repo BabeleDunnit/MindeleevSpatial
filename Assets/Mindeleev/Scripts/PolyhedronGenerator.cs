@@ -253,75 +253,164 @@ public class PolyhedronGenerator : MonoBehaviour
         return (newVertices.ToArray(), newFaces.ToArray(), newKinds.ToArray());
     }
 
-    // Truncate operator: faithful implementation of Polyhedronisme
+
 public static (Vector3[], int[][], FaceKind[]) ApplyTruncate((Vector3[], int[][], FaceKind[]) input, float t = 0.333f)
 {
+    // Clamp t to avoid degenerate geometry
     t = Mathf.Clamp(t, 0.0001f, 0.5f);
     var (vertices, faces, kinds) = input;
-    var newVertices = new List<Vector3>(vertices);
+    
+    // Create collections for new geometry
+    var newVertices = new List<Vector3>();
     var newFaces = new List<int[]>();
     var newKinds = new List<FaceKind>();
 
-    Dictionary<(int, int), int> edgeMidpoints = new();
-    int GetMidpoint(int a, int b)
+    // Dictionary to store truncated points: key is (vertex, edge_end_vertex)
+    Dictionary<(int, int), int> vertexEdgeToPoint = new Dictionary<(int, int), int>();
+
+    // Function to get or create truncated point
+    int GetTruncatedPoint(int vertexIdx, int adjacentIdx)
     {
-        var key = (Mathf.Min(a, b), Mathf.Max(a, b));
-        if (!edgeMidpoints.TryGetValue(key, out int mid))
+        var key = (vertexIdx, adjacentIdx);
+        
+        if (!vertexEdgeToPoint.TryGetValue(key, out int idx))
         {
-            mid = newVertices.Count;
-            newVertices.Add(Vector3.Lerp(vertices[a], vertices[b], t));
-            edgeMidpoints[key] = mid;
+            // Create point at distance t from vertex along edge to adjacent vertex
+            Vector3 vertexPos = vertices[vertexIdx];
+            Vector3 adjacentPos = vertices[adjacentIdx];
+            Vector3 truncatedPos = Vector3.Lerp(vertexPos, adjacentPos, t);
+            
+            idx = newVertices.Count;
+            newVertices.Add(truncatedPos);
+            vertexEdgeToPoint[key] = idx;
         }
-        return mid;
+        
+        return idx;
     }
 
-    foreach (var face in faces)
+    // Step 1: Build vertex-to-faces map to efficiently construct vertex figures
+    Dictionary<int, List<int>> vertexToFaces = new Dictionary<int, List<int>>();
+    
+    for (int f = 0; f < faces.Length; f++)
     {
-        var shrunkFace = new int[face.Length];
-        for (int i = 0; i < face.Length; i++)
+        foreach (int v in faces[f])
         {
-            shrunkFace[i] = GetMidpoint(face[i], face[(i + 1) % face.Length]);
+            if (!vertexToFaces.ContainsKey(v))
+                vertexToFaces[v] = new List<int>();
+                
+            vertexToFaces[v].Add(f);
         }
-        newFaces.Add(shrunkFace);
+    }
+
+    // Step 2: For each original face, create a truncated face
+    for (int f = 0; f < faces.Length; f++)
+    {
+        int[] face = faces[f];
+        int n = face.Length;
+        int[] truncatedFace = new int[n];
+        
+        for (int i = 0; i < n; i++)
+        {
+            int currentVertex = face[i];
+            int nextVertex = face[(i + 1) % n];
+            
+            // Get truncated point from current vertex towards next vertex
+            truncatedFace[i] = GetTruncatedPoint(currentVertex, nextVertex);
+        }
+        
+        newFaces.Add(truncatedFace);
         newKinds.Add(FaceKind.Face);
     }
 
-    var vertexRings = new Dictionary<int, List<int>>();
-    foreach (var face in faces)
+    // Step 3: Create vertex figures (new faces at each truncated vertex)
+    for (int v = 0; v < vertices.Length; v++)
     {
-        int count = face.Length;
-        for (int i = 0; i < count; i++)
+        // Skip vertices with fewer than 3 connected faces
+        if (!vertexToFaces.TryGetValue(v, out var connectedFaces) || connectedFaces.Count < 3)
+            continue;
+            
+        // Find all adjacent vertices
+        HashSet<int> adjacentVertices = new HashSet<int>();
+        
+        foreach (int faceIdx in connectedFaces)
         {
-            int v = face[i];
-            if (!vertexRings.ContainsKey(v)) vertexRings[v] = new();
-            vertexRings[v].Add(GetMidpoint(face[i], face[(i + 1) % count]));
-            vertexRings[v].Add(GetMidpoint(face[i], face[(i - 1 + count) % count]));
+            int[] face = faces[faceIdx];
+            for (int i = 0; i < face.Length; i++)
+            {
+                if (face[i] == v)
+                {
+                    // Add previous and next vertices in the face
+                    int prevIdx = (i - 1 + face.Length) % face.Length;
+                    int nextIdx = (i + 1) % face.Length;
+                    adjacentVertices.Add(face[prevIdx]);
+                    adjacentVertices.Add(face[nextIdx]);
+                }
+            }
         }
-    }
-
-/*
-    foreach (var (v, ring) in vertexRings)
-    {
-        Vector3 normal = vertices[v].normalized;
-        Vector3 axisX = Vector3.Cross(normal, Vector3.up);
-        if (axisX.sqrMagnitude < 1e-6f)
-            axisX = Vector3.Cross(normal, Vector3.right);
-        axisX.Normalize();
-        Vector3 axisY = Vector3.Cross(normal, axisX);
-
-        var orderedRing = ring.Distinct().OrderBy(mid =>
+        
+        // Sort adjacent vertices to create a coherent face
+        List<int> adjacents = adjacentVertices.ToList();
+        Vector3 vertexPos = vertices[v];
+        Vector3 vertexNormal = vertexPos.normalized; // Assuming origin-centered polyhedron
+        
+        // Create basis for sorting (tangent plane to vertex)
+        Vector3 tangent = Vector3.Cross(vertexNormal, Vector3.up);
+        if (tangent.magnitude < 0.001f)
+            tangent = Vector3.Cross(vertexNormal, Vector3.right);
+        tangent.Normalize();
+        
+        Vector3 bitangent = Vector3.Cross(vertexNormal, tangent);
+        bitangent.Normalize();
+        
+        // Create directed edges and their corresponding truncated points
+        List<(int adjacentIdx, int truncatedPointIdx)> sortablePairs = new List<(int, int)>();
+        
+        foreach (int adjVertex in adjacents)
         {
-            var vec = newVertices[mid] - vertices[v];
-            return Mathf.Atan2(Vector3.Dot(vec, axisY), Vector3.Dot(vec, axisX));
-        }).ToArray();
-
-        newFaces.Add(orderedRing);
+            int truncatedPointIdx = GetTruncatedPoint(v, adjVertex);
+            sortablePairs.Add((adjVertex, truncatedPointIdx));
+        }
+        
+        // Sort by angle in the tangent plane
+        sortablePairs.Sort((a, b) => {
+            Vector3 dirA = vertices[a.adjacentIdx] - vertexPos;
+            Vector3 dirB = vertices[b.adjacentIdx] - vertexPos;
+            
+            // Project onto tangent plane
+            dirA = dirA - Vector3.Dot(dirA, vertexNormal) * vertexNormal;
+            dirB = dirB - Vector3.Dot(dirB, vertexNormal) * vertexNormal;
+            
+            // Calculate angles
+            float angleA = Mathf.Atan2(Vector3.Dot(dirA, bitangent), Vector3.Dot(dirA, tangent));
+            float angleB = Mathf.Atan2(Vector3.Dot(dirB, bitangent), Vector3.Dot(dirB, tangent));
+            
+            return angleA.CompareTo(angleB);
+        });
+        
+        // Extract truncated points in order
+        int[] vertexFigure = sortablePairs.Select(p => p.truncatedPointIdx).ToArray();
+        
+        // Check winding direction
+        Vector3 faceNormal = Vector3.zero;
+        for (int i = 0; i < vertexFigure.Length; i++)
+        {
+            Vector3 v1 = newVertices[vertexFigure[i]];
+            Vector3 v2 = newVertices[vertexFigure[(i + 1) % vertexFigure.Length]];
+            faceNormal += Vector3.Cross(v1 - vertexPos, v2 - vertexPos);
+        }
+        
+        // Ensure outward normal (adjust winding if needed)
+        if (Vector3.Dot(faceNormal, vertexNormal) < 0)
+            System.Array.Reverse(vertexFigure);
+            
+        // Add the vertex figure as a new face
+        newFaces.Add(vertexFigure);
         newKinds.Add(FaceKind.Vertex);
     }
-*/
-
+    
     return (newVertices.ToArray(), newFaces.ToArray(), newKinds.ToArray());
 }
+
 
     /* ---------------------- FINAL FLAT SHADE ------------------------ */
     public static Mesh ApplyFlatShade((Vector3[], int[][], FaceKind[]) input)
