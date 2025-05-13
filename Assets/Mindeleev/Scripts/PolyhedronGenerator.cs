@@ -288,17 +288,28 @@ public static (Vector3[], int[][], FaceKind[]) ApplyTruncate((Vector3[], int[][]
         return idx;
     }
 
-    // Step 1: Build vertex-to-faces map to efficiently construct vertex figures
+    // Step 1: Build vertex-to-faces and edge-to-faces maps
     Dictionary<int, List<int>> vertexToFaces = new Dictionary<int, List<int>>();
+    Dictionary<(int, int), List<int>> edgeToFaces = new Dictionary<(int, int), List<int>>();
     
     for (int f = 0; f < faces.Length; f++)
     {
-        foreach (int v in faces[f])
+        int[] face = faces[f];
+        int n = face.Length;
+        
+        for (int i = 0; i < n; i++)
         {
+            int v = face[i];
             if (!vertexToFaces.ContainsKey(v))
                 vertexToFaces[v] = new List<int>();
-                
             vertexToFaces[v].Add(f);
+            
+            // Track edges
+            int v2 = face[(i + 1) % n];
+            var edge = v < v2 ? (v, v2) : (v2, v);
+            if (!edgeToFaces.ContainsKey(edge))
+                edgeToFaces[edge] = new List<int>();
+            edgeToFaces[edge].Add(f);
         }
     }
 
@@ -314,11 +325,11 @@ public static (Vector3[], int[][], FaceKind[]) ApplyTruncate((Vector3[], int[][]
             int current = face[i];
             int next = face[(i + 1) % n];
 
-            int p1 = GetTruncatedPoint(current, next);            // da current verso next
-            int p2 = GetTruncatedPoint(next, current);            // da next verso current
+            int p1 = GetTruncatedPoint(current, next);
+            int p2 = GetTruncatedPoint(next, current);
 
-            truncatedFace[i * 2] = p1;     // punto sul lato (verso next)
-            truncatedFace[i * 2 + 1] = p2; // punto opposto (verso current)
+            truncatedFace[i * 2] = p1;
+            truncatedFace[i * 2 + 1] = p2;
         }
 
         newFaces.Add(truncatedFace);
@@ -326,123 +337,228 @@ public static (Vector3[], int[][], FaceKind[]) ApplyTruncate((Vector3[], int[][]
     }
 
     // Step 3: Create vertex figures (new faces at each truncated vertex)
-        for (int v = 0; v < vertices.Length; v++)
-        {
-            if (!vertexToFaces.TryGetValue(v, out var faceIndices)) continue;
+    for (int v = 0; v < vertices.Length; v++)
+    {
+        if (!vertexToFaces.TryGetValue(v, out var faceIndices)) continue;
 
-            // Build list of adjacent vertices around this vertex
-            List<(Vector3 point, float angle)> sorted = new();
-            foreach (int fIdx in faceIndices)
+        // Calculate vertex normal (average of incident face normals)
+        Vector3 vertexNormal = Vector3.zero;
+        foreach (int fIdx in faceIndices)
+        {
+            var face = faces[fIdx];
+            int idx = System.Array.IndexOf(face, v);
+            if (idx >= 0)
             {
-                var face = faces[fIdx];
                 int n = face.Length;
-                for (int i = 0; i < n; i++)
-                {
-                    if (face[i] == v)
-                    {
-                        int prev = face[(i - 1 + n) % n];
-                        int next = face[(i + 1) % n];
-                        int p1 = GetTruncatedPoint(v, next);
-                        Vector3 dir = newVertices[p1] - vertices[v];
-                        float angle = Mathf.Atan2(dir.z, dir.x);
-                        sorted.Add((newVertices[p1], angle));
-                    }
-                }
+                Vector3 prev = vertices[face[(idx + n - 1) % n]];
+                Vector3 curr = vertices[v];
+                Vector3 next = vertices[face[(idx + 1) % n]];
+                Vector3 faceNormal = Vector3.Cross(next - curr, prev - curr).normalized;
+                vertexNormal += faceNormal;
             }
-            sorted.Sort((a, b) => a.angle.CompareTo(b.angle));
-            int[] vertexFace = sorted.Select(p => newVertices.IndexOf(p.point)).ToArray();
-
-            // Calcolo della normale media attorno al vertice originale
-            Vector3 avgNormal = Vector3.zero;
-            foreach (var fIdx in faceIndices)
-            {
-                var fVerts = faces[fIdx];
-                int n = fVerts.Length;
-                for (int i = 0; i < n; i++)
-                {
-                    if (fVerts[i] == v)
-                    {
-                        Vector3 v0 = vertices[fVerts[i]];
-                        Vector3 v1 = vertices[fVerts[(i + 1) % n]];
-                        Vector3 v2 = vertices[fVerts[(i + n - 1) % n]];
-                        avgNormal += Vector3.Cross(v1 - v0, v2 - v0);
-                    }
-                }
-            }
-            avgNormal.Normalize();
-
-            // Normale della faccia triangolare appena costruita
-            if (vertexFace.Length >= 3)
-            {
-                Vector3 a = newVertices[vertexFace[0]];
-                Vector3 b = newVertices[vertexFace[1]];
-                Vector3 c = newVertices[vertexFace[2]];
-                Vector3 faceNormal = Vector3.Cross(b - a, c - a).normalized;
-                if (Vector3.Dot(faceNormal, avgNormal) < 0)
-                    vertexFace = vertexFace.Reverse().ToArray();
-            }
-            newFaces.Add(vertexFace);
-            newKinds.Add(FaceKind.Vertex);
         }
-     
-        // Step 4: Create edge faces (between truncated points along shared edges)
-        var seenEdges = new HashSet<(int, int)>();
-        foreach (var face in faces)
-        {
-            int n = face.Length;
-            for (int i = 0; i < n; i++)
-            {
-                int a = face[i];
-                int b = face[(i + 1) % n];
-                var edge = a < b ? (a, b) : (b, a);
-                if (seenEdges.Contains(edge)) continue;
-                seenEdges.Add(edge);
+        vertexNormal.Normalize();
 
-                // Create quad between p_ab, p_ba, and adjacent truncated points
-                int p_ab = GetTruncatedPoint(a, b);
-                int p_ba = GetTruncatedPoint(b, a);
-
-                // Find next vertex in each direction to get side continuity
-                int nextA = -1, nextB = -1;
-                foreach (var f in vertexToFaces[a])
-                {
-                    var fVerts = faces[f];
-                    for (int j = 0; j < fVerts.Length; j++)
-                    {
-                        if (fVerts[j] == a && fVerts[(j + 1) % fVerts.Length] == b)
-                        {
-                            nextA = fVerts[(j + 2) % fVerts.Length];
-                        }
-                    }
-                }
-                foreach (var f in vertexToFaces[b])
-                {
-                    var fVerts = faces[f];
-                    for (int j = 0; j < fVerts.Length; j++)
-                    {
-                        if (fVerts[j] == b && fVerts[(j + 1) % fVerts.Length] == a)
-                        {
-                            nextB = fVerts[(j + 2) % fVerts.Length];
-                        }
-                    }
-                }
-
-                // Fallback: skip if not enough info
-                if (nextA == -1 || nextB == -1) continue;
-
-                int pa2 = GetTruncatedPoint(a, nextA);
-                int pb2 = GetTruncatedPoint(b, nextB);
-
-                int[] edgeFace = new int[] { p_ab, pa2, pb2, p_ba };
-                newFaces.Add(edgeFace);
-                newKinds.Add(FaceKind.Edge);
-            }
+        // Find all truncated points around this vertex and sort them
+        List<int> vertexFaceIndices = new List<int>();
+        List<Vector3> vertexFacePositions = new List<Vector3>();
         
+        foreach (int fIdx in faceIndices)
+        {
+            var face = faces[fIdx];
+            int idx = System.Array.IndexOf(face, v);
+            if (idx >= 0)
+            {
+                int n = face.Length;
+                int prev = face[(idx + n - 1) % n];
+                int next = face[(idx + 1) % n];
+                
+                int tPrev = GetTruncatedPoint(v, prev);
+                int tNext = GetTruncatedPoint(v, next);
+                
+                if (!vertexFaceIndices.Contains(tPrev))
+                {
+                    vertexFaceIndices.Add(tPrev);
+                    vertexFacePositions.Add(newVertices[tPrev]);
+                }
+                if (!vertexFaceIndices.Contains(tNext))
+                {
+                    vertexFaceIndices.Add(tNext);
+                    vertexFacePositions.Add(newVertices[tNext]);
+                }
+            }
+        }
+        
+        // Order points around vertex based on angle in a plane perpendicular to vertex normal
+        Vector3 center = Vector3.zero;
+        foreach (Vector3 p in vertexFacePositions)
+            center += p;
+        center /= vertexFacePositions.Count;
+        
+        // Find a perpendicular vector to the normal to define a plane
+        Vector3 tangent = Vector3.Cross(vertexNormal, 
+            Mathf.Abs(vertexNormal.x) < 0.9f ? Vector3.right : Vector3.up).normalized;
+        Vector3 bitangent = Vector3.Cross(vertexNormal, tangent);
+        
+        // Sort by angle in the tangent/bitangent plane
+        List<(int index, float angle)> sortedIndices = new List<(int index, float angle)>();
+        for (int i = 0; i < vertexFaceIndices.Count; i++)
+        {
+            Vector3 dir = vertexFacePositions[i] - center;
+            float ax = Vector3.Dot(dir, tangent);
+            float ay = Vector3.Dot(dir, bitangent);
+            float angle = Mathf.Atan2(ay, ax);
+            sortedIndices.Add((vertexFaceIndices[i], angle));
+        }
+        sortedIndices.Sort((a, b) => a.angle.CompareTo(b.angle));
+        
+        // Create the new face with correctly ordered vertices
+        int[] newVertexFace = sortedIndices.Select(p => p.index).ToArray();
+        
+        // Ensure face normal points outward from the polyhedron center
+        Vector3 outwardDir = (center - vertices[v]).normalized;
+        Vector3 faceNormalCalc = CalculateFaceNormal(newVertices, newVertexFace);
+        
+        if (Vector3.Dot(faceNormalCalc, outwardDir) < 0)
+            newVertexFace = newVertexFace.Reverse().ToArray();
+        
+        newFaces.Add(newVertexFace);
+        newKinds.Add(FaceKind.Vertex);
+    }
+
+    // Step 4: Create edge faces
+    HashSet<(int, int)> processedEdges = new HashSet<(int, int)>();
+    
+    for (int f = 0; f < faces.Length; f++)
+    {
+        int[] face = faces[f];
+        int n = face.Length;
+        
+        for (int i = 0; i < n; i++)
+        {
+            int a = face[i];
+            int b = face[(i + 1) % n];
+            var edge = a < b ? (a, b) : (b, a);
+            
+            if (processedEdges.Contains(edge)) continue;
+            processedEdges.Add(edge);
+            
+            if (!edgeToFaces.TryGetValue(edge, out var edgeFaces) || edgeFaces.Count != 2)
+                continue; // Skip non-manifold edges or boundary edges
+            
+            int p_ab = GetTruncatedPoint(a, b);
+            int p_ba = GetTruncatedPoint(b, a);
+            
+            // Find the other vertices adjacent to a and b in the faces sharing this edge
+            List<int> quadPoints = new List<int>();
+            quadPoints.Add(p_ab);
+            
+            foreach (int fIdx in edgeFaces)
+            {
+                var edgeFace = faces[fIdx];
+                int aIdx = System.Array.IndexOf(edgeFace, a);
+                int bIdx = System.Array.IndexOf(edgeFace, b);
+                
+                if (aIdx >= 0 && bIdx >= 0)
+                {
+                    int n2 = edgeFace.Length;
+                    // If b follows a in this face
+                    if ((aIdx + 1) % n2 == bIdx)
+                    {
+                        int cIdx = (bIdx + 1) % n2;
+                        int c = edgeFace[cIdx];
+                        quadPoints.Add(GetTruncatedPoint(b, c));
+                    }
+                    // If a follows b in this face
+                    else if ((bIdx + 1) % n2 == aIdx)
+                    {
+                        int cIdx = (aIdx + 1) % n2;
+                        int c = edgeFace[cIdx];
+                        quadPoints.Add(GetTruncatedPoint(a, c));
+                    }
+                }
+            }
+            
+            quadPoints.Add(p_ba);
+            
+            // Add remaining point(s) to complete quad
+            foreach (int fIdx in edgeFaces)
+            {
+                var edgeFace = faces[fIdx];
+                int aIdx = System.Array.IndexOf(edgeFace, a);
+                int bIdx = System.Array.IndexOf(edgeFace, b);
+                
+                if (aIdx >= 0 && bIdx >= 0)
+                {
+                    int n2 = edgeFace.Length;
+                    // If b follows a in this face
+                    if ((bIdx + 1) % n2 == aIdx)
+                    {
+                        int cIdx = (aIdx + 1) % n2;
+                        int c = edgeFace[cIdx];
+                        quadPoints.Add(GetTruncatedPoint(a, c));
+                    }
+                    // If a follows b in this face
+                    else if ((aIdx + 1) % n2 == bIdx)
+                    {
+                        int cIdx = (bIdx + 1) % n2;
+                        int c = edgeFace[cIdx];
+                        quadPoints.Add(GetTruncatedPoint(b, c));
+                    }
+                }
+            }
+            
+            // Remove duplicates and ensure we have 4 points for a proper quad
+            quadPoints = quadPoints.Distinct().ToList();
+            if (quadPoints.Count != 4) continue;
+            
+            // Calculate center of the edge
+            Vector3 edgeCenter = (vertices[a] + vertices[b]) / 2f;
+            
+            // Ensure quad normal points outward
+            Vector3 center = Vector3.zero;
+            foreach (int idx in quadPoints)
+                center += newVertices[idx];
+            center /= 4;
+            
+            Vector3 outwardDir = (center - edgeCenter).normalized;
+            Vector3 quadNormal = CalculateFaceNormal(newVertices, quadPoints.ToArray());
+            
+            if (Vector3.Dot(quadNormal, outwardDir) < 0)
+                quadPoints.Reverse();
+            
+            newFaces.Add(quadPoints.ToArray());
+            newKinds.Add(FaceKind.Edge);
+        }
     }
     
     return (newVertices.ToArray(), newFaces.ToArray(), newKinds.ToArray());
 }
 
+// Helper function to calculate face normal
+private static Vector3 CalculateFaceNormal(List<Vector3> vertices, int[] face)
+{
+    if (face.Length < 3) return Vector3.up;
+    
+    // Calculate centroid
+    Vector3 centroid = Vector3.zero;
+    foreach (int idx in face)
+        centroid += vertices[idx];
+    centroid /= face.Length;
+    
+    // Calculate normal using Newell's method (more robust than just using 3 vertices)
+    Vector3 normal = Vector3.zero;
+    for (int i = 0; i < face.Length; i++)
+    {
+        Vector3 current = vertices[face[i]];
+        Vector3 next = vertices[face[(i + 1) % face.Length]];
+        normal.x += (current.y - next.y) * (current.z + next.z);
+        normal.y += (current.z - next.z) * (current.x + next.x);
+        normal.z += (current.x - next.x) * (current.y + next.y);
+    }
+    
+    return normal.normalized;
+}
     /* ---------------------- FINAL FLAT SHADE ------------------------ */
     public static Mesh ApplyFlatShade((Vector3[], int[][], FaceKind[]) input)
     {
