@@ -419,7 +419,8 @@ public static (Vector3[], int[][], FaceKind[]) ApplyTruncate((Vector3[], int[][]
         Vector3 outwardDir = (center - vertices[v]).normalized;
         Vector3 faceNormalCalc = CalculateFaceNormal(newVertices, newVertexFace);
         
-        if (Vector3.Dot(faceNormalCalc, outwardDir) < 0)
+        // INVERTIAMO la condizione rispetto alla versione precedente
+        if (Vector3.Dot(faceNormalCalc, outwardDir) > 0)
             newVertexFace = newVertexFace.Reverse().ToArray();
         
         newFaces.Add(newVertexFace);
@@ -524,7 +525,8 @@ public static (Vector3[], int[][], FaceKind[]) ApplyTruncate((Vector3[], int[][]
             Vector3 outwardDir = (center - edgeCenter).normalized;
             Vector3 quadNormal = CalculateFaceNormal(newVertices, quadPoints.ToArray());
             
-            if (Vector3.Dot(quadNormal, outwardDir) < 0)
+            // INVERTIAMO anche questa condizione
+            if (Vector3.Dot(quadNormal, outwardDir) > 0)
                 quadPoints.Reverse();
             
             newFaces.Add(quadPoints.ToArray());
@@ -559,6 +561,8 @@ private static Vector3 CalculateFaceNormal(List<Vector3> vertices, int[] face)
     
     return normal.normalized;
 }
+
+
     /* ---------------------- FINAL FLAT SHADE ------------------------ */
     public static Mesh ApplyFlatShade((Vector3[], int[][], FaceKind[]) input)
     {
