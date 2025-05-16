@@ -159,7 +159,7 @@ public class PolyhedronGenerator : MonoBehaviour
         // Locate last uppercase letter = base polyhedron
         int basePos = recipe.Length - 1;
         while (basePos >= 0 && !char.IsUpper(recipe[basePos])) basePos--;
-        if (basePos < 0) { Debug.LogError("No base polyhedron in recipe – defaulting to Cube"); recipe += "C"; basePos = recipe.Length - 1; }
+        if (basePos < 0) { Debug.LogError("No base polyhedron in recipe - defaulting to Cube"); recipe += "C"; basePos = recipe.Length - 1; }
 
         char baseChar = recipe[basePos];
         (Vector3[], int[][], FaceKind[]) current = baseChar switch
@@ -429,7 +429,7 @@ public static (Vector3[], int[][], FaceKind[]) ApplyTruncate((Vector3[], int[][]
 
     // Step 4: Create edge faces
     HashSet<(int, int)> processedEdges = new HashSet<(int, int)>();
-    
+
     for (int f = 0; f < faces.Length; f++)
     {
         int[] face = faces[f];
@@ -446,89 +446,59 @@ public static (Vector3[], int[][], FaceKind[]) ApplyTruncate((Vector3[], int[][]
             
             if (!edgeToFaces.TryGetValue(edge, out var edgeFaces) || edgeFaces.Count != 2)
                 continue; // Skip non-manifold edges or boundary edges
+
+            // Always use consistent ordering based on the canonical edge direction
+            int first = edge.Item1;
+            int second = edge.Item2;
             
-            int p_ab = GetTruncatedPoint(a, b);
-            int p_ba = GetTruncatedPoint(b, a);
-            
-            // Find the other vertices adjacent to a and b in the faces sharing this edge
+            int p_start = GetTruncatedPoint(first, second);
+            int p_end = GetTruncatedPoint(second, first);
+
+            // Get adjacent vertices in a consistent order
             List<int> quadPoints = new List<int>();
-            quadPoints.Add(p_ab);
+            quadPoints.Add(p_start);
+
+            // Only process the first face to get one adjacent vertex
+            var firstFace = faces[edgeFaces[0]];
+            int firstIdx = System.Array.IndexOf(firstFace, first);
+            int secondIdx = System.Array.IndexOf(firstFace, second);
             
-            foreach (int fIdx in edgeFaces)
+            if ((firstIdx + 1) % firstFace.Length == secondIdx)
             {
-                var edgeFace = faces[fIdx];
-                int aIdx = System.Array.IndexOf(edgeFace, a);
-                int bIdx = System.Array.IndexOf(edgeFace, b);
-                
-                if (aIdx >= 0 && bIdx >= 0)
-                {
-                    int n2 = edgeFace.Length;
-                    // If b follows a in this face
-                    if ((aIdx + 1) % n2 == bIdx)
-                    {
-                        int cIdx = (bIdx + 1) % n2;
-                        int c = edgeFace[cIdx];
-                        quadPoints.Add(GetTruncatedPoint(b, c));
-                    }
-                    // If a follows b in this face
-                    else if ((bIdx + 1) % n2 == aIdx)
-                    {
-                        int cIdx = (aIdx + 1) % n2;
-                        int c = edgeFace[cIdx];
-                        quadPoints.Add(GetTruncatedPoint(a, c));
-                    }
-                }
+                int nextIdx = (secondIdx + 1) % firstFace.Length;
+                quadPoints.Add(GetTruncatedPoint(second, firstFace[nextIdx]));
             }
             
-            quadPoints.Add(p_ba);
+            quadPoints.Add(p_end);
+
+            // Get the other adjacent vertex from the second face
+            var secondFace = faces[edgeFaces[1]];
+            firstIdx = System.Array.IndexOf(secondFace, first);
+            secondIdx = System.Array.IndexOf(secondFace, second);
             
-            // Add remaining point(s) to complete quad
-            foreach (int fIdx in edgeFaces)
+            if ((firstIdx + 1) % secondFace.Length == secondIdx)
             {
-                var edgeFace = faces[fIdx];
-                int aIdx = System.Array.IndexOf(edgeFace, a);
-                int bIdx = System.Array.IndexOf(edgeFace, b);
-                
-                if (aIdx >= 0 && bIdx >= 0)
-                {
-                    int n2 = edgeFace.Length;
-                    // If b follows a in this face
-                    if ((bIdx + 1) % n2 == aIdx)
-                    {
-                        int cIdx = (aIdx + 1) % n2;
-                        int c = edgeFace[cIdx];
-                        quadPoints.Add(GetTruncatedPoint(a, c));
-                    }
-                    // If a follows b in this face
-                    else if ((aIdx + 1) % n2 == bIdx)
-                    {
-                        int cIdx = (bIdx + 1) % n2;
-                        int c = edgeFace[cIdx];
-                        quadPoints.Add(GetTruncatedPoint(b, c));
-                    }
-                }
+                int nextIdx = (secondIdx + 1) % secondFace.Length;
+                quadPoints.Add(GetTruncatedPoint(second, secondFace[nextIdx]));
             }
-            
-            // Remove duplicates and ensure we have 4 points for a proper quad
+
+            // Ensure we have exactly 4 points
             quadPoints = quadPoints.Distinct().ToList();
             if (quadPoints.Count != 4) continue;
-            
-            // Calculate center of the edge
-            Vector3 edgeCenter = (vertices[a] + vertices[b]) / 2f;
-            
-            // Ensure quad normal points outward
-            Vector3 center = Vector3.zero;
+
+            // Calculate edge center and ensure consistent winding
+            Vector3 edgeCenter = (vertices[first] + vertices[second]) / 2f;
+            Vector3 quadCenter = Vector3.zero;
             foreach (int idx in quadPoints)
-                center += newVertices[idx];
-            center /= 4;
-            
-            Vector3 outwardDir = (center - edgeCenter).normalized;
+                quadCenter += newVertices[idx];
+            quadCenter /= 4;
+
+            Vector3 outwardDir = (quadCenter - edgeCenter).normalized;
             Vector3 quadNormal = CalculateFaceNormal(newVertices, quadPoints.ToArray());
-            
-            // INVERTIAMO anche questa condizione
+
             if (Vector3.Dot(quadNormal, outwardDir) > 0)
                 quadPoints.Reverse();
-            
+
             newFaces.Add(quadPoints.ToArray());
             newKinds.Add(FaceKind.Edge);
         }
