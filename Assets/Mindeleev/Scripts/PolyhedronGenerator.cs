@@ -124,8 +124,10 @@ public class PolyhedronGenerator : MonoBehaviour
     [Header("Recipe (e.g. kC, kkT, C)")]
     public string polyhedronRecipe = "C"; // default Cube
 
-    [Header("Material Settings")]
-    public Color meshColor = Color.cyan;
+    [Header("Color Settings")]
+    public PolyhedronPalette palette;
+    public bool useCongruenceColoring = true;
+    public float colorSensitivity = 0.001f;
 
     /* ------------------------------------------------------------------ */
     void Start()
@@ -134,19 +136,19 @@ public class PolyhedronGenerator : MonoBehaviour
         MeshRenderer renderer = GetComponent<MeshRenderer>();
 
         filter.mesh = ParsePolyhedronRecipe(polyhedronRecipe);
-        ApplySimpleMaterial(renderer, meshColor);
+        ApplyPolyhedronMaterial(renderer);
     }
 
     /* ------------------------- MATERIAL ------------------------------ */
-    void ApplySimpleMaterial(MeshRenderer renderer, Color color)
+    void ApplyPolyhedronMaterial(MeshRenderer renderer)
     {
-        Shader shader = Shader.Find("Universal Render Pipeline/Lit") ?? Shader.Find("Standard");
+        Shader shader = Shader.Find("Custom/PolyhedronFlatShaded");
         if (shader == null)
         {
-            Debug.LogError("No compatible shader found. Ensure URP or Standard pipeline is configured.");
+            Debug.LogError("PolyhedronFlatShaded shader not found! Please ensure the shader is in your project.");
             return;
         }
-        var material = new Material(shader) { color = color };
+        var material = new Material(shader);
         renderer.material = material;
     }
 
@@ -207,7 +209,7 @@ public class PolyhedronGenerator : MonoBehaviour
             };
         }
 
-        return ApplyFlatShade(current);
+        return ApplyFlatShade(current, palette, useCongruenceColoring, colorSensitivity);
     }
 
     /* ---------------------- OPERATORS -------------------------------- */
@@ -534,17 +536,50 @@ private static Vector3 CalculateFaceNormal(List<Vector3> vertices, int[] face)
 
 
     /* ---------------------- FINAL FLAT SHADE ------------------------ */
-    public static Mesh ApplyFlatShade((Vector3[], int[][], FaceKind[]) input)
+    public static Mesh ApplyFlatShade(
+        (Vector3[], int[][], FaceKind[]) input, 
+        PolyhedronPalette palette = null,
+        bool useCongruenceColoring = true,
+        float colorSensitivity = 0.001f)
     {
         var (baseVertices, faces, kinds) = input;
 
         List<Vector3> vertices = new List<Vector3>();
         List<int> tris = new List<int>();
         List<Vector3> normals = new List<Vector3>();
+        List<Color> colors = new List<Color>();
+
+        // Group faces by congruence if using congruence coloring
+        Dictionary<string, int> congruenceToColor = new Dictionary<string, int>();
+        int currentColorIndex = 0;
 
         for (int f = 0; f < faces.Length; f++)
         {
             var face = faces[f];
+            Color faceColor;
+            
+            if (palette != null)
+            {
+                if (useCongruenceColoring)
+                {
+                    string signature = CalculateFaceSignature(baseVertices, face, colorSensitivity);
+                    if (!congruenceToColor.TryGetValue(signature, out int colorIndex))
+                    {
+                        colorIndex = currentColorIndex++;
+                        congruenceToColor[signature] = colorIndex;
+                    }
+                    faceColor = palette.GetColor(colorIndex, kinds[f]);
+                }
+                else
+                {
+                    faceColor = palette.GetColor(f, kinds[f]);
+                }
+            }
+            else
+            {
+                faceColor = Color.white;
+            }
+
             for (int i = 1; i < face.Length - 1; i++)
             {
                 Vector3 v0 = baseVertices[face[0]];
@@ -553,9 +588,9 @@ private static Vector3 CalculateFaceNormal(List<Vector3> vertices, int[] face)
                 Vector3 normal = Vector3.Cross(v1 - v0, v2 - v0).normalized;
 
                 int start = vertices.Count;
-                vertices.Add(v0); normals.Add(normal);
-                vertices.Add(v1); normals.Add(normal);
-                vertices.Add(v2); normals.Add(normal);
+                vertices.Add(v0); normals.Add(normal); colors.Add(faceColor);
+                vertices.Add(v1); normals.Add(normal); colors.Add(faceColor);
+                vertices.Add(v2); normals.Add(normal); colors.Add(faceColor);
                 tris.Add(start); tris.Add(start + 1); tris.Add(start + 2);
             }
         }
@@ -564,7 +599,28 @@ private static Vector3 CalculateFaceNormal(List<Vector3> vertices, int[] face)
         mesh.SetVertices(vertices);
         mesh.SetTriangles(tris, 0);
         mesh.SetNormals(normals);
+        mesh.SetColors(colors);
         return mesh;
+    }
+
+    // Add helper method for face signatures (congruence)
+    private static string CalculateFaceSignature(Vector3[] vertices, int[] face, float sensitivity)
+    {
+        var angles = new List<float>();
+        for (int i = 0; i < face.Length; i++)
+        {
+            Vector3 v1 = vertices[face[i]];
+            Vector3 v2 = vertices[face[(i + 1) % face.Length]];
+            Vector3 v3 = vertices[face[(i + 2) % face.Length]];
+            
+            Vector3 edge1 = v2 - v1;
+            Vector3 edge2 = v3 - v2;
+            float angle = Vector3.Angle(edge1, edge2);
+            angles.Add(angle);
+        }
+        
+        angles.Sort();
+        return string.Join(",", angles.ConvertAll(a => Mathf.Round(a / sensitivity) * sensitivity));
     }
 }
 

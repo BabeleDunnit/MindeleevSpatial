@@ -299,7 +299,9 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   polyhedronRecipe: kkD
-  meshColor: {r: 0, g: 0.15156436, b: 1, a: 1}
+  palette: {fileID: 0}
+  useCongruenceColoring: 1
+  colorSensitivity: 0.001
 --- !u!23 &336491528
 MeshRenderer:
   m_ObjectHideFlags: 0
@@ -452,7 +454,9 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   polyhedronRecipe: tT
-  meshColor: {r: 1, g: 0, b: 0.06914902, a: 1}
+  palette: {fileID: 0}
+  useCongruenceColoring: 1
+  colorSensitivity: 0.001
 --- !u!23 &536562401
 MeshRenderer:
   m_ObjectHideFlags: 0
@@ -738,7 +742,9 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   polyhedronRecipe: tC
-  meshColor: {r: 0, g: 1, b: 0.24667287, a: 1}
+  palette: {fileID: 0}
+  useCongruenceColoring: 1
+  colorSensitivity: 0.001
 --- !u!23 &988676410
 MeshRenderer:
   m_ObjectHideFlags: 0
@@ -1018,7 +1024,9 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   polyhedronRecipe: tD
-  meshColor: {r: 0, g: 0.15156436, b: 1, a: 1}
+  palette: {fileID: 0}
+  useCongruenceColoring: 1
+  colorSensitivity: 0.001
 --- !u!23 &1397039201
 MeshRenderer:
   m_ObjectHideFlags: 0
@@ -1116,7 +1124,9 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   polyhedronRecipe: k-.3k.3D
-  meshColor: {r: 0, g: 0.15156436, b: 1, a: 1}
+  palette: {fileID: 0}
+  useCongruenceColoring: 1
+  colorSensitivity: 0.001
 --- !u!23 &1457997563
 MeshRenderer:
   m_ObjectHideFlags: 0
@@ -1332,7 +1342,9 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   polyhedronRecipe: tO
-  meshColor: {r: 0.9914521, g: 1, b: 0, a: 1}
+  palette: {fileID: 11400000, guid: 805b5f8cee0194db6b7bf253c04642ca, type: 2}
+  useCongruenceColoring: 1
+  colorSensitivity: 0.001
 --- !u!23 &1844304566
 MeshRenderer:
   m_ObjectHideFlags: 0
@@ -1430,7 +1442,9 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   polyhedronRecipe: tI
-  meshColor: {r: 0, g: 1, b: 0.12042332, a: 1}
+  palette: {fileID: 0}
+  useCongruenceColoring: 1
+  colorSensitivity: 0.001
 --- !u!23 &1846569835
 MeshRenderer:
   m_ObjectHideFlags: 0
