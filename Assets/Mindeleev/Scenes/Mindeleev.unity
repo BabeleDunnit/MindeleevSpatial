@@ -361,7 +361,7 @@ Transform:
   m_GameObject: {fileID: 336491526}
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 5.33, y: 0, z: 16.12}
-  m_LocalScale: {x: 5.7, y: 5.7, z: 5.7}
+  m_LocalScale: {x: 1.17, y: 1.17, z: 1.17}
   m_ConstrainProportionsScale: 1
   m_Children: []
   m_Father: {fileID: 0}
@@ -454,7 +454,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   polyhedronRecipe: tT
-  palette: {fileID: 0}
+  palette: {fileID: 11400000, guid: 805b5f8cee0194db6b7bf253c04642ca, type: 2}
   useCongruenceColoring: 1
   colorSensitivity: 0.001
 --- !u!23 &536562401
@@ -515,8 +515,8 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 536562399}
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: -17.53, y: 0, z: 20.24}
-  m_LocalScale: {x: 10.72, y: 10.72, z: 10.72}
+  m_LocalPosition: {x: 10.38, y: 0, z: -0.12}
+  m_LocalScale: {x: 1.36, y: 1.36, z: 1.36}
   m_ConstrainProportionsScale: 1
   m_Children: []
   m_Father: {fileID: 0}
@@ -804,7 +804,7 @@ Transform:
   m_GameObject: {fileID: 988676408}
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 7.07, y: 0, z: 15.55}
-  m_LocalScale: {x: 8.12, y: 8.12, z: 8.12}
+  m_LocalScale: {x: 1.13, y: 1.13, z: 1.13}
   m_ConstrainProportionsScale: 1
   m_Children: []
   m_Father: {fileID: 0}
@@ -1086,7 +1086,7 @@ Transform:
   m_GameObject: {fileID: 1397039199}
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: -9.75, y: 0, z: -12.88}
-  m_LocalScale: {x: 7.29, y: 7.29, z: 7.29}
+  m_LocalScale: {x: 1.6, y: 1.6, z: 1.6}
   m_ConstrainProportionsScale: 1
   m_Children: []
   m_Father: {fileID: 0}
@@ -1124,7 +1124,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   polyhedronRecipe: k-.3k.3D
-  palette: {fileID: 0}
+  palette: {fileID: 11400000, guid: 3d9c627d2aaeb44648c8d040abe76ab4, type: 2}
   useCongruenceColoring: 1
   colorSensitivity: 0.001
 --- !u!23 &1457997563
@@ -1186,7 +1186,7 @@ Transform:
   m_GameObject: {fileID: 1457997561}
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 13.33, y: 0, z: 19.18}
-  m_LocalScale: {x: 5.53, y: 5.53, z: 5.53}
+  m_LocalScale: {x: 1.23, y: 1.23, z: 1.23}
   m_ConstrainProportionsScale: 1
   m_Children: []
   m_Father: {fileID: 0}
@@ -1343,8 +1343,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   polyhedronRecipe: tO
   palette: {fileID: 11400000, guid: 805b5f8cee0194db6b7bf253c04642ca, type: 2}
-  useCongruenceColoring: 1
-  colorSensitivity: 0.001
+  useCongruenceColoring: 0
+  colorSensitivity: 1
 --- !u!23 &1844304566
 MeshRenderer:
   m_ObjectHideFlags: 0
@@ -1404,7 +1404,7 @@ Transform:
   m_GameObject: {fileID: 1844304564}
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 4.67, y: 0, z: -5.49}
-  m_LocalScale: {x: 6.6, y: 6.6, z: 6.6}
+  m_LocalScale: {x: 1.12, y: 1.12, z: 1.12}
   m_ConstrainProportionsScale: 1
   m_Children: []
   m_Father: {fileID: 0}
@@ -1504,7 +1504,7 @@ Transform:
   m_GameObject: {fileID: 1846569833}
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 11.49, y: 0, z: 8.2699995}
-  m_LocalScale: {x: 8.84, y: 8.84, z: 8.84}
+  m_LocalScale: {x: 1.17, y: 1.17, z: 1.17}
   m_ConstrainProportionsScale: 1
   m_Children: []
   m_Father: {fileID: 0}
