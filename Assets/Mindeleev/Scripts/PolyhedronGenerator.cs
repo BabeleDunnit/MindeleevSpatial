@@ -129,6 +129,9 @@ public class PolyhedronGenerator : MonoBehaviour
     public bool useCongruenceColoring = true;
     public float colorSensitivity = 0.001f;
 
+    [Header("Material")]
+    public Material polyhedronMaterial; // Add this field
+
     /* ------------------------------------------------------------------ */
     void Start()
     {
@@ -142,14 +145,14 @@ public class PolyhedronGenerator : MonoBehaviour
     /* ------------------------- MATERIAL ------------------------------ */
     void ApplyPolyhedronMaterial(MeshRenderer renderer)
     {
-        Shader shader = Shader.Find("Custom/PolyhedronFlatShaded");
-        if (shader == null)
+        if (polyhedronMaterial == null)
         {
-            Debug.LogError("PolyhedronFlatShaded shader not found! Please ensure the shader is in your project.");
+            Debug.LogError("PolyhedronFlatShaded material not assigned in inspector");
             return;
         }
-        var material = new Material(shader);
-        renderer.material = material;
+        
+        renderer.material = polyhedronMaterial;
+        Debug.Log($"Successfully applied material on {Application.platform}");
     }
 
     /* ---------------------- PARSE RECIPE ----------------------------- */
