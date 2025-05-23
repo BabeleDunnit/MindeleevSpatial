@@ -991,7 +991,12 @@ PrefabInstance:
     - target: {fileID: 8404194606809146211, guid: a4b29d65d516b4ae19b3532179b68cd4,
         type: 3}
       propertyPath: polyhedronRecipe
-      value: tC
+      value: tk0.1C
+      objectReference: {fileID: 0}
+    - target: {fileID: 8404194606809146211, guid: a4b29d65d516b4ae19b3532179b68cd4,
+        type: 3}
+      propertyPath: useCongruenceColoring
+      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 8404194606809146214, guid: a4b29d65d516b4ae19b3532179b68cd4,
         type: 3}
@@ -1001,32 +1006,32 @@ PrefabInstance:
     - target: {fileID: 8404194606809146214, guid: a4b29d65d516b4ae19b3532179b68cd4,
         type: 3}
       propertyPath: m_LocalScale.x
-      value: 1
+      value: 1.1
       objectReference: {fileID: 0}
     - target: {fileID: 8404194606809146214, guid: a4b29d65d516b4ae19b3532179b68cd4,
         type: 3}
       propertyPath: m_LocalScale.y
-      value: 1
+      value: 1.1
       objectReference: {fileID: 0}
     - target: {fileID: 8404194606809146214, guid: a4b29d65d516b4ae19b3532179b68cd4,
         type: 3}
       propertyPath: m_LocalScale.z
-      value: 1
+      value: 1.1
       objectReference: {fileID: 0}
     - target: {fileID: 8404194606809146214, guid: a4b29d65d516b4ae19b3532179b68cd4,
         type: 3}
       propertyPath: m_LocalPosition.x
-      value: 5.16
-      objectReference: {fileID: 0}
-    - target: {fileID: 8404194606809146214, guid: a4b29d65d516b4ae19b3532179b68cd4,
-        type: 3}
-      propertyPath: m_LocalPosition.y
       value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 8404194606809146214, guid: a4b29d65d516b4ae19b3532179b68cd4,
         type: 3}
+      propertyPath: m_LocalPosition.y
+      value: 0.86
+      objectReference: {fileID: 0}
+    - target: {fileID: 8404194606809146214, guid: a4b29d65d516b4ae19b3532179b68cd4,
+        type: 3}
       propertyPath: m_LocalPosition.z
-      value: 7.58
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 8404194606809146214, guid: a4b29d65d516b4ae19b3532179b68cd4,
         type: 3}

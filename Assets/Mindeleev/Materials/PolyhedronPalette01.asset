@@ -13,9 +13,6 @@ MonoBehaviour:
   m_Name: PolyhedronPalette01
   m_EditorClassIdentifier: 
   colorSets:
-  - faceColor: {r: 0, g: 1, b: 0.00427413, a: 1}
-    edgeColor: {r: 0.81960785, g: 0.30179507, b: 0.29803917, a: 1}
-    vertexColor: {r: 0.78039217, g: 0.19215685, b: 0.74813753, a: 1}
-  - faceColor: {r: 0.9212053, g: 0.33036092, b: 0.30106568, a: 1}
-    edgeColor: {r: 0.8986411, g: 0.4649188, b: 0.34923068, a: 1}
-    vertexColor: {r: 0.31720194, g: 0.18357012, b: 0.623665, a: 1}
+  - faceColor: {r: 1, g: 0, b: 0, a: 0}
+    edgeColor: {r: 0, g: 1, b: 0.052369595, a: 0}
+    vertexColor: {r: 0, g: 0.30203557, b: 1, a: 0}
