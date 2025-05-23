@@ -38,14 +38,36 @@ public class PolyhedronPalette : ScriptableObject
 
     public Color GetColor(int index, FaceKind kind)
     {
-        if (colorSets.Count == 0) return Color.white;
-        var set = colorSets[index % colorSets.Count];
-        return kind switch
+        // Always use first color set for base colors
+        var baseColors = colorSets[0];
+        
+        // Get base color by face kind
+        Color baseColor = kind switch
         {
-            FaceKind.Face => set.faceColor,
-            FaceKind.Edge => set.edgeColor,
-            FaceKind.Vertex => set.vertexColor,
+            
+            FaceKind.Vertex => baseColors.vertexColor,
+            FaceKind.Edge => baseColors.edgeColor,
+            FaceKind.Face => baseColors.faceColor,
+            
+/*
+            FaceKind.Face => Color.red,
+            FaceKind.Edge => Color.green,
+            FaceKind.Vertex => Color.blue,
+*/
             _ => Color.white
         };
+
+        
+                // If index > 0 and we have additional color sets, blend with variation colors
+                if (index > 0 && colorSets.Count > 1)
+                {
+                    var variationColor = colorSets[index % (colorSets.Count - 1) + 1].faceColor;
+                    return Color.Lerp(baseColor, variationColor, 0.3f);
+                }
+        
+        return baseColor;
     }
+
+    // Add this property to get the number of color sets
+    public int ColorSetCount => colorSets.Count;
 }
