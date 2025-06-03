@@ -539,8 +539,15 @@ public class PolyhedronGenerator : MonoBehaviour
         var newKinds = new List<FaceKind>();
 
         Dictionary<(int, int), int> edgeToMidpoint = new Dictionary<(int, int), int>();
+        Dictionary<int, FaceKind> faceToKind = new Dictionary<int, FaceKind>();
 
-        // Calculate polyhedron center for consistent orientation
+        // Track original face kinds
+        for (int f = 0; f < faces.Length; f++)
+        {
+            faceToKind[f] = kinds[f];
+        }
+
+        // Calculate polyhedron center
         Vector3 polyhedronCenter = Vector3.zero;
         foreach (var v in vertices)
             polyhedronCenter += v;
@@ -566,7 +573,7 @@ public class PolyhedronGenerator : MonoBehaviour
             int n = face.Length;
             var newFaceIndices = new int[n];
 
-            // Get original face normal and center
+            // Get face normal and center
             Vector3 faceCenter = Vector3.zero;
             foreach (int idx in face)
                 faceCenter += vertices[idx];
@@ -575,7 +582,6 @@ public class PolyhedronGenerator : MonoBehaviour
             Vector3 faceNormal = CalculateFaceNormal(vertices.ToList(), face);
             Vector3 outwardDir = (faceCenter - polyhedronCenter).normalized;
 
-            // Fix: Ensure normal points outward
             if (Vector3.Dot(faceNormal, outwardDir) < 0)
                 faceNormal = -faceNormal;
 
@@ -587,12 +593,13 @@ public class PolyhedronGenerator : MonoBehaviour
                 newFaceIndices[i] = GetMidpoint(v1, v2);
             }
 
-            // Fix: Check winding relative to outward direction
+            // Calculate new face center
             Vector3 newCenter = Vector3.zero;
             foreach (int idx in newFaceIndices)
                 newCenter += newVertices[idx];
-            newCenter /= n;
+            newCenter /= newFaceIndices.Length;
 
+            // Fix winding
             Vector3 newNormal = CalculateFaceNormal(newVertices, newFaceIndices);
             Vector3 newOutwardDir = (newCenter - polyhedronCenter).normalized;
 
@@ -602,7 +609,20 @@ public class PolyhedronGenerator : MonoBehaviour
             }
 
             newFaces.Add(newFaceIndices);
-            newKinds.Add(FaceKind.Face);
+            
+            // Transform face kind based on original kind
+            switch (kinds[f])
+            {
+                case FaceKind.Face:
+                    newKinds.Add(FaceKind.Edge); // Face becomes Edge
+                    break;
+                case FaceKind.Edge:
+                    newKinds.Add(FaceKind.Vertex); // Edge becomes Vertex
+                    break;
+                case FaceKind.Vertex:
+                    newKinds.Add(FaceKind.Face); // Vertex becomes Face
+                    break;
+            }
         }
 
         // Step 2: Create vertex faces
@@ -672,11 +692,11 @@ public class PolyhedronGenerator : MonoBehaviour
                     Vector3 outwardDir = (faceCenter - vertexPos).normalized;
                     Vector3 normal = CalculateFaceNormal(newVertices, vertexFace.ToArray());
 
-                    if (Vector3.Dot(normal, outwardDir) > 0)  // Changed condition
+                    if (Vector3.Dot(normal, outwardDir) > 0)
                         vertexFace.Reverse();
 
                     newFaces.Add(vertexFace.ToArray());
-                    newKinds.Add(FaceKind.Edge);
+                    newKinds.Add(FaceKind.Face); // New vertex faces start as Face type
                 }
             }
         }
