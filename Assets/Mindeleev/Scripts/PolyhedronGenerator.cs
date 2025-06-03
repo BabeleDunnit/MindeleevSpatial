@@ -538,10 +538,14 @@ public class PolyhedronGenerator : MonoBehaviour
         var newFaces = new List<int[]>();
         var newKinds = new List<FaceKind>();
 
-        // Dictionary to store edge midpoints
         Dictionary<(int, int), int> edgeToMidpoint = new Dictionary<(int, int), int>();
 
-        // Function to get or create edge midpoint
+        // Calculate polyhedron center for consistent orientation
+        Vector3 polyhedronCenter = Vector3.zero;
+        foreach (var v in vertices)
+            polyhedronCenter += v;
+        polyhedronCenter /= vertices.Length;
+
         int GetMidpoint(int v1, int v2)
         {
             var edge = v1 < v2 ? (v1, v2) : (v2, v1);
@@ -562,24 +566,53 @@ public class PolyhedronGenerator : MonoBehaviour
             int n = face.Length;
             var newFaceIndices = new int[n];
 
+            // Get original face normal and center
+            Vector3 faceCenter = Vector3.zero;
+            foreach (int idx in face)
+                faceCenter += vertices[idx];
+            faceCenter /= n;
+
+            Vector3 faceNormal = CalculateFaceNormal(vertices.ToList(), face);
+            Vector3 outwardDir = (faceCenter - polyhedronCenter).normalized;
+
+            // Fix: Ensure normal points outward
+            if (Vector3.Dot(faceNormal, outwardDir) < 0)
+                faceNormal = -faceNormal;
+
+            // Create new face
             for (int i = 0; i < n; i++)
             {
                 int v1 = face[i];
                 int v2 = face[(i + 1) % n];
                 newFaceIndices[i] = GetMidpoint(v1, v2);
             }
-            
+
+            // Fix: Check winding relative to outward direction
+            Vector3 newCenter = Vector3.zero;
+            foreach (int idx in newFaceIndices)
+                newCenter += newVertices[idx];
+            newCenter /= n;
+
+            Vector3 newNormal = CalculateFaceNormal(newVertices, newFaceIndices);
+            Vector3 newOutwardDir = (newCenter - polyhedronCenter).normalized;
+
+            if (Vector3.Dot(newNormal, newOutwardDir) < 0)
+            {
+                System.Array.Reverse(newFaceIndices);
+            }
+
             newFaces.Add(newFaceIndices);
             newKinds.Add(FaceKind.Face);
         }
 
-        // Step 2: Create vertex faces - simplified and fixed version
+        // Step 2: Create vertex faces
         for (int v = 0; v < vertices.Length; v++)
         {
             var vertexMidpoints = new HashSet<int>();
             var vertexFace = new List<int>();
+            Vector3 vertexPos = vertices[v];
 
-            // First pass: collect all midpoints connected to this vertex
+            // Collect connected midpoints
             for (int f = 0; f < faces.Length; f++)
             {
                 int[] face = faces[f];
@@ -595,7 +628,6 @@ public class PolyhedronGenerator : MonoBehaviour
                 }
             }
 
-            // Second pass: create ordered sequence of midpoints
             if (vertexMidpoints.Count > 0)
             {
                 var remainingMidpoints = new HashSet<int>(vertexMidpoints);
@@ -603,15 +635,14 @@ public class PolyhedronGenerator : MonoBehaviour
                 vertexFace.Add(startPoint);
                 remainingMidpoints.Remove(startPoint);
 
+                // Create ordered sequence
                 while (remainingMidpoints.Count > 0)
                 {
                     int currentPoint = vertexFace[vertexFace.Count - 1];
                     Vector3 currentPos = newVertices[currentPoint];
-                    
-                    // Find the closest remaining midpoint
                     float minDist = float.MaxValue;
                     int nextPoint = -1;
-                    
+
                     foreach (int midpoint in remainingMidpoints)
                     {
                         float dist = Vector3.Distance(currentPos, newVertices[midpoint]);
@@ -627,14 +658,23 @@ public class PolyhedronGenerator : MonoBehaviour
                         vertexFace.Add(nextPoint);
                         remainingMidpoints.Remove(nextPoint);
                     }
-                    else
-                    {
-                        break; // Safety check
-                    }
+                    else break;
                 }
 
                 if (vertexFace.Count >= 3)
                 {
+                    // Fix: Ensure vertex face normal points outward
+                    Vector3 faceCenter = Vector3.zero;
+                    foreach (int idx in vertexFace)
+                        faceCenter += newVertices[idx];
+                    faceCenter /= vertexFace.Count;
+
+                    Vector3 outwardDir = (faceCenter - vertexPos).normalized;
+                    Vector3 normal = CalculateFaceNormal(newVertices, vertexFace.ToArray());
+
+                    if (Vector3.Dot(normal, outwardDir) > 0)  // Changed condition
+                        vertexFace.Reverse();
+
                     newFaces.Add(vertexFace.ToArray());
                     newKinds.Add(FaceKind.Edge);
                 }

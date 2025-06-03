@@ -991,7 +991,7 @@ PrefabInstance:
     - target: {fileID: 8404194606809146211, guid: a4b29d65d516b4ae19b3532179b68cd4,
         type: 3}
       propertyPath: polyhedronRecipe
-      value: tk0.1C
+      value: akaC
       objectReference: {fileID: 0}
     - target: {fileID: 8404194606809146211, guid: a4b29d65d516b4ae19b3532179b68cd4,
         type: 3}
