@@ -4,70 +4,27 @@ using System.Collections.Generic;
 [CreateAssetMenu(fileName = "New Polyhedron Palette", menuName = "Mindeleev/Polyhedron Palette")]
 public class PolyhedronPalette : ScriptableObject 
 {
-    [System.Serializable]
-    public struct ColorSet
-    {
-        public Color faceColor;
-        public Color edgeColor;
-        public Color vertexColor;
-    }
-
-    public List<ColorSet> colorSets = new List<ColorSet>();
+    public List<Color> colors = new List<Color>();
 
     void OnEnable()
     {
-        if (colorSets == null || colorSets.Count == 0)
+        if (colors == null || colors.Count == 0)
         {
-            colorSets = new List<ColorSet>
+            colors = new List<Color>
             {
-                new ColorSet
-                {
-                    faceColor = new Color(0.2f, 0.6f, 1.0f),
-                    edgeColor = new Color(0.1f, 0.4f, 0.8f),
-                    vertexColor = new Color(0.0f, 0.3f, 0.7f)
-                },
-                new ColorSet
-                {
-                    faceColor = new Color(1.0f, 0.4f, 0.4f),
-                    edgeColor = new Color(0.8f, 0.2f, 0.2f),
-                    vertexColor = new Color(0.7f, 0.1f, 0.1f)
-                }
+                new Color(0.2f, 0.6f, 1.0f),  // Blue
+                new Color(0.2f, 1.0f, 0.2f),  // Green
+                new Color(1.0f, 0.4f, 0.4f),  // Red
+                new Color(1.0f, 1.0f, 0.2f),  // Yellow
+                new Color(1.0f, 0.6f, 0.0f),  // Orange
+                new Color(0.8f, 0.2f, 0.8f),  // Purple
             };
         }
     }
 
-    public Color GetColor(int index, FaceKind kind)
+    public Color GetColor(int colorIndex)
     {
-        // Always use first color set for base colors
-        var baseColors = colorSets[0];
-        
-        // Get base color by face kind
-        Color baseColor = kind switch
-        {
-            
-            FaceKind.Vertex => baseColors.vertexColor,
-            FaceKind.Edge => baseColors.edgeColor,
-            FaceKind.Face => baseColors.faceColor,
-            
-/*
-            FaceKind.Face => Color.red,
-            FaceKind.Edge => Color.green,
-            FaceKind.Vertex => Color.blue,
-*/
-            _ => Color.white
-        };
-
-        
-                // If index > 0 and we have additional color sets, blend with variation colors
-                if (index > 0 && colorSets.Count > 1)
-                {
-                    var variationColor = colorSets[index % (colorSets.Count - 1) + 1].faceColor;
-                    return Color.Lerp(baseColor, variationColor, 0.3f);
-                }
-        
-        return baseColor;
+        if (colors.Count == 0) return Color.white;
+        return colors[colorIndex % colors.Count];
     }
-
-    // Add this property to get the number of color sets
-    public int ColorSetCount => colorSets.Count;
 }

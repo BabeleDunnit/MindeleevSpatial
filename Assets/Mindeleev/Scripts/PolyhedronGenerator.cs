@@ -15,7 +15,7 @@ public class PolyhedronGenerator : MonoBehaviour
      *  STATIC DATA: 5 canonical polyhedra expressed as (vertices, faces)
      * ----------------------------------------------------------------*/
     // Cube (C)
-    private static readonly (Vector3[], int[][], FaceKind[]) Cube = (
+    private static readonly (Vector3[], int[][], int[]) Cube = (
         new Vector3[]
         {
             new Vector3(-1, -1, -1), new Vector3(1, -1, -1), new Vector3(1, 1, -1), new Vector3(-1, 1, -1),
@@ -30,11 +30,11 @@ public class PolyhedronGenerator : MonoBehaviour
             new int[] {4, 7, 3, 0}, // left -X
             new int[] {2, 6, 5, 1}  // right +X
         },
-        Enumerable.Repeat(FaceKind.Face, 6).ToArray()
+        Enumerable.Repeat(0, 6).ToArray() // All faces start with color index 0
     );
 
     // Tetrahedron (T)
-    private static readonly (Vector3[], int[][], FaceKind[]) Tetrahedron = (
+    private static readonly (Vector3[], int[][], int[]) Tetrahedron = (
         new Vector3[]
         {
             new Vector3( 1,  1,  1),
@@ -49,11 +49,11 @@ public class PolyhedronGenerator : MonoBehaviour
             new int[] {0, 3, 2},
             new int[] {1, 2, 3}
         },
-        Enumerable.Repeat(FaceKind.Face, 4).ToArray()
+        Enumerable.Repeat(0, 4).ToArray() // All faces start with color index 0
     );
 
     // Octahedron (O)
-    private static readonly (Vector3[], int[][], FaceKind[]) Octahedron = (
+    private static readonly (Vector3[], int[][], int[]) Octahedron = (
         new Vector3[]
         {
             new Vector3(1, 0, 0), new Vector3(-1, 0, 0), new Vector3(0, 1, 0),
@@ -64,11 +64,11 @@ public class PolyhedronGenerator : MonoBehaviour
             new int[] {0, 2, 4}, new int[] {2, 1, 4}, new int[] {1, 3, 4}, new int[] {3, 0, 4},
             new int[] {2, 0, 5}, new int[] {1, 2, 5}, new int[] {3, 1, 5}, new int[] {0, 3, 5}
         },
-        Enumerable.Repeat(FaceKind.Face, 8).ToArray()
+        Enumerable.Repeat(0, 8).ToArray() // All faces start with color index 0
     );
 
     // Dodecahedron (D)
-    private static readonly (Vector3[], int[][], FaceKind[]) Dodecahedron = (
+    private static readonly (Vector3[], int[][], int[]) Dodecahedron = (
         new Vector3[]
         {
             new Vector3( 0.618034f,  0.618034f,  0.618034f), new Vector3( 0.618034f,  0.618034f, -0.618034f),
@@ -89,11 +89,11 @@ public class PolyhedronGenerator : MonoBehaviour
             new int[] {2, 13, 3, 17, 16}, new int[] {3, 13, 15, 7, 11}, new int[] {4, 14, 5, 19, 18},
             new int[] {4, 18, 6, 10, 8},  new int[] {5, 9, 11, 7, 19},  new int[] {6, 18, 19, 7, 15}
         },
-        Enumerable.Repeat(FaceKind.Face, 12).ToArray()
+        Enumerable.Repeat(0, 12).ToArray() // All faces start with color index 0
     );
 
     // Icosahedron (I)
-    private static readonly (Vector3[], int[][], FaceKind[]) Icosahedron = (
+    private static readonly (Vector3[], int[][], int[]) Icosahedron = (
         new Vector3[]
         {
             new Vector3(-1,  1.618034f,  0).normalized,
@@ -116,7 +116,7 @@ public class PolyhedronGenerator : MonoBehaviour
             new int[]{3,9,4},  new int[]{3,4,2},  new int[]{3,2,6},  new int[]{3,6,8},  new int[]{3,8,9},
             new int[]{4,9,5},  new int[]{2,4,11}, new int[]{6,2,10}, new int[]{8,6,7}, new int[]{9,8,1}
         },
-        Enumerable.Repeat(FaceKind.Face, 20).ToArray()
+        Enumerable.Repeat(0, 20).ToArray() // All faces start with color index 0
     );
 
     /* ------------------------------------------------------------------
@@ -168,7 +168,7 @@ public class PolyhedronGenerator : MonoBehaviour
         if (basePos < 0) { Debug.LogError("No base polyhedron in recipe - defaulting to Cube"); recipe += "C"; basePos = recipe.Length - 1; }
 
         char baseChar = recipe[basePos];
-        (Vector3[], int[][], FaceKind[]) current = baseChar switch
+        (Vector3[], int[][], int[]) current = baseChar switch
         {
             'C' => Cube,
             'T' => Tetrahedron,
@@ -209,27 +209,31 @@ public class PolyhedronGenerator : MonoBehaviour
             {
                 'k' => ApplyKis(current, factor),
                 't' => ApplyTruncate(current, factor),
-                'a' => ApplyAmbo(current),  // Add this line
+                'a' => ApplyAmbo(current),
                 _ => current
             };
         }
 
-        return ApplyFlatShade(current, palette, useCongruenceColoring, colorSensitivity);
+        // Update this line to match new signature
+        return ApplyFlatShade(current, palette);
     }
 
     /* ---------------------- OPERATORS -------------------------------- */
-    public static (Vector3[], int[][], FaceKind[]) ApplyKis((Vector3[], int[][], FaceKind[]) input, float height)
+    public static (Vector3[], int[][], int[]) ApplyKis((Vector3[], int[][], int[]) input, float height)
     {
-        var (vertices, faces, kinds) = input;
+        var (vertices, faces, colorIndices) = input;
         var newVertices = new List<Vector3>(vertices);
         var newFaces = new List<int[]>();
-        var newKinds = new List<FaceKind>();
+        var newColorIndices = new List<int>();
+
+        // Get next color index for new faces
+        int nextColorIndex = colorIndices.Max() + 1;
 
         // Process each face
         for (int f = 0; f < faces.Length; f++)
         {
             int[] face = faces[f];
-            FaceKind currentKind = kinds[f];
+            int currentColorIndex = colorIndices[f];
             
             // Calculate face center and normal
             Vector3 center = Vector3.zero;
@@ -243,9 +247,9 @@ public class PolyhedronGenerator : MonoBehaviour
             int centerIdx = newVertices.Count;
             newVertices.Add(center + normal * height);
             
-            // Original face remains with its original kind
+            // Original face remains with its original color index
             newFaces.Add(face);
-            newKinds.Add(currentKind);
+            newColorIndices.Add(colorIndices[f]); // Keep original color
             
             // Create new triangular faces from original edges to new center
             for (int i = 0; i < face.Length; i++)
@@ -253,26 +257,29 @@ public class PolyhedronGenerator : MonoBehaviour
                 int next = (i + 1) % face.Length;
                 int[] newFace = new int[] { face[i], face[next], centerIdx };
                 newFaces.Add(newFace);
-                newKinds.Add(FaceKind.Face); // New pyramidal faces are Face kind
+                newColorIndices.Add(nextColorIndex); // New faces get new index
             }
         }
         
-        return (newVertices.ToArray(), newFaces.ToArray(), newKinds.ToArray());
+        return (newVertices.ToArray(), newFaces.ToArray(), newColorIndices.ToArray());
     }
 
 
-    public static (Vector3[], int[][], FaceKind[]) ApplyTruncate((Vector3[], int[][], FaceKind[]) input, float t)
+    public static (Vector3[], int[][], int[]) ApplyTruncate((Vector3[], int[][], int[]) input, float t)
     {
         Debug.Log($"Applying Truncate with truncationFactor {t}");
 
         // Clamp t to avoid degenerate geometry
         t = Mathf.Clamp(t, 0.001f, 0.5f);
-        var (vertices, faces, kinds) = input;
+        var (vertices, faces, colorIndices) = input;
 
         // Create collections for new geometry
         var newVertices = new List<Vector3>();
         var newFaces = new List<int[]>();
-        var newKinds = new List<FaceKind>();
+        var newColorIndices = new List<int>();
+
+        // Get next color index for new faces
+        int nextColorIndex = colorIndices.Max() + 1;
 
         // Add counters for face types
         int faceCount = 0;
@@ -327,7 +334,7 @@ public class PolyhedronGenerator : MonoBehaviour
             }
         }
 
-        // Step 2: Create truncated faces
+        // Step 2: Create truncated faces (modified original faces)
         for (int f = 0; f < faces.Length; f++)
         {
             int[] face = faces[f];
@@ -347,10 +354,9 @@ public class PolyhedronGenerator : MonoBehaviour
             }
 
             newFaces.Add(truncatedFace);
-            newKinds.Add(FaceKind.Face);
+            newColorIndices.Add(colorIndices[f]); // Keep original color
         }
         faceCount = newFaces.Count;
-        Debug.Log($"Created {faceCount} truncated original faces");
 
         // Step 3: Create vertex figures
         for (int v = 0; v < vertices.Length; v++)
@@ -440,7 +446,7 @@ public class PolyhedronGenerator : MonoBehaviour
                     newVertexFace = newVertexFace.Reverse().ToArray();
 
                 newFaces.Add(newVertexFace);
-                newKinds.Add(FaceKind.Vertex);
+                newColorIndices.Add(nextColorIndex); // New vertex faces get new color
             }
         }
         vertexCount = newFaces.Count - faceCount;
@@ -522,37 +528,27 @@ public class PolyhedronGenerator : MonoBehaviour
                 }
 
                 newFaces.Add(quadPoints.ToArray());
-                newKinds.Add(FaceKind.Edge);
+                newColorIndices.Add(nextColorIndex); // New edge faces get new color
             }
         }
         edgeCount = newFaces.Count - (faceCount + vertexCount);
         Debug.Log($"Created {edgeCount} edge faces");
 
-        return (newVertices.ToArray(), newFaces.ToArray(), newKinds.ToArray());
+        return (newVertices.ToArray(), newFaces.ToArray(), newColorIndices.ToArray());
     }
 
-    public static (Vector3[], int[][], FaceKind[]) ApplyAmbo((Vector3[], int[][], FaceKind[]) input)
+    public static (Vector3[], int[][], int[]) ApplyAmbo((Vector3[], int[][], int[]) input)
     {
-        var (vertices, faces, kinds) = input;
+        var (vertices, faces, colorIndices) = input;
         var newVertices = new List<Vector3>();
         var newFaces = new List<int[]>();
-        var newKinds = new List<FaceKind>();
+        var newColorIndices = new List<int>();
+        var edgeToMidpoint = new Dictionary<(int, int), int>();
 
-        Dictionary<(int, int), int> edgeToMidpoint = new Dictionary<(int, int), int>();
-        Dictionary<int, FaceKind> faceToKind = new Dictionary<int, FaceKind>();
+        // Get next color index for new faces
+        int nextColorIndex = colorIndices.Max() + 1;
 
-        // Track original face kinds
-        for (int f = 0; f < faces.Length; f++)
-        {
-            faceToKind[f] = kinds[f];
-        }
-
-        // Calculate polyhedron center
-        Vector3 polyhedronCenter = Vector3.zero;
-        foreach (var v in vertices)
-            polyhedronCenter += v;
-        polyhedronCenter /= vertices.Length;
-
+        // Helper for edge midpoints
         int GetMidpoint(int v1, int v2)
         {
             var edge = v1 < v2 ? (v1, v2) : (v2, v1);
@@ -566,26 +562,13 @@ public class PolyhedronGenerator : MonoBehaviour
             return idx;
         }
 
-        // Step 1: Transform original faces
+        // Step 1: Transform original faces - these are modified original faces
         for (int f = 0; f < faces.Length; f++)
         {
             int[] face = faces[f];
             int n = face.Length;
             var newFaceIndices = new int[n];
 
-            // Get face normal and center
-            Vector3 faceCenter = Vector3.zero;
-            foreach (int idx in face)
-                faceCenter += vertices[idx];
-            faceCenter /= n;
-
-            Vector3 faceNormal = CalculateFaceNormal(vertices.ToList(), face);
-            Vector3 outwardDir = (faceCenter - polyhedronCenter).normalized;
-
-            if (Vector3.Dot(faceNormal, outwardDir) < 0)
-                faceNormal = -faceNormal;
-
-            // Create new face
             for (int i = 0; i < n; i++)
             {
                 int v1 = face[i];
@@ -593,44 +576,15 @@ public class PolyhedronGenerator : MonoBehaviour
                 newFaceIndices[i] = GetMidpoint(v1, v2);
             }
 
-            // Calculate new face center
-            Vector3 newCenter = Vector3.zero;
-            foreach (int idx in newFaceIndices)
-                newCenter += newVertices[idx];
-            newCenter /= newFaceIndices.Length;
-
-            // Fix winding
-            Vector3 newNormal = CalculateFaceNormal(newVertices, newFaceIndices);
-            Vector3 newOutwardDir = (newCenter - polyhedronCenter).normalized;
-
-            if (Vector3.Dot(newNormal, newOutwardDir) < 0)
-            {
-                System.Array.Reverse(newFaceIndices);
-            }
-
             newFaces.Add(newFaceIndices);
-            
-            // Transform face kind based on original kind
-            switch (kinds[f])
-            {
-                case FaceKind.Face:
-                    newKinds.Add(FaceKind.Edge); // Face becomes Edge
-                    break;
-                case FaceKind.Edge:
-                    newKinds.Add(FaceKind.Vertex); // Edge becomes Vertex
-                    break;
-                case FaceKind.Vertex:
-                    newKinds.Add(FaceKind.Face); // Vertex becomes Face
-                    break;
-            }
+            newColorIndices.Add(colorIndices[f]); // Keep original color index
         }
 
-        // Step 2: Create vertex faces
+        // Step 2: Create new faces at vertices - these are completely new faces
         for (int v = 0; v < vertices.Length; v++)
         {
             var vertexMidpoints = new HashSet<int>();
             var vertexFace = new List<int>();
-            Vector3 vertexPos = vertices[v];
 
             // Collect connected midpoints
             for (int f = 0; f < faces.Length; f++)
@@ -683,25 +637,13 @@ public class PolyhedronGenerator : MonoBehaviour
 
                 if (vertexFace.Count >= 3)
                 {
-                    // Fix: Ensure vertex face normal points outward
-                    Vector3 faceCenter = Vector3.zero;
-                    foreach (int idx in vertexFace)
-                        faceCenter += newVertices[idx];
-                    faceCenter /= vertexFace.Count;
-
-                    Vector3 outwardDir = (faceCenter - vertexPos).normalized;
-                    Vector3 normal = CalculateFaceNormal(newVertices, vertexFace.ToArray());
-
-                    if (Vector3.Dot(normal, outwardDir) > 0)
-                        vertexFace.Reverse();
-
                     newFaces.Add(vertexFace.ToArray());
-                    newKinds.Add(FaceKind.Face); // New vertex faces start as Face type
+                    newColorIndices.Add(nextColorIndex); // Only new faces get new color index
                 }
             }
         }
 
-        return (newVertices.ToArray(), newFaces.ToArray(), newKinds.ToArray());
+        return (newVertices.ToArray(), newFaces.ToArray(), newColorIndices.ToArray());
     }
 
     // Helper function to calculate face normal
@@ -732,51 +674,23 @@ public class PolyhedronGenerator : MonoBehaviour
 
     /* ---------------------- FINAL FLAT SHADE ------------------------ */
     public static Mesh ApplyFlatShade(
-        (Vector3[], int[][], FaceKind[]) input,
-        PolyhedronPalette palette = null,
-        bool useCongruenceColoring = true,
-        float colorSensitivity = 0.001f)
+        (Vector3[], int[][], int[]) input,
+        PolyhedronPalette palette)
     {
-        var (baseVertices, faces, kinds) = input;
-
-        List<Vector3> vertices = new List<Vector3>();
-        List<int> tris = new List<int>();
+        var (vertices, faces, colorIndices) = input;
+        
+        List<Vector3> meshVertices = new List<Vector3>();
+        List<int> triangles = new List<int>();
         List<Vector3> normals = new List<Vector3>();
         List<Color> colors = new List<Color>();
-
-        // Group faces by congruence if using congrruence coloring
-        Dictionary<string, int> congruenceToColor = new Dictionary<string, int>();
-        int currentColorIndex = 0;
 
         for (int f = 0; f < faces.Length; f++)
         {
             var face = faces[f];
-            Color faceColor;
-
-            if (palette != null)
-            {
-                if (useCongruenceColoring)
-                {
-                    string signature = CalculateFaceSignature(baseVertices, face, colorSensitivity);
-                    if (!congruenceToColor.TryGetValue(signature, out int colorIndex))
-                    {
-                        colorIndex = currentColorIndex++;
-                        congruenceToColor[signature] = colorIndex;
-                    }
-                    faceColor = palette.GetColor(colorIndex, kinds[f]);
-                }
-                else
-                {
-                    faceColor = palette.GetColor(f, kinds[f]);
-                }
-            }
-            else
-            {
-                faceColor = Color.white;
-            }
+            Color faceColor = palette.GetColor(colorIndices[f]); // Simple index-based color lookup
 
             // Get face vertices
-            Vector3[] faceVerts = face.Select(idx => baseVertices[idx]).ToArray();
+            Vector3[] faceVerts = face.Select(idx => vertices[idx]).ToArray();
             
             // Calculate face normal using Newell's method
             Vector3 normal = CalculateFaceNormal(faceVerts.ToList(), Enumerable.Range(0, faceVerts.Length).ToArray());
@@ -785,8 +699,8 @@ public class PolyhedronGenerator : MonoBehaviour
             TriangulatePlanarFace(
                 faceVerts,
                 normal,
-                vertices,
-                tris,
+                meshVertices,
+                triangles,
                 normals,
                 colors,
                 faceColor
@@ -794,8 +708,8 @@ public class PolyhedronGenerator : MonoBehaviour
         }
 
         Mesh mesh = new Mesh();
-        mesh.SetVertices(vertices);
-        mesh.SetTriangles(tris, 0);
+        mesh.SetVertices(meshVertices);
+        mesh.SetTriangles(triangles, 0);
         mesh.SetNormals(normals);
         mesh.SetColors(colors);
         return mesh;
@@ -838,59 +752,6 @@ public class PolyhedronGenerator : MonoBehaviour
             tris.Add(baseIndex + i);
             tris.Add(baseIndex + ((i + 1) % faceVertices.Length));
         }
-    }
-
-    // Add helper method for face signatures (congruence)
-    private static string CalculateFaceSignature(Vector3[] vertices, int[] face, float sensitivity)
-    {
-        var angles = new List<float>();
-        for (int i = 0; i < face.Length; i++)
-        {
-            Vector3 v1 = vertices[face[i]];
-            Vector3 v2 = vertices[face[(i + 1) % face.Length]];
-            Vector3 v3 = vertices[face[(i + 2) % face.Length]];
-
-            Vector3 edge1 = v2 - v1;
-            Vector3 edge2 = v3 - v2;
-            float angle = Vector3.Angle(edge1, edge2);
-            angles.Add(angle);
-        }
-
-        angles.Sort();
-        return string.Join(",", angles.ConvertAll(a => Mathf.Round(a / sensitivity) * sensitivity));
-    }
-
-    private Color[] AssignColors(Vector3[] vertices, int[][] faces, FaceKind[] kinds)
-    {
-        Color[] colors = new Color[faces.Length];
-        
-        if (!useCongruenceColoring)
-        {
-            // Simple face type coloring (default behavior)
-            for (int f = 0; f < faces.Length; f++)
-            {
-                colors[f] = palette.GetColor(0, kinds[f]); // Use single palette element
-            }
-        }
-        else
-        {
-            // Congruence-based coloring (/cc behavior)
-            Dictionary<string, int> congruenceToColor = new Dictionary<string, int>();
-            int currentColorIndex = 0;
-            
-            for (int f = 0; f < faces.Length; f++)
-            {
-                string signature = CalculateFaceSignature(vertices, faces[f], colorSensitivity);
-                if (!congruenceToColor.TryGetValue(signature, out int colorIndex))
-                {
-                    colorIndex = currentColorIndex++;
-                    congruenceToColor[signature] = colorIndex;
-                }
-                colors[f] = palette.GetColor(colorIndex % palette.ColorSetCount, kinds[f]);
-            }
-        }
-        
-        return colors;
     }
 }
 
