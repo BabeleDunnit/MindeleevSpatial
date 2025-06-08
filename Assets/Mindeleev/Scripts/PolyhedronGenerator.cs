@@ -544,8 +544,19 @@ public class PolyhedronGenerator : MonoBehaviour
         var newFaces = new List<int[]>();
         var newColorIndices = new List<int>();
         var edgeToMidpoint = new Dictionary<(int, int), int>();
+        var vertexToFaces = new Dictionary<int, List<int>>();
 
-        // Get next color index for new faces
+        // Build vertex-to-faces map
+        for (int f = 0; f < faces.Length; f++)
+        {
+            foreach (int v in faces[f])
+            {
+                if (!vertexToFaces.ContainsKey(v))
+                    vertexToFaces[v] = new List<int>();
+                vertexToFaces[v].Add(f);
+            }
+        }
+
         int nextColorIndex = colorIndices.Max() + 1;
 
         // Helper for edge midpoints
@@ -562,7 +573,13 @@ public class PolyhedronGenerator : MonoBehaviour
             return idx;
         }
 
-        // Step 1: Transform original faces - these are modified original faces
+        // Calculate polyhedron center for consistent winding checks
+        Vector3 polyhedronCenter = Vector3.zero;
+        foreach (var v in vertices)
+            polyhedronCenter += v;
+        polyhedronCenter /= vertices.Length;
+
+        // Step 1: Transform original faces
         for (int f = 0; f < faces.Length; f++)
         {
             int[] face = faces[f];
@@ -576,74 +593,64 @@ public class PolyhedronGenerator : MonoBehaviour
                 newFaceIndices[i] = GetMidpoint(v1, v2);
             }
 
+            // Check and fix winding using the new helper
+            if (NeedsWindingFlip(newVertices, newFaceIndices, polyhedronCenter))
+                newFaceIndices = newFaceIndices.Reverse().ToArray();
+
             newFaces.Add(newFaceIndices);
-            newColorIndices.Add(colorIndices[f]); // Keep original color index
+            newColorIndices.Add(colorIndices[f]);
         }
 
-        // Step 2: Create new faces at vertices - these are completely new faces
+        // Step 2: Create vertex faces
         for (int v = 0; v < vertices.Length; v++)
         {
-            var vertexMidpoints = new HashSet<int>();
-            var vertexFace = new List<int>();
-
-            // Collect connected midpoints
-            for (int f = 0; f < faces.Length; f++)
+            if (vertexToFaces.TryGetValue(v, out var faceIndices))
             {
-                int[] face = faces[f];
-                for (int i = 0; i < face.Length; i++)
+                var faceVertices = new List<int>();
+                foreach (int f in faceIndices)
                 {
-                    if (face[i] == v)
+                    int[] face = faces[f];
+                    int idx = Array.IndexOf(face, v);
+                    if (idx >= 0)
                     {
-                        int next = face[(i + 1) % face.Length];
-                        int prev = face[(i - 1 + face.Length) % face.Length];
-                        vertexMidpoints.Add(GetMidpoint(v, next));
-                        vertexMidpoints.Add(GetMidpoint(v, prev));
+                        int prev = face[(idx - 1 + face.Length) % face.Length];
+                        int next = face[(idx + 1) % face.Length];
+                        faceVertices.Add(GetMidpoint(v, prev));
+                        faceVertices.Add(GetMidpoint(v, next));
                     }
                 }
-            }
 
-            if (vertexMidpoints.Count > 0)
-            {
-                var remainingMidpoints = new HashSet<int>(vertexMidpoints);
-                int startPoint = remainingMidpoints.First();
-                vertexFace.Add(startPoint);
-                remainingMidpoints.Remove(startPoint);
-
-                // Create ordered sequence
-                while (remainingMidpoints.Count > 0)
+                if (faceVertices.Count >= 3)
                 {
-                    int currentPoint = vertexFace[vertexFace.Count - 1];
-                    Vector3 currentPos = newVertices[currentPoint];
-                    float minDist = float.MaxValue;
-                    int nextPoint = -1;
+                    faceVertices = faceVertices.Distinct().ToList();
+                    
+                    // Check and fix winding using the same helper
+                    if (NeedsWindingFlip(newVertices, faceVertices.ToArray(), polyhedronCenter))
+                        faceVertices.Reverse();
 
-                    foreach (int midpoint in remainingMidpoints)
-                    {
-                        float dist = Vector3.Distance(currentPos, newVertices[midpoint]);
-                        if (dist < minDist)
-                        {
-                            minDist = dist;
-                            nextPoint = midpoint;
-                        }
-                    }
-
-                    if (nextPoint != -1)
-                    {
-                        vertexFace.Add(nextPoint);
-                        remainingMidpoints.Remove(nextPoint);
-                    }
-                    else break;
-                }
-
-                if (vertexFace.Count >= 3)
-                {
-                    newFaces.Add(vertexFace.ToArray());
-                    newColorIndices.Add(nextColorIndex); // Only new faces get new color index
+                    newFaces.Add(faceVertices.ToArray());
+                    newColorIndices.Add(nextColorIndex);
                 }
             }
         }
 
         return (newVertices.ToArray(), newFaces.ToArray(), newColorIndices.ToArray());
+    }
+
+    private static bool NeedsWindingFlip(List<Vector3> vertices, int[] faceIndices, Vector3 center)
+    {
+        // Get face center
+        Vector3 faceCenter = Vector3.zero;
+        foreach (int idx in faceIndices)
+            faceCenter += vertices[idx];
+        faceCenter /= faceIndices.Length;
+
+        // Calculate face normal and outward direction
+        Vector3 normal = CalculateFaceNormal(vertices, faceIndices);
+        Vector3 outwardDir = (faceCenter - center).normalized;
+
+        // Return true if normal points inward
+        return Vector3.Dot(normal, outwardDir) < 0;
     }
 
     // Helper function to calculate face normal
@@ -684,10 +691,20 @@ public class PolyhedronGenerator : MonoBehaviour
         List<Vector3> normals = new List<Vector3>();
         List<Color> colors = new List<Color>();
 
+        // Validate color indices
+        for (int f = 0; f < faces.Length; f++)
+        {
+            if (colorIndices[f] < 0)
+            {
+                Debug.LogError($"Invalid color index {colorIndices[f]} for face {f}. Using fallback color index 0.");
+                colorIndices[f] = 0;
+            }
+        }
+
         for (int f = 0; f < faces.Length; f++)
         {
             var face = faces[f];
-            Color faceColor = palette.GetColor(colorIndices[f]); // Simple index-based color lookup
+            Color faceColor = palette.GetColor(colorIndices[f]);
 
             // Get face vertices
             Vector3[] faceVerts = face.Select(idx => vertices[idx]).ToArray();
@@ -745,12 +762,27 @@ public class PolyhedronGenerator : MonoBehaviour
             colors.Add(faceColor);
         }
 
-        // Create triangles fan from center
+        // Check winding direction for first triangle
+        Vector3 e1 = vertices[baseIndex] - center;
+        Vector3 e2 = vertices[baseIndex + 1] - center;
+        Vector3 computedNormal = Vector3.Cross(e1, e2).normalized;
+        bool needsFlip = Vector3.Dot(computedNormal, faceNormal) < 0;
+
+        // Create triangles fan from center with correct winding
         for (int i = 0; i < faceVertices.Length; i++)
         {
-            tris.Add(centerIndex); // center vertex
-            tris.Add(baseIndex + i);
-            tris.Add(baseIndex + ((i + 1) % faceVertices.Length));
+            if (!needsFlip)
+            {
+                tris.Add(centerIndex);
+                tris.Add(baseIndex + i);
+                tris.Add(baseIndex + ((i + 1) % faceVertices.Length));
+            }
+            else
+            {
+                tris.Add(centerIndex);
+                tris.Add(baseIndex + ((i + 1) % faceVertices.Length));
+                tris.Add(baseIndex + i);
+            }
         }
     }
 }
