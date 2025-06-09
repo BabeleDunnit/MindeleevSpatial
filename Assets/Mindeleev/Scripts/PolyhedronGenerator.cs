@@ -540,106 +540,123 @@ public class PolyhedronGenerator : MonoBehaviour
 
     public static (Vector3[], int[][], int[]) ApplyAmbo((Vector3[], int[][], int[]) input)
     {
+        // Ambo: Each edge gets a midpoint; new faces are built from these midpoints.
         var (vertices, faces, colorIndices) = input;
+        var edgeToMid = new Dictionary<(int, int), int>();
         var newVertices = new List<Vector3>();
         var newFaces = new List<int[]>();
         var newColorIndices = new List<int>();
-        var edgeToMidpoint = new Dictionary<(int, int), int>();
-        var vertexToFaces = new Dictionary<int, List<int>>();
 
-        // Build vertex-to-faces map
+        // 1. Create edge midpoints (unique for each undirected edge)
         for (int f = 0; f < faces.Length; f++)
         {
-            foreach (int v in faces[f])
-            {
-                if (!vertexToFaces.ContainsKey(v))
-                    vertexToFaces[v] = new List<int>();
-                vertexToFaces[v].Add(f);
-            }
-        }
-
-        int nextColorIndex = colorIndices.Max() + 1;
-
-        // Helper for edge midpoints
-        int GetMidpoint(int v1, int v2)
-        {
-            var edge = v1 < v2 ? (v1, v2) : (v2, v1);
-            if (!edgeToMidpoint.TryGetValue(edge, out int idx))
-            {
-                Vector3 midpoint = (vertices[v1] + vertices[v2]) * 0.5f;
-                idx = newVertices.Count;
-                newVertices.Add(midpoint);
-                edgeToMidpoint[edge] = idx;
-            }
-            return idx;
-        }
-
-        // Calculate polyhedron center for consistent winding checks
-        Vector3 polyhedronCenter = Vector3.zero;
-        foreach (var v in vertices)
-            polyhedronCenter += v;
-        polyhedronCenter /= vertices.Length;
-
-        // Step 1: Transform original faces
-        for (int f = 0; f < faces.Length; f++)
-        {
-            int[] face = faces[f];
+            var face = faces[f];
             int n = face.Length;
-            var newFaceIndices = new int[n];
-
             for (int i = 0; i < n; i++)
             {
-                int v1 = face[i];
-                int v2 = face[(i + 1) % n];
-                newFaceIndices[i] = GetMidpoint(v1, v2);
+                int a = face[i];
+                int b = face[(i + 1) % n];
+                var edge = a < b ? (a, b) : (b, a);
+                if (!edgeToMid.ContainsKey(edge))
+                {
+                    Vector3 mid = 0.5f * (vertices[a] + vertices[b]);
+                    edgeToMid[edge] = newVertices.Count;
+                    newVertices.Add(mid);
+                }
             }
+        }
 
-            // Check and fix winding using the new helper
-            if (NeedsWindingFlip(newVertices, newFaceIndices, polyhedronCenter))
-                newFaceIndices = newFaceIndices.Reverse().ToArray();
+        // Helper to get midpoint index for edge (a,b)
+        int GetMid(int a, int b)
+        {
+            var edge = a < b ? (a, b) : (b, a);
+            return edgeToMid[edge];
+        }
 
-            newFaces.Add(newFaceIndices);
+        // 2. For each original face, create a new face from the midpoints of its edges (preserving winding)
+        for (int f = 0; f < faces.Length; f++)
+        {
+            var face = faces[f];
+            int n = face.Length;
+            int[] midIndices = new int[n];
+            for (int i = 0; i < n; i++)
+            {
+                int a = face[i];
+                int b = face[(i + 1) % n];
+                midIndices[i] = GetMid(a, b);
+            }
+            newFaces.Add(midIndices);
             newColorIndices.Add(colorIndices[f]);
         }
 
-        // Step 2: Create vertex faces
-        for (int v = 0; v < vertices.Length; v++)
+        // 3. For each original vertex, create a new face from the midpoints of all edges incident to it, ordered cyclically
+        // Build a map from vertex to incident (ordered) edges
+        var vertexToEdges = new Dictionary<int, List<(int from, int to)>>();
+        for (int f = 0; f < faces.Length; f++)
         {
-            if (vertexToFaces.TryGetValue(v, out var faceIndices))
+            var face = faces[f];
+            int n = face.Length;
+            for (int i = 0; i < n; i++)
             {
-                var faceVertices = new List<int>();
-                foreach (int f in faceIndices)
-                {
-                    int[] face = faces[f];
-                    int idx = Array.IndexOf(face, v);
-                    if (idx >= 0)
-                    {
-                        int prev = face[(idx - 1 + face.Length) % face.Length];
-                        int next = face[(idx + 1) % face.Length];
-                        faceVertices.Add(GetMidpoint(v, prev));
-                        faceVertices.Add(GetMidpoint(v, next));
-                    }
-                }
-
-                if (faceVertices.Count >= 3)
-                {
-                    faceVertices = faceVertices.Distinct().ToList();
-                    
-                    // Check and fix winding using the same helper
-                    if (NeedsWindingFlip(newVertices, faceVertices.ToArray(), polyhedronCenter))
-                        faceVertices.Reverse();
-
-                    newFaces.Add(faceVertices.ToArray());
-                    newColorIndices.Add(nextColorIndex);
-                }
+                int v = face[i];
+                int prev = face[(i - 1 + n) % n];
+                int next = face[(i + 1) % n];
+                if (!vertexToEdges.ContainsKey(v))
+                    vertexToEdges[v] = new List<(int, int)>();
+                vertexToEdges[v].Add((v, prev));
+                vertexToEdges[v].Add((v, next));
             }
         }
 
-        // Debug output for Ambo
-        Debug.Log($"[Ambo] Input faces: {faces.Length}, Input vertices: {vertices.Length}, Output faces: {newFaces.Count}, Output vertices: {newVertices.Count}");
-        for (int i = 0; i < newFaces.Count; i++)
+        // For each vertex, collect its incident midpoints in cyclic order
+        for (int v = 0; v < vertices.Length; v++)
         {
-            Debug.Log($"[Ambo] Face {i}: {string.Join(",", newFaces[i])}");
+            if (!vertexToEdges.ContainsKey(v)) continue;
+            // Find all unique neighbors
+            var neighbors = vertexToEdges[v]
+                .Select(e => e.Item2)
+                .Distinct()
+                .ToList();
+
+            // Order neighbors cyclically around v
+            // Start with any neighbor, then walk to the next neighbor that shares a face, etc.
+            var ordered = new List<int>();
+            if (neighbors.Count == 0) continue;
+            int current = neighbors[0];
+            ordered.Add(current);
+            while (ordered.Count < neighbors.Count)
+            {
+                int last = ordered.Last();
+                // Find next neighbor that hasn't been used and shares a face with v and last
+                int next = neighbors.FirstOrDefault(n =>
+                    !ordered.Contains(n) &&
+                    faces.Any(face => face.Contains(v) && face.Contains(last) && face.Contains(n))
+                );
+                if (next == 0 && ordered.Count > 1) break; // Can't find next, stop
+                ordered.Add(next);
+            }
+
+            // Now build the face from midpoints (v, neighbor)
+            var midIndices = ordered.Select(n => GetMid(v, n)).ToArray();
+
+            // Ensure correct winding: check normal
+            Vector3 center = Vector3.zero;
+            foreach (var idx in midIndices) center += newVertices[idx];
+            center /= midIndices.Length;
+            Vector3 normal = Vector3.zero;
+            for (int i = 0; i < midIndices.Length; i++)
+            {
+                Vector3 cur = newVertices[midIndices[i]];
+                Vector3 nxt = newVertices[midIndices[(i + 1) % midIndices.Length]];
+                normal += Vector3.Cross(cur - center, nxt - center);
+            }
+            normal.Normalize();
+            Vector3 outward = (center - vertices[v]).normalized;
+            if (Vector3.Dot(normal, outward) < 0)
+                midIndices = midIndices.Reverse().ToArray();
+
+            newFaces.Add(midIndices);
+            newColorIndices.Add(colorIndices.Max() + 1);
         }
 
         return (newVertices.ToArray(), newFaces.ToArray(), newColorIndices.ToArray());
