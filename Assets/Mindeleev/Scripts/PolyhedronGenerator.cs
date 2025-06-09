@@ -619,8 +619,9 @@ public class PolyhedronGenerator : MonoBehaviour
 
             // Sort edges by face to ensure consistent ordering
             connectedEdges = connectedEdges.Distinct().OrderBy(e => e.face).ToList();
-            
-            newFaces.Add(connectedEdges.Select(e => e.midpoint).ToArray());
+            // Reverse the winding to match outward normal
+            var faceIndices = connectedEdges.Select(e => e.midpoint).Reverse().ToArray();
+            newFaces.Add(faceIndices);
             newColorIndices.Add(colorIndices.Max() + 1);
         }
 
