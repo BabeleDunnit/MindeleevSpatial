@@ -143,7 +143,7 @@ public class PolyhedronGenerator : MonoBehaviour
         filter.mesh = ApplyFlatShade(polyData, palette);
         ApplyPolyhedronMaterial(renderer);
 
-        ShowVertexIndices(polyData.Item1); // Use logical vertices
+        // ShowVertexIndices(polyData.Item1); // Use logical vertices
     }
 
     /* ------------------------- MATERIAL ------------------------------ */
@@ -601,26 +601,86 @@ public class PolyhedronGenerator : MonoBehaviour
         // B) Original vertices become new faces
         for (int v = 0; v < vertices.Length; v++)
         {
-            var connectedEdges = new List<(int midpoint, int face)>();
-            
-            // Collect all edges connected to this vertex
+            // Find all faces containing this vertex
+            var incidentFaces = new List<int>();
             for (int f = 0; f < faces.Length; f++)
+                if (faces[f].Contains(v)) incidentFaces.Add(f);
+
+            if (incidentFaces.Count < 3) continue; // skip isolated or boundary vertices
+
+            // For each incident face, find the two midpoints on edges incident to v
+            var orderedMidpoints = new List<int>();
+            int startFace = incidentFaces[0];
+            int currentFace = startFace;
+            int prevVertex = -1;
+            var usedFaces = new HashSet<int>();
+
+            // Start with any face containing v, walk around v
+            do
             {
-                int[] face = faces[f];
+                int[] face = faces[currentFace];
                 int idx = Array.IndexOf(face, v);
-                if (idx >= 0)
+                int prev = face[(idx - 1 + face.Length) % face.Length];
+                int next = face[(idx + 1) % face.Length];
+
+                int midPrev = GetMidpoint(v, prev);
+                int midNext = GetMidpoint(v, next);
+
+                // Add midPrev if not already added
+                if (!orderedMidpoints.Contains(midPrev))
+                    orderedMidpoints.Add(midPrev);
+
+                // Find the next face sharing (v, next) that hasn't been used
+                usedFaces.Add(currentFace);
+                int nextFace = -1;
+                foreach (int f in incidentFaces)
                 {
-                    int prev = face[(idx - 1 + face.Length) % face.Length];
-                    int next = face[(idx + 1) % face.Length];
-                    connectedEdges.Add((GetMidpoint(v, prev), f));
-                    connectedEdges.Add((GetMidpoint(v, next), f));
+                    if (usedFaces.Contains(f)) continue;
+                    var fVerts = faces[f];
+                    if (fVerts.Contains(v) && fVerts.Contains(next))
+                    {
+                        nextFace = f;
+                        break;
+                    }
                 }
+                prevVertex = next;
+                currentFace = nextFace;
+            }
+            while (currentFace != -1 && currentFace != startFace && orderedMidpoints.Count < incidentFaces.Count);
+
+            // If not all midpoints found, fall back to distinct midpoints
+            if (orderedMidpoints.Count < incidentFaces.Count)
+            {
+                orderedMidpoints = incidentFaces
+                    .SelectMany(f =>
+                    {
+                        int[] face = faces[f];
+                        int idx = Array.IndexOf(face, v);
+                        int prev = face[(idx - 1 + face.Length) % face.Length];
+                        int next = face[(idx + 1) % face.Length];
+                        return new[] { GetMidpoint(v, prev), GetMidpoint(v, next) };
+                    })
+                    .Distinct()
+                    .ToList();
             }
 
-            // Sort edges by face to ensure consistent ordering
-            connectedEdges = connectedEdges.Distinct().OrderBy(e => e.face).ToList();
-            // Reverse the winding to match outward normal
-            var faceIndices = connectedEdges.Select(e => e.midpoint).Reverse().ToArray();
+            // Ensure correct winding
+            var faceIndices = orderedMidpoints.ToArray();
+            Vector3 center = Vector3.zero;
+            foreach (var idx in faceIndices) center += newVertices[idx];
+            center /= faceIndices.Length;
+            Vector3 normal = Vector3.zero;
+            for (int i = 0; i < faceIndices.Length; i++)
+            {
+                Vector3 cur = newVertices[faceIndices[i]];
+                Vector3 nxt = newVertices[faceIndices[(i + 1) % faceIndices.Length]];
+                normal += Vector3.Cross(cur - center, nxt - center);
+            }
+            normal.Normalize();
+            Vector3 outward = (center - vertices[v]).normalized;
+            if (Vector3.Dot(normal, outward) < 0)
+                faceIndices = faceIndices.Reverse().ToArray();
+
             newFaces.Add(faceIndices);
             newColorIndices.Add(colorIndices.Max() + 1);
         }
