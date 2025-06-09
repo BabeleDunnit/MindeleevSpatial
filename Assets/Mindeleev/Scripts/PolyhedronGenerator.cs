@@ -141,6 +141,9 @@ public class PolyhedronGenerator : MonoBehaviour
 
         filter.mesh = ParsePolyhedronRecipe(polyhedronRecipe);
         ApplyPolyhedronMaterial(renderer);
+
+        // Show vertex indices as labels
+        ShowVertexIndices(filter.mesh.vertices);
     }
 
     /* ------------------------- MATERIAL ------------------------------ */
@@ -634,6 +637,13 @@ public class PolyhedronGenerator : MonoBehaviour
             }
         }
 
+        // Debug output for Ambo
+        Debug.Log($"[Ambo] Input faces: {faces.Length}, Input vertices: {vertices.Length}, Output faces: {newFaces.Count}, Output vertices: {newVertices.Count}");
+        for (int i = 0; i < newFaces.Count; i++)
+        {
+            Debug.Log($"[Ambo] Face {i}: {string.Join(",", newFaces[i])}");
+        }
+
         return (newVertices.ToArray(), newFaces.ToArray(), newColorIndices.ToArray());
     }
 
@@ -700,6 +710,8 @@ public class PolyhedronGenerator : MonoBehaviour
                 colorIndices[f] = 0;
             }
         }
+
+        Debug.Log($"[FlatShade] Mesh has {faces.Length} faces, {vertices.Length} vertices");
 
         for (int f = 0; f < faces.Length; f++)
         {
