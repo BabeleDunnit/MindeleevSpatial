@@ -382,6 +382,11 @@ public class PolyhedronGenerator : MonoBehaviour
                 }
                 vertexNormal.Normalize();
 
+                // Compute polyhedron centroid once, outside the vertex loop:
+                Vector3 polyCenter = Vector3.zero;
+                foreach (var vtx in vertices) polyCenter += vtx;
+                polyCenter /= vertices.Length;
+
                 // Find all truncated points around this vertex and sort them
                 List<int> vertexFaceIndices = new List<int>();
                 List<Vector3> vertexFacePositions = new List<Vector3>();
@@ -598,6 +603,10 @@ public class PolyhedronGenerator : MonoBehaviour
             newColorIndices.Add(colorIndices[f]);
         }
 
+        Vector3 polyCenter = Vector3.zero;
+        foreach (var vtx in vertices) polyCenter += vtx;
+        polyCenter /= vertices.Length;
+
         // B) Original vertices become new faces
         for (int v = 0; v < vertices.Length; v++)
         {
@@ -677,7 +686,7 @@ public class PolyhedronGenerator : MonoBehaviour
                 normal += Vector3.Cross(cur - center, nxt - center);
             }
             normal.Normalize();
-            Vector3 outward = (center - vertices[v]).normalized;
+            Vector3 outward = (center - polyCenter).normalized;
             if (Vector3.Dot(normal, outward) < 0)
                 faceIndices = faceIndices.Reverse().ToArray();
 
