@@ -785,5 +785,24 @@ public class PolyhedronGenerator : MonoBehaviour
             }
         }
     }
+
+    private void ShowVertexIndices(Vector3[] vertices)
+    {
+        for (int i = 0; i < vertices.Length; i++)
+        {
+            GameObject label = new GameObject($"VertexLabel_{i}");
+            label.transform.SetParent(this.transform, false);
+            label.transform.localPosition = vertices[i];
+            label.transform.localScale = Vector3.one * 0.15f; // Adjust for readability
+
+            var text = label.AddComponent<TextMesh>();
+            text.text = i.ToString();
+            text.fontSize = 48;
+            text.characterSize = 0.2f;
+            text.anchor = TextAnchor.MiddleCenter;
+            text.alignment = TextAlignment.Center;
+            text.color = Color.black;
+        }
+    }
 }
 
