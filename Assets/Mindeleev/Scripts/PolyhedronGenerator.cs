@@ -139,11 +139,11 @@ public class PolyhedronGenerator : MonoBehaviour
         MeshFilter filter = GetComponent<MeshFilter>();
         MeshRenderer renderer = GetComponent<MeshRenderer>();
 
-        filter.mesh = ParsePolyhedronRecipe(polyhedronRecipe);
+        var polyData = ParsePolyhedronRecipe(polyhedronRecipe);
+        filter.mesh = ApplyFlatShade(polyData, palette);
         ApplyPolyhedronMaterial(renderer);
 
-        // Show vertex indices as labels
-        ShowVertexIndices(filter.mesh.vertices);
+        ShowVertexIndices(polyData.Item1); // Use logical vertices
     }
 
     /* ------------------------- MATERIAL ------------------------------ */
@@ -160,7 +160,7 @@ public class PolyhedronGenerator : MonoBehaviour
     }
 
     /* ---------------------- PARSE RECIPE ----------------------------- */
-    Mesh ParsePolyhedronRecipe(string recipe)
+    private (Vector3[], int[][], int[]) ParsePolyhedronRecipe(string recipe)
     {
         if (string.IsNullOrWhiteSpace(recipe)) recipe = "C";
         recipe = recipe.Trim();
@@ -216,9 +216,7 @@ public class PolyhedronGenerator : MonoBehaviour
                 _ => current
             };
         }
-
-        // Update this line to match new signature
-        return ApplyFlatShade(current, palette);
+        return current; // Return the tuple, not the mesh
     }
 
     /* ---------------------- OPERATORS -------------------------------- */
@@ -800,6 +798,7 @@ public class PolyhedronGenerator : MonoBehaviour
 
     private void ShowVertexIndices(Vector3[] vertices)
     {
+        Debug.Log($"[ShowVertexIndices] vertices count: {vertices.Length}");
         for (int i = 0; i < vertices.Length; i++)
         {
             GameObject label = new GameObject($"VertexLabel_{i}");
