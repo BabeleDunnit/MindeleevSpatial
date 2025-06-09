@@ -540,122 +540,87 @@ public class PolyhedronGenerator : MonoBehaviour
 
     public static (Vector3[], int[][], int[]) ApplyAmbo((Vector3[], int[][], int[]) input)
     {
-        // Ambo: Each edge gets a midpoint; new faces are built from these midpoints.
         var (vertices, faces, colorIndices) = input;
-        var edgeToMid = new Dictionary<(int, int), int>();
         var newVertices = new List<Vector3>();
         var newFaces = new List<int[]>();
         var newColorIndices = new List<int>();
+        var edgeToMidpoint = new Dictionary<(int, int), int>();
 
-        // 1. Create edge midpoints (unique for each undirected edge)
+        // Step 1: Create edge midpoints consistently
+        int GetMidpoint(int v1, int v2)
+        {
+            var edge = v1 < v2 ? (v1, v2) : (v2, v1); // Ensure consistent edge ordering
+            if (!edgeToMidpoint.TryGetValue(edge, out int idx))
+            {
+                Vector3 midpoint = (vertices[v1] + vertices[v2]) * 0.5f;
+                idx = newVertices.Count;
+                newVertices.Add(midpoint);
+                edgeToMidpoint[edge] = idx;
+            }
+            return idx;
+        }
+
+        // Step 2: Build edge connectivity information
+        var edgeConnections = new Dictionary<int, List<(int vertex, int face)>>();
+        
         for (int f = 0; f < faces.Length; f++)
         {
-            var face = faces[f];
-            int n = face.Length;
-            for (int i = 0; i < n; i++)
+            int[] face = faces[f];
+            for (int i = 0; i < face.Length; i++)
             {
-                int a = face[i];
-                int b = face[(i + 1) % n];
-                var edge = a < b ? (a, b) : (b, a);
-                if (!edgeToMid.ContainsKey(edge))
-                {
-                    Vector3 mid = 0.5f * (vertices[a] + vertices[b]);
-                    edgeToMid[edge] = newVertices.Count;
-                    newVertices.Add(mid);
-                }
+                int v1 = face[i];
+                int v2 = face[(i + 1) % face.Length];
+                int midpoint = GetMidpoint(v1, v2);
+                
+                if (!edgeConnections.ContainsKey(midpoint))
+                    edgeConnections[midpoint] = new List<(int, int)>();
+                    
+                edgeConnections[midpoint].Add((v1, f));
+                edgeConnections[midpoint].Add((v2, f));
             }
         }
 
-        // Helper to get midpoint index for edge (a,b)
-        int GetMid(int a, int b)
-        {
-            var edge = a < b ? (a, b) : (b, a);
-            return edgeToMid[edge];
-        }
-
-        // 2. For each original face, create a new face from the midpoints of its edges (preserving winding)
+        // Step 3: Create faces systematically
+        // A) Original face centers become new vertices
         for (int f = 0; f < faces.Length; f++)
         {
-            var face = faces[f];
-            int n = face.Length;
-            int[] midIndices = new int[n];
-            for (int i = 0; i < n; i++)
+            int[] face = faces[f];
+            var newFaceIndices = new int[face.Length];
+            
+            for (int i = 0; i < face.Length; i++)
             {
-                int a = face[i];
-                int b = face[(i + 1) % n];
-                midIndices[i] = GetMid(a, b);
+                int v1 = face[i];
+                int v2 = face[(i + 1) % face.Length];
+                newFaceIndices[i] = GetMidpoint(v1, v2);
             }
-            newFaces.Add(midIndices);
+            
+            newFaces.Add(newFaceIndices);
             newColorIndices.Add(colorIndices[f]);
         }
 
-        // 3. For each original vertex, create a new face from the midpoints of all edges incident to it, ordered cyclically
-        // Build a map from vertex to incident (ordered) edges
-        var vertexToEdges = new Dictionary<int, List<(int from, int to)>>();
-        for (int f = 0; f < faces.Length; f++)
-        {
-            var face = faces[f];
-            int n = face.Length;
-            for (int i = 0; i < n; i++)
-            {
-                int v = face[i];
-                int prev = face[(i - 1 + n) % n];
-                int next = face[(i + 1) % n];
-                if (!vertexToEdges.ContainsKey(v))
-                    vertexToEdges[v] = new List<(int, int)>();
-                vertexToEdges[v].Add((v, prev));
-                vertexToEdges[v].Add((v, next));
-            }
-        }
-
-        // For each vertex, collect its incident midpoints in cyclic order
+        // B) Original vertices become new faces
         for (int v = 0; v < vertices.Length; v++)
         {
-            if (!vertexToEdges.ContainsKey(v)) continue;
-            // Find all unique neighbors
-            var neighbors = vertexToEdges[v]
-                .Select(e => e.Item2)
-                .Distinct()
-                .ToList();
-
-            // Order neighbors cyclically around v
-            // Start with any neighbor, then walk to the next neighbor that shares a face, etc.
-            var ordered = new List<int>();
-            if (neighbors.Count == 0) continue;
-            int current = neighbors[0];
-            ordered.Add(current);
-            while (ordered.Count < neighbors.Count)
+            var connectedEdges = new List<(int midpoint, int face)>();
+            
+            // Collect all edges connected to this vertex
+            for (int f = 0; f < faces.Length; f++)
             {
-                int last = ordered.Last();
-                // Find next neighbor that hasn't been used and shares a face with v and last
-                int next = neighbors.FirstOrDefault(n =>
-                    !ordered.Contains(n) &&
-                    faces.Any(face => face.Contains(v) && face.Contains(last) && face.Contains(n))
-                );
-                if (next == 0 && ordered.Count > 1) break; // Can't find next, stop
-                ordered.Add(next);
+                int[] face = faces[f];
+                int idx = Array.IndexOf(face, v);
+                if (idx >= 0)
+                {
+                    int prev = face[(idx - 1 + face.Length) % face.Length];
+                    int next = face[(idx + 1) % face.Length];
+                    connectedEdges.Add((GetMidpoint(v, prev), f));
+                    connectedEdges.Add((GetMidpoint(v, next), f));
+                }
             }
 
-            // Now build the face from midpoints (v, neighbor)
-            var midIndices = ordered.Select(n => GetMid(v, n)).ToArray();
-
-            // Ensure correct winding: check normal
-            Vector3 center = Vector3.zero;
-            foreach (var idx in midIndices) center += newVertices[idx];
-            center /= midIndices.Length;
-            Vector3 normal = Vector3.zero;
-            for (int i = 0; i < midIndices.Length; i++)
-            {
-                Vector3 cur = newVertices[midIndices[i]];
-                Vector3 nxt = newVertices[midIndices[(i + 1) % midIndices.Length]];
-                normal += Vector3.Cross(cur - center, nxt - center);
-            }
-            normal.Normalize();
-            Vector3 outward = (center - vertices[v]).normalized;
-            if (Vector3.Dot(normal, outward) < 0)
-                midIndices = midIndices.Reverse().ToArray();
-
-            newFaces.Add(midIndices);
+            // Sort edges by face to ensure consistent ordering
+            connectedEdges = connectedEdges.Distinct().OrderBy(e => e.face).ToList();
+            
+            newFaces.Add(connectedEdges.Select(e => e.midpoint).ToArray());
             newColorIndices.Add(colorIndices.Max() + 1);
         }
 
