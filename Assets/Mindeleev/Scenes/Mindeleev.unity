@@ -1367,6 +1367,7 @@ MonoBehaviour:
   maxRepetitions: 4
   gridSpacing: 2
   polyhedronScale: 0.5
+  showConwayRecipe: 1
   polytronPrefab: {fileID: 8404194606809146210, guid: a4b29d65d516b4ae19b3532179b68cd4,
     type: 3}
 --- !u!65 &1190650403

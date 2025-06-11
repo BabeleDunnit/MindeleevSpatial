@@ -7,9 +7,12 @@ public class PolyhedraGridGenerator : MonoBehaviour
     public int maxRepetitions = 4;
     public float gridSpacing = 3.0f;
     public float polyhedronScale = 0.5f;  // Add scale factor
-    
+
+    public bool showConwayRecipe = true;
+
     [Header("Prefab")]
     public GameObject polytronPrefab;
+
 
     private readonly char[] basePolyhedra = { 'C', 'T', 'O', 'D', 'I' };
     private readonly string[] operators = { "", "a", "k", "t", "a" };  // Added empty string for null operation
@@ -78,7 +81,10 @@ public class PolyhedraGridGenerator : MonoBehaviour
                     }
 
                     // Add text label for easier identification
-                    CreateLabel(instance, recipe, position);
+                    if (showConwayRecipe)
+                    {
+                        CreateLabel(instance, recipe, position);
+                    }
                 }
             }
         }
