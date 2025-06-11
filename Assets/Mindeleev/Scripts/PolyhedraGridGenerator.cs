@@ -1,5 +1,6 @@
 using UnityEngine;
-using System.Linq;  // Add this line at the top
+using System.Linq;
+using TMPro;  // Add this line for TextMeshPro
 
 public class PolyhedraGridGenerator : MonoBehaviour
 {
@@ -92,22 +93,34 @@ public class PolyhedraGridGenerator : MonoBehaviour
 
     private void CreateLabel(GameObject parent, string recipe, Vector3 position)
     {
-        // Create a TextMesh object for the label
+        // Create a TextMeshPro object for the label
         GameObject label = new GameObject($"Label_{recipe}");
         label.transform.parent = parent.transform;
         label.transform.localPosition = Vector3.down * 0.5f;
         
-        TextMesh textMesh = label.AddComponent<TextMesh>();
-        textMesh.text = recipe;
-        textMesh.fontSize = 30;  // Smaller font size
-        textMesh.characterSize = 0.05f;  // Much smaller character size
-        textMesh.alignment = TextAlignment.Center;
-        textMesh.anchor = TextAnchor.MiddleCenter;
-        textMesh.color = Color.white;
-
+        // Add TextMeshPro component instead of TextMesh
+        TextMeshPro tmpText = label.AddComponent<TextMeshPro>();
+        tmpText.text = recipe;
+        tmpText.fontSize = 3;  // TMP uses different scale for font size
+        tmpText.alignment = TextAlignmentOptions.Center;
+        tmpText.color = Color.white;
+        
+        // Configure the TMP text
+        tmpText.enableAutoSizing = true;
+        tmpText.fontSizeMin = 1;
+        tmpText.fontSizeMax = 5;
+        
+        // Set material and other rendering properties
+        tmpText.material = new Material(Shader.Find("TextMeshPro/Mobile/Distance Field"));
+        
         // Make text more readable by placing it vertically and facing forward
-        label.transform.localRotation = Quaternion.identity;  // Reset rotation
-        // Add horizontal billboard script for camera facing
+        label.transform.localRotation = Quaternion.identity;
+        
+        // Set rect transform properties
+        RectTransform rectTransform = tmpText.GetComponent<RectTransform>();
+        rectTransform.sizeDelta = new Vector2(2, 0.5f);  // Width and height of the text area
+    
+        // Optional: Add horizontal billboard script for camera facing
         // label.AddComponent<HorizontalBillboard>();
     }
 }
