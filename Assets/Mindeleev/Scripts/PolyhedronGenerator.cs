@@ -233,16 +233,34 @@ public class PolyhedronGenerator : MonoBehaviour
         var newFaces = new List<int[]>();
         var newColorIndices = new List<int>();
 
-        // Get next color index for new faces
+        // Dictionary to store face signatures and their color indices
+        var signatureToColor = new Dictionary<string, int>();
         int nextColorIndex = colorIndices.Max() + 1;
+
+        // Helper function to calculate face signature
+        string GetFaceSignature(Vector3[] faceVerts)
+        {
+            // Calculate edge lengths
+            var lengths = new List<float>();
+            for (int i = 0; i < faceVerts.Length; i++)
+            {
+                Vector3 v1 = faceVerts[i];
+                Vector3 v2 = faceVerts[(i + 1) % faceVerts.Length];
+                lengths.Add(Vector3.Distance(v1, v2));
+            }
+            
+            // Sort and round to handle floating point differences
+            lengths.Sort();
+            var signature = string.Join(",", lengths.Select(l => 
+                Math.Round(l, 6).ToString("F6", CultureInfo.InvariantCulture)));
+            
+            return signature;
+        }
 
         // Process each face
         for (int f = 0; f < faces.Length; f++)
         {
             int[] face = faces[f];
-            int currentColorIndex = colorIndices[f];
-            
-            // Calculate face center and normal
             Vector3 center = Vector3.zero;
             foreach (int idx in face)
                 center += vertices[idx];
@@ -254,17 +272,27 @@ public class PolyhedronGenerator : MonoBehaviour
             int centerIdx = newVertices.Count;
             newVertices.Add(center + normal * height);
             
-            // Original face remains with its original color index
-            newFaces.Add(face);
-            newColorIndices.Add(colorIndices[f]); // Keep original color
-            
-            // Create new triangular faces from original edges to new center
+            // Create new triangular faces
             for (int i = 0; i < face.Length; i++)
             {
                 int next = (i + 1) % face.Length;
                 int[] newFace = new int[] { face[i], face[next], centerIdx };
                 newFaces.Add(newFace);
-                newColorIndices.Add(nextColorIndex); // New faces get new index
+
+                // Calculate signature for this new triangular face
+                Vector3[] triangleVerts = new[] {
+                    vertices[face[i]],
+                    vertices[face[next]],
+                    newVertices[centerIdx]
+                };
+                string signature = GetFaceSignature(triangleVerts);
+
+                // Assign color based on signature
+                if (!signatureToColor.ContainsKey(signature))
+                {
+                    signatureToColor[signature] = nextColorIndex++;
+                }
+                newColorIndices.Add(signatureToColor[signature]);
             }
         }
         
