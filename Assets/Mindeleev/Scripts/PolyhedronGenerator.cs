@@ -199,10 +199,10 @@ public class PolyhedronGenerator : MonoBehaviour
                 int j = i + 1;
                 while (j < basePos && (char.IsDigit(recipe[j]) || recipe[j] == '.' || recipe[j] == '-')) j++;
                 string numStr = recipe.Substring(i + 1, j - (i + 1));
-                float factor = 0.33f;
+                float factor = 0.1f;
                 if (!string.IsNullOrEmpty(numStr))
                 {
-                    if (!float.TryParse(numStr, NumberStyles.Float, CultureInfo.InvariantCulture, out factor)) factor = 0.33f;
+                    if (!float.TryParse(numStr, NumberStyles.Float, CultureInfo.InvariantCulture, out factor)) factor = 0.1f;
                 }
                 tokens.Add((c, factor));
                 i = j;

@@ -16,7 +16,7 @@ public class PolyhedraGridGenerator : MonoBehaviour
 
 
     private readonly char[] basePolyhedra = { 'C', 'T', 'O', 'D', 'I' };
-    private readonly string[] operators = { "", "a", "k", "t", "a" };  // Added empty string for null operation
+    private readonly string[] operators = { "", "k", "t", "a" };  // Added empty string for null operation
 
     void Start()
     {
@@ -96,7 +96,7 @@ public class PolyhedraGridGenerator : MonoBehaviour
         // Create a TextMeshPro object for the label
         GameObject label = new GameObject($"Label_{recipe}");
         label.transform.parent = parent.transform;
-        label.transform.localPosition = Vector3.down * 1.3f;
+        label.transform.localPosition = Vector3.down * 1.5f;
         
         // Add TextMeshPro component instead of TextMesh
         TextMeshPro tmpText = label.AddComponent<TextMeshPro>();
