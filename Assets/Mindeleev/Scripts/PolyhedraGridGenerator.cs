@@ -96,7 +96,7 @@ public class PolyhedraGridGenerator : MonoBehaviour
         // Create a TextMeshPro object for the label
         GameObject label = new GameObject($"Label_{recipe}");
         label.transform.parent = parent.transform;
-        label.transform.localPosition = Vector3.down * 0.5f;
+        label.transform.localPosition = Vector3.down * 1.3f;
         
         // Add TextMeshPro component instead of TextMesh
         TextMeshPro tmpText = label.AddComponent<TextMeshPro>();
@@ -108,7 +108,7 @@ public class PolyhedraGridGenerator : MonoBehaviour
         // Configure the TMP text
         tmpText.enableAutoSizing = true;
         tmpText.fontSizeMin = 1;
-        tmpText.fontSizeMax = 5;
+        tmpText.fontSizeMax = 2;
         
         // Set material and other rendering properties
         tmpText.material = new Material(Shader.Find("TextMeshPro/Mobile/Distance Field"));
