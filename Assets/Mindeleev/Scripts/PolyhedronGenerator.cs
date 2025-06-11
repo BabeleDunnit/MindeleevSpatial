@@ -130,6 +130,8 @@ public class PolyhedronGenerator : MonoBehaviour
     public bool useCongruenceColoring = true;
     public float colorSensitivity = 0.001f;
 
+    private bool showVertexIndices = false;
+
     [Header("Material")]
     public Material polyhedronMaterial; // Add this field
 
@@ -143,7 +145,11 @@ public class PolyhedronGenerator : MonoBehaviour
         filter.mesh = ApplyFlatShade(polyData, palette);
         ApplyPolyhedronMaterial(renderer);
 
-        // ShowVertexIndices(polyData.Item1); // Use logical vertices
+        if (showVertexIndices)
+        {
+            ShowVertexIndices(polyData.Item1); // Use logical vertices
+        }
+
     }
 
     /* ------------------------- MATERIAL ------------------------------ */
