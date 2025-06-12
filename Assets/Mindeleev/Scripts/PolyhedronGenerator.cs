@@ -235,12 +235,12 @@ public class PolyhedronGenerator : MonoBehaviour
 
         // Dictionary to store face signatures and their color indices
         var signatureToColor = new Dictionary<string, int>();
-        int nextColorIndex = colorIndices.Max() + 1;
+        // int nextColorIndex = colorIndices.Max() + 1;
+        int nextColorIndex = 0;
 
         // Helper function to calculate face signature
-        string GetFaceSignature(Vector3[] faceVerts)
+        string GetFaceSignature(Vector3[] faceVerts, float rounding)
         {
-            // Calculate edge lengths
             var lengths = new List<float>();
             for (int i = 0; i < faceVerts.Length; i++)
             {
@@ -248,12 +248,10 @@ public class PolyhedronGenerator : MonoBehaviour
                 Vector3 v2 = faceVerts[(i + 1) % faceVerts.Length];
                 lengths.Add(Vector3.Distance(v1, v2));
             }
-            
-            // Sort and round to handle floating point differences
             lengths.Sort();
-            var signature = string.Join(",", lengths.Select(l => 
-                Math.Round(l, 6).ToString("F6", CultureInfo.InvariantCulture)));
-            
+            // Use rounding parameter to control precision
+            var signature = string.Join(",", lengths.Select(l =>
+                Math.Round(l, (int)rounding).ToString($"F{(int)rounding}", CultureInfo.InvariantCulture)));
             return signature;
         }
 
@@ -285,7 +283,7 @@ public class PolyhedronGenerator : MonoBehaviour
                     vertices[face[next]],
                     newVertices[centerIdx]
                 };
-                string signature = GetFaceSignature(triangleVerts);
+                string signature = GetFaceSignature(triangleVerts, 0);
 
                 // Assign color based on signature
                 if (!signatureToColor.ContainsKey(signature))
