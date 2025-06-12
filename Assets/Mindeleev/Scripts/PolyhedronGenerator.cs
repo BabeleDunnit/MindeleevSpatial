@@ -265,14 +265,24 @@ public class PolyhedronGenerator : MonoBehaviour
             }
 
             var (op, faces, factor) = tokens[t];
-            current = op switch
+            // Substitute truncate operator with its equivalent sequence
+            if (op == 't')
             {
-                'k' => ApplyKis(current, factor, faces),
-                // 't' => ApplyTruncate(current, factor, faces),
-                'a' => ApplyAmbo(current),
-                'd' => ApplyDual(current),
-                _ => current
-            };
+                // Apply d->k->d sequence for truncation
+                current = ApplyDual(current);
+                current = ApplyKis(current, factor, faces);
+                current = ApplyDual(current);
+            }
+            else
+            {
+                current = op switch
+                {
+                    'k' => ApplyKis(current, factor, faces),
+                    'a' => ApplyAmbo(current),
+                    'd' => ApplyDual(current),
+                    _ => current
+                };
+            }
         }
 
         return current;
