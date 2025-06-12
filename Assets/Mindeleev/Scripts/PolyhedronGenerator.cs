@@ -168,16 +168,22 @@ public class PolyhedronGenerator : MonoBehaviour
     /* ---------------------- PARSE RECIPE ----------------------------- */
     private (Vector3[], int[][], int[]) ParsePolyhedronRecipe(string recipe)
     {
-        if (string.IsNullOrWhiteSpace(recipe)) recipe = "C";
-        recipe = recipe.Trim();
+        if (string.IsNullOrWhiteSpace(recipe))
+            return Cube;
 
-        // Locate last uppercase letter = base polyhedron
+        // Find rightmost uppercase letter (base polyhedron)
         int basePos = recipe.Length - 1;
-        while (basePos >= 0 && !char.IsUpper(recipe[basePos])) basePos--;
-        if (basePos < 0) { Debug.LogError("No base polyhedron in recipe - defaulting to Cube"); recipe += "C"; basePos = recipe.Length - 1; }
+        while (basePos >= 0 && !char.IsUpper(recipe[basePos]))
+            basePos--;
+        
+        if (basePos < 0)
+        {
+            Debug.LogError($"Invalid recipe '{recipe}': no base polyhedron found");
+            return Cube;
+        }
 
-        char baseChar = recipe[basePos];
-        (Vector3[], int[][], int[]) current = baseChar switch
+        // Get base polyhedron
+        var current = recipe[basePos] switch
         {
             'C' => Cube,
             'T' => Tetrahedron,
@@ -187,47 +193,96 @@ public class PolyhedronGenerator : MonoBehaviour
             _ => Cube
         };
 
-        // Parse tokens to the left of base char (left -> right), collect list
-        var tokens = new List<(char op, float factor)>();
+        // Parse operators and parameters from right to left
+        var tokens = new List<(char op, int? faces, float factor)>();
         int i = 0;
         while (i < basePos)
         {
             char c = recipe[i];
             if (char.IsLower(c))
             {
-                // read optional signed decimal right after operator
-                int j = i + 1;
-                while (j < basePos && (char.IsDigit(recipe[j]) || recipe[j] == '.' || recipe[j] == '-')) j++;
-                string numStr = recipe.Substring(i + 1, j - (i + 1));
+                int? faces = null;
                 float factor = 0.1f;
-                if (!string.IsNullOrEmpty(numStr))
+
+                // Check if next char starts a parameter list
+                if (i + 1 < basePos && recipe[i + 1] == '(')
                 {
-                    if (!float.TryParse(numStr, NumberStyles.Float, CultureInfo.InvariantCulture, out factor)) factor = 0.1f;
+                    // Find closing parenthesis
+                    int closePos = recipe.IndexOf(')', i + 2);
+                    if (closePos == -1)
+                    {
+                        Debug.LogError($"Invalid recipe '{recipe}': unclosed parameter list");
+                        return current;
+                    }
+
+                    // Parse parameters
+                    string paramStr = recipe.Substring(i + 2, closePos - (i + 2));
+                    string[] parameters = paramStr.Split(',').Select(p => p.Trim()).ToArray();
+
+                    // Parse first parameter (faces)
+                    if (parameters.Length > 0 && int.TryParse(parameters[0], out int facesParam))
+                        faces = facesParam;
+
+                    // Parse second parameter (factor)
+                    if (parameters.Length > 1 && float.TryParse(parameters[1], 
+                        NumberStyles.Float, CultureInfo.InvariantCulture, out float factorParam))
+                        factor = factorParam;
+
+                    i = closePos + 1;
                 }
-                tokens.Add((c, factor));
-                i = j;
+                else
+                {
+                    // Look for simple numeric parameter
+                    int j = i + 1;
+                    while (j < basePos && char.IsDigit(recipe[j])) j++;
+                    if (j > i + 1)
+                    {
+                        string numStr = recipe.Substring(i + 1, j - (i + 1));
+                        if (int.TryParse(numStr, out int simpleParam))
+                            faces = simpleParam;
+                    }
+                    i = j;
+                }
+
+                tokens.Add((c, faces, factor));
             }
-            else { i++; }
+            else
+            {
+                i++;
+            }
         }
 
-        // Apply operators in reverse order (right‑to‑left)
+        // Apply operators in reverse order
+        const int MAX_VERTICES = 300; // Add this constant at class level
         for (int t = tokens.Count - 1; t >= 0; t--)
         {
-            var (op, factor) = tokens[t];
+            // Check vertex count before applying next operator
+            if (current.Item1.Length > MAX_VERTICES)
+            {
+                Debug.LogWarning($"Recipe '{recipe}' exceeded {MAX_VERTICES} vertices limit after {tokens.Count - t - 1} operators. " +
+                                $"Skipping remaining {t + 1} operators.");
+                break;
+            }
+
+            var (op, faces, factor) = tokens[t];
             current = op switch
             {
-                'k' => ApplyKis(current, factor),
-                't' => ApplyTruncate(current, factor),
+                'k' => ApplyKis(current, factor, faces),
+                // 't' => ApplyTruncate(current, factor, faces),
                 'a' => ApplyAmbo(current),
-                'd' => ApplyDual(current),  // Add this line
+                'd' => ApplyDual(current),
                 _ => current
             };
         }
-        return current; // Return the tuple, not the mesh
+
+        return current;
     }
 
     /* ---------------------- OPERATORS -------------------------------- */
-    public static (Vector3[], int[][], int[]) ApplyKis((Vector3[], int[][], int[]) input, float height)
+    public static (Vector3[], int[][], int[]) ApplyKis(
+        (Vector3[], int[][], int[]) input, 
+        float height, 
+        int? targetFaces = null)
     {
         var (vertices, faces, colorIndices) = input;
         var newVertices = new List<Vector3>(vertices);
@@ -243,6 +298,15 @@ public class PolyhedronGenerator : MonoBehaviour
         for (int f = 0; f < faces.Length; f++)
         {
             int[] face = faces[f];
+            // Only apply kis to faces with specified number of vertices
+            if (targetFaces.HasValue && face.Length != targetFaces.Value)
+            {
+                // Copy face unchanged
+                newFaces.Add(face);
+                newColorIndices.Add(colorIndices[f]);
+                continue;
+            }
+
             Vector3 center = Vector3.zero;
             foreach (int idx in face)
                 center += vertices[idx];

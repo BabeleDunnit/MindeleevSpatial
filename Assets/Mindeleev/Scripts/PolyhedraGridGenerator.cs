@@ -5,7 +5,7 @@ using TMPro;  // Add this line for TextMeshPro
 public class PolyhedraGridGenerator : MonoBehaviour
 {
     [Header("Grid Settings")]
-    public int maxRepetitions = 2;
+    public int maxRepetitions = 1;
     public float gridSpacing = 3.0f;
     public float polyhedronScale = 0.5f;  // Add scale factor
 
@@ -16,7 +16,8 @@ public class PolyhedraGridGenerator : MonoBehaviour
 
 
     private readonly char[] basePolyhedra = { 'C', 'T', 'O', 'D', 'I' };
-    private readonly string[] operators = { "", "d", "dkd", "a", "k" };  // Added empty string for null operation
+    private readonly string[] operators = { "", "dkkkd", "dkk2kd", "k(3,.5)", "k" };  // Added empty string for null operation
+    // private readonly string[] operators = { "", "k(3,.5)", "k" };  // Added empty string for null operation
 
     void Start()
     {
