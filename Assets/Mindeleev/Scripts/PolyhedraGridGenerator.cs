@@ -16,8 +16,8 @@ public class PolyhedraGridGenerator : MonoBehaviour
 
 
     private readonly char[] basePolyhedra = { 'C', 'T', 'O', 'D', 'I' };
-    private readonly string[] operators = { "", "dkkkd", "dkk2kd", "k(3,.5)", "k" };  // Added empty string for null operation
-    // private readonly string[] operators = { "", "k(3,.5)", "k" };  // Added empty string for null operation
+    // private readonly string[] operators = { "", "dkkkd", "dkk2kd", "k(3,.5)", "k" };  // Added empty string for null operation
+    private readonly string[] operators = { "", "k(3,.5)", "k" };  // Added empty string for null operation
 
     void Start()
     {

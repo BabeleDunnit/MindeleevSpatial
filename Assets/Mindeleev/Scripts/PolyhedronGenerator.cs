@@ -289,61 +289,62 @@ public class PolyhedronGenerator : MonoBehaviour
         var newFaces = new List<int[]>();
         var newColorIndices = new List<int>();
 
-        // Dictionary to store face signatures and their color indices
         var signatureToColor = new Dictionary<string, int>();
-        // int nextColorIndex = colorIndices.Max() + 1;
         int nextColorIndex = 0;
 
         // Process each face
         for (int f = 0; f < faces.Length; f++)
         {
             int[] face = faces[f];
-            // Only apply kis to faces with specified number of vertices
+            
+            // Calculate face signature even for unchanged faces
+            Vector3[] faceVerts = face.Select(idx => vertices[idx]).ToArray();
+            string signature = GetFaceSignature(faceVerts);
+            
             if (targetFaces.HasValue && face.Length != targetFaces.Value)
             {
-                // Copy face unchanged
+                // Copy face unchanged but still use its signature for coloring
                 newFaces.Add(face);
-                newColorIndices.Add(colorIndices[f]);
+                
+                // Assign color based on signature
+                if (!signatureToColor.ContainsKey(signature))
+                    signatureToColor[signature] = nextColorIndex++;
+                newColorIndices.Add(signatureToColor[signature]);
                 continue;
             }
 
+            // Calculate face center and normal for pyramidal faces
             Vector3 center = Vector3.zero;
             foreach (int idx in face)
                 center += vertices[idx];
             center /= face.Length;
-            
-            Vector3 normal = CalculateFaceNormal(vertices.ToList(), face);
-            
-            // Add new vertex at face center
-            int centerIdx = newVertices.Count;
-            newVertices.Add(center + normal * height);
-            
+
+            // Add apex vertex
+            Vector3 normal = CalculateFaceNormal(vertices, face);
+            Vector3 apex = center + normal * height;
+            int apexIndex = newVertices.Count;
+            newVertices.Add(apex);
+
             // Create new triangular faces
             for (int i = 0; i < face.Length; i++)
             {
-                int next = (i + 1) % face.Length;
-                int[] newFace = new int[] { face[i], face[next], centerIdx };
+                int v1 = face[i];
+                int v2 = face[(i + 1) % face.Length];
+                int[] newFace = new[] { v1, v2, apexIndex };
+                
+                // Calculate signature for new triangular face
+                Vector3[] newFaceVerts = newFace.Select(idx => newVertices[idx]).ToArray();
+                string newSignature = GetFaceSignature(newFaceVerts);
+                
+                if (!signatureToColor.ContainsKey(newSignature))
+                    signatureToColor[newSignature] = nextColorIndex++;
+                
                 newFaces.Add(newFace);
-
-                // Calculate signature for this new triangular face
-                Vector3[] triangleVerts = new[] {
-                    vertices[face[i]],
-                    vertices[face[next]],
-                    newVertices[centerIdx]
-                };
-                string signature = GetFaceSignature(triangleVerts, 0);
-
-                // Assign color based on signature
-                if (!signatureToColor.ContainsKey(signature))
-                {
-                    signatureToColor[signature] = nextColorIndex++;
-                }
-                newColorIndices.Add(signatureToColor[signature]);
+                newColorIndices.Add(signatureToColor[newSignature]);
             }
         }
-        
-        var result = (newVertices.ToArray(), newFaces.ToArray(), newColorIndices.ToArray());
-        return NormalizePolyhedron(result);
+
+        return NormalizePolyhedron((newVertices.ToArray(), newFaces.ToArray(), newColorIndices.ToArray()));
     }
 
 
@@ -863,7 +864,7 @@ public class PolyhedronGenerator : MonoBehaviour
                 orderedFaces.Reverse();
 
             // Calculate color based on face signature
-            string signature = GetFaceSignature(faceVerts, 1);
+            string signature = GetFaceSignature(faceVerts);
             if (!signatureToColor.ContainsKey(signature))
                 signatureToColor[signature] = nextColorIndex++;
 
@@ -1047,7 +1048,7 @@ public class PolyhedronGenerator : MonoBehaviour
     }
 
     // Add this as a class-level method, before any operator methods
-    private static string GetFaceSignature(Vector3[] faceVerts, float rounding)
+    private static string GetFaceSignature(Vector3[] faceVerts, float rounding = 1)
     {
         var lengths = new List<float>();
         for (int i = 0; i < faceVerts.Length; i++)
