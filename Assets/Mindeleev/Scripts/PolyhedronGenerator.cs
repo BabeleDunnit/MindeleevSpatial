@@ -1010,15 +1010,17 @@ public class PolyhedronGenerator : MonoBehaviour
             center += v;
         center /= vertices.Length;
 
-        // Calculate average distance from center to vertices
-        float totalRadius = 0f;
+        // Find maximum distance from center to any vertex (circumradius)
+        float maxRadius = 0f;
         foreach (var v in vertices)
-            totalRadius += Vector3.Distance(center, v);
-        float avgRadius = totalRadius / vertices.Length;
+        {
+            float distance = Vector3.Distance(center, v);
+            maxRadius = Mathf.Max(maxRadius, distance);
+        }
 
         // Target radius (use 1 as standard size)
         float targetRadius = 1f;
-        float scale = targetRadius / avgRadius;
+        float scale = targetRadius / maxRadius;
 
         // Create normalized vertices
         Vector3[] normalizedVertices = vertices
