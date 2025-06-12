@@ -219,6 +219,7 @@ public class PolyhedronGenerator : MonoBehaviour
                 'k' => ApplyKis(current, factor),
                 't' => ApplyTruncate(current, factor),
                 'a' => ApplyAmbo(current),
+                'd' => ApplyDual(current),  // Add this line
                 _ => current
             };
         }
@@ -237,23 +238,6 @@ public class PolyhedronGenerator : MonoBehaviour
         var signatureToColor = new Dictionary<string, int>();
         // int nextColorIndex = colorIndices.Max() + 1;
         int nextColorIndex = 0;
-
-        // Helper function to calculate face signature
-        string GetFaceSignature(Vector3[] faceVerts, float rounding)
-        {
-            var lengths = new List<float>();
-            for (int i = 0; i < faceVerts.Length; i++)
-            {
-                Vector3 v1 = faceVerts[i];
-                Vector3 v2 = faceVerts[(i + 1) % faceVerts.Length];
-                lengths.Add(Vector3.Distance(v1, v2));
-            }
-            lengths.Sort();
-            // Use rounding parameter to control precision
-            var signature = string.Join(",", lengths.Select(l =>
-                Math.Round(l, (int)rounding).ToString($"F{(int)rounding}", CultureInfo.InvariantCulture)));
-            return signature;
-        }
 
         // Process each face
         for (int f = 0; f < faces.Length; f++)
@@ -729,6 +713,100 @@ public class PolyhedronGenerator : MonoBehaviour
         return (newVertices.ToArray(), newFaces.ToArray(), newColorIndices.ToArray());
     }
 
+    public static (Vector3[], int[][], int[]) ApplyDual((Vector3[], int[][], int[]) input)
+    {
+        var (vertices, faces, colorIndices) = input;
+        
+        // Create dual vertices array (one per original face)
+        var dualVertices = new Vector3[faces.Length];
+        
+        // Calculate face centers - these become the dual vertices
+        for (int i = 0; i < faces.Length; i++)
+        {
+            Vector3 center = Vector3.zero;
+            foreach (int idx in faces[i])
+                center += vertices[idx];
+            dualVertices[i] = center / faces[i].Length;
+        }
+
+        // Setup for congruence coloring
+        var signatureToColor = new Dictionary<string, int>();
+        int nextColorIndex = 0;
+        // int rounding = Mathf.Clamp((int)Mathf.Abs(Mathf.Log10(colorSensitivity)), 0, 6);
+
+        // Calculate dual polyhedron center
+        Vector3 dualCenter = Vector3.zero;
+        foreach (var v in dualVertices)
+            dualCenter += v;
+        dualCenter /= dualVertices.Length;
+
+        // Create faces from original vertices
+        var dualFaces = new List<int[]>();
+        var dualColors = new List<int>();
+
+        // For each original vertex, create a face from incident face centers
+        for (int v = 0; v < vertices.Length; v++)
+        {
+            // Find all faces containing this vertex
+            var incidentFaces = new List<int>();
+            for (int f = 0; f < faces.Length; f++)
+                if (faces[f].Contains(v))
+                    incidentFaces.Add(f);
+
+            if (incidentFaces.Count < 3) continue;
+
+            // Order faces around the vertex
+            var orderedFaces = new List<int>();
+            var used = new HashSet<int>();
+            int currentFace = incidentFaces[0];
+            
+            do
+            {
+                orderedFaces.Add(currentFace);
+                used.Add(currentFace);
+                
+                // Find next face sharing an edge with current face
+                int[] face = faces[currentFace];
+                int idx = System.Array.IndexOf(face, v);
+                int nextVert = face[(idx + 1) % face.Length];
+                
+                currentFace = -1;
+                foreach (int f in incidentFaces)
+                {
+                    if (!used.Contains(f) && faces[f].Contains(nextVert))
+                    {
+                        currentFace = f;
+                        break;
+                    }
+                }
+            }
+            while (currentFace != -1 && orderedFaces.Count < incidentFaces.Count);
+
+            // Check winding
+            Vector3[] faceVerts = orderedFaces.Select(f => dualVertices[f]).ToArray();
+            Vector3 faceCenter = Vector3.zero;
+            foreach (var vert in faceVerts)
+                faceCenter += vert;
+            faceCenter /= faceVerts.Length;
+
+            Vector3 normal = CalculateFaceNormal(faceVerts.ToList(), Enumerable.Range(0, faceVerts.Length).ToArray());
+            Vector3 outward = (faceCenter - dualCenter).normalized;
+
+            if (Vector3.Dot(normal, outward) < 0)
+                orderedFaces.Reverse();
+
+            // Calculate color based on face signature
+            string signature = GetFaceSignature(faceVerts, 1);
+            if (!signatureToColor.ContainsKey(signature))
+                signatureToColor[signature] = nextColorIndex++;
+
+            dualFaces.Add(orderedFaces.ToArray());
+            dualColors.Add(signatureToColor[signature]);
+        }
+
+        return (dualVertices, dualFaces.ToArray(), dualColors.ToArray());
+    }
+
     private static bool NeedsWindingFlip(List<Vector3> vertices, int[] faceIndices, Vector3 center)
     {
         // Get face center
@@ -898,6 +976,23 @@ public class PolyhedronGenerator : MonoBehaviour
             text.alignment = TextAlignment.Center;
             text.color = Color.black;
         }
+    }
+
+    // Add this as a class-level method, before any operator methods
+    private static string GetFaceSignature(Vector3[] faceVerts, float rounding)
+    {
+        var lengths = new List<float>();
+        for (int i = 0; i < faceVerts.Length; i++)
+        {
+            Vector3 v1 = faceVerts[i];
+            Vector3 v2 = faceVerts[(i + 1) % faceVerts.Length];
+            lengths.Add(Vector3.Distance(v1, v2));
+        }
+        lengths.Sort();
+        // Use rounding parameter to control precision
+        var signature = string.Join(",", lengths.Select(l =>
+            Math.Round(l, (int)rounding).ToString($"F{(int)rounding}", CultureInfo.InvariantCulture)));
+        return signature;
     }
 }
 
