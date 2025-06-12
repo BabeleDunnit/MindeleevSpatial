@@ -278,7 +278,8 @@ public class PolyhedronGenerator : MonoBehaviour
             }
         }
         
-        return (newVertices.ToArray(), newFaces.ToArray(), newColorIndices.ToArray());
+        var result = (newVertices.ToArray(), newFaces.ToArray(), newColorIndices.ToArray());
+        return NormalizePolyhedron(result);
     }
 
 
@@ -556,7 +557,8 @@ public class PolyhedronGenerator : MonoBehaviour
         edgeCount = newFaces.Count - (faceCount + vertexCount);
         Debug.Log($"Created {edgeCount} edge faces");
 
-        return (newVertices.ToArray(), newFaces.ToArray(), newColorIndices.ToArray());
+        var result = (newVertices.ToArray(), newFaces.ToArray(), newColorIndices.ToArray());
+        return NormalizePolyhedron(result);
     }
 
     public static (Vector3[], int[][], int[]) ApplyAmbo((Vector3[], int[][], int[]) input)
@@ -710,7 +712,8 @@ public class PolyhedronGenerator : MonoBehaviour
             newColorIndices.Add(colorIndices.Max() + 1);
         }
 
-        return (newVertices.ToArray(), newFaces.ToArray(), newColorIndices.ToArray());
+        var result = (newVertices.ToArray(), newFaces.ToArray(), newColorIndices.ToArray());
+        return NormalizePolyhedron(result);
     }
 
     public static (Vector3[], int[][], int[]) ApplyDual((Vector3[], int[][], int[]) input)
@@ -804,7 +807,8 @@ public class PolyhedronGenerator : MonoBehaviour
             dualColors.Add(signatureToColor[signature]);
         }
 
-        return (dualVertices, dualFaces.ToArray(), dualColors.ToArray());
+        var result = (dualVertices, dualFaces.ToArray(), dualColors.ToArray());
+        return NormalizePolyhedron(result);
     }
 
     private static bool NeedsWindingFlip(List<Vector3> vertices, int[] faceIndices, Vector3 center)
@@ -993,6 +997,35 @@ public class PolyhedronGenerator : MonoBehaviour
         var signature = string.Join(",", lengths.Select(l =>
             Math.Round(l, (int)rounding).ToString($"F{(int)rounding}", CultureInfo.InvariantCulture)));
         return signature;
+    }
+
+    // Add this helper method at class level
+    private static (Vector3[], int[][], int[]) NormalizePolyhedron((Vector3[], int[][], int[]) poly)
+    {
+        var (vertices, faces, colors) = poly;
+        
+        // Find center of polyhedron
+        Vector3 center = Vector3.zero;
+        foreach (var v in vertices)
+            center += v;
+        center /= vertices.Length;
+
+        // Calculate average distance from center to vertices
+        float totalRadius = 0f;
+        foreach (var v in vertices)
+            totalRadius += Vector3.Distance(center, v);
+        float avgRadius = totalRadius / vertices.Length;
+
+        // Target radius (use 1 as standard size)
+        float targetRadius = 1f;
+        float scale = targetRadius / avgRadius;
+
+        // Create normalized vertices
+        Vector3[] normalizedVertices = vertices
+            .Select(v => (v - center) * scale + center)
+            .ToArray();
+
+        return (normalizedVertices, faces, colors);
     }
 }
 
