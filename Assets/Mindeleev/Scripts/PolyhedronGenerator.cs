@@ -267,7 +267,7 @@ public class PolyhedronGenerator : MonoBehaviour
                     'k' => ApplyKis(current, factor, faces),
                     'a' => ApplyAmbo(current),
                     'd' => ApplyDual(current),
-                    'l' => ApplyLoft(current, 0.5f, extrudeDistance: 0, targetFaces: faces), // Fix parameter order
+                    'f' => ApplyFuckedLoft(current, 0.5f, extrudeDistance: 0, targetFaces: faces), // Fix parameter order
                     _ => current
                 };
             }
@@ -679,7 +679,7 @@ public class PolyhedronGenerator : MonoBehaviour
         return NormalizePolyhedron(result);
     }
 
-    public static (Vector3[], int[][], int[]) ApplyLoft(
+    public static (Vector3[], int[][], int[]) ApplyFuckedLoft(
         (Vector3[], int[][], int[]) input,
         float insetDistance = 0.5f,      // Distance to inset vertices toward the face center
         float extrudeDistance = -0.2f,   // Distance to extrude vertices along the face normal
