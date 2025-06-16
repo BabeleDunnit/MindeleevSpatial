@@ -276,6 +276,7 @@ public class PolyhedronGenerator : MonoBehaviour
                     'd' => ApplyDual(current),
                     'f' => ApplyFuckedLoft(current, 0.5f, extrudeDistance: 0, targetFaces: faces), // Fix parameter order
                     'n' => ApplyInsetN(current, faces ?? 0, param0 ?? 0.6f, param1 ?? -0.3f),
+                    'l' => ApplyStellation(current),
                     _ => current,
                     
                 };
@@ -605,9 +606,7 @@ public class PolyhedronGenerator : MonoBehaviour
     }
 
     public static (Vector3[], int[][], int[]) ApplyStellation(
-        (Vector3[], int[][], int[]) input, 
-        float height, 
-        int? targetFaces = null)
+        (Vector3[], int[][], int[]) input)
     {
         var (vertices, faces, colorIndices) = input;
         var newVertices = new List<Vector3>(vertices);
@@ -617,75 +616,96 @@ public class PolyhedronGenerator : MonoBehaviour
         var signatureToColor = new Dictionary<string, int>();
         int nextColorIndex = 0;
 
-        // Process each face
+        // First pass: collect all edge-face pairs and their centers
+        var edgeToFaceCenters = new Dictionary<string, List<Vector3>>();
+        var centers = new Vector3[faces.Length];
+
         for (int f = 0; f < faces.Length; f++)
         {
-            int[] face = faces[f];
-            Vector3[] faceVerts = face.Select(idx => vertices[idx]).ToArray();
-            string signature = GetFaceSignature(faceVerts);
+            var face = faces[f];
+            centers[f] = CalculateFaceCenter(faces[f].Select(idx => vertices[idx]).ToArray());
 
-            if (targetFaces.HasValue && face.Length != targetFaces.Value)
-            {
-                // Copy face unchanged but still use its signature for coloring
-                newFaces.Add(face);
-                if (!signatureToColor.ContainsKey(signature))
-                    signatureToColor[signature] = nextColorIndex++;
-                newColorIndices.Add(signatureToColor[signature]);
-                continue;
-            }
-
-            // Calculate face center and normal
-            Vector3 center = Vector3.zero;
-            foreach (int idx in face)
-                center += vertices[idx];
-            center /= face.Length;
-
-            Vector3 normal = CalculateFaceNormal(vertices, face);
-            Vector3 offset = normal * height;
-
-            // Create new vertices by pushing existing ones outward
-            var stellatedFaceIndices = new int[face.Length];
             for (int i = 0; i < face.Length; i++)
             {
-                Vector3 originalVertex = vertices[face[i]];
-                Vector3 stellatedVertex = originalVertex + offset;
-                stellatedFaceIndices[i] = newVertices.Count;
-                newVertices.Add(stellatedVertex);
-            }
-
-            // Add new stellated face
-            Vector3[] newFaceVerts = stellatedFaceIndices.Select(idx => newVertices[idx]).ToArray();
-            string newSignature = GetFaceSignature(newFaceVerts);
-            if (!signatureToColor.ContainsKey(newSignature))
-                signatureToColor[newSignature] = nextColorIndex++;
-
-            newFaces.Add(stellatedFaceIndices);
-            newColorIndices.Add(signatureToColor[newSignature]);
-
-            // Add side faces connecting original to stellated
-            for (int i = 0; i < face.Length; i++)
-            {
-                int nextI = (i + 1) % face.Length;
-                int[] sideFace = new[] 
-                { 
-                    face[i], 
-                    face[nextI], 
-                    stellatedFaceIndices[nextI], 
-                    stellatedFaceIndices[i] 
-                };
-
-                Vector3[] sideFaceVerts = sideFace.Select(idx => newVertices[idx]).ToArray();
-                string sideSignature = GetFaceSignature(sideFaceVerts);
-                if (!signatureToColor.ContainsKey(sideSignature))
-                    signatureToColor[sideSignature] = nextColorIndex++;
-
-                newFaces.Add(sideFace);
-                newColorIndices.Add(signatureToColor[sideSignature]);
+                int v1 = face[i];
+                int v2 = face[(i + 1) % face.Length];
+                string edgeKey = v1 < v2 ? $"{v1}-{v2}" : $"{v2}-{v1}";
+                
+                if (!edgeToFaceCenters.ContainsKey(edgeKey))
+                    edgeToFaceCenters[edgeKey] = new List<Vector3>();
+                edgeToFaceCenters[edgeKey].Add(centers[f]);
             }
         }
 
-        var result = (newVertices.ToArray(), newFaces.ToArray(), newColorIndices.ToArray());
-        return NormalizePolyhedron(result);
+        // Second pass: create vertices and faces
+        var edgeToVertexIndex = new Dictionary<string, int>();
+
+        for (int f = 0; f < faces.Length; f++)
+        {
+            var face = faces[f];
+            var faceNewVertices = new List<int>();
+
+            for (int i = 0; i < face.Length; i++)
+            {
+                int v1 = face[i];
+                int v2 = face[(i + 1) % face.Length];
+                string edgeKey = v1 < v2 ? $"{v1}-{v2}" : $"{v2}-{v1}";
+
+                if (!edgeToVertexIndex.ContainsKey(edgeKey))
+                {
+                    // Calculate edge midpoint
+                    Vector3 edgeMidpoint = (vertices[v1] + vertices[v2]) * 0.5f;
+                    
+                    // Average all face centers that share this edge
+                    Vector3 averageCenter = Vector3.zero;
+                    var faceCenters = edgeToFaceCenters[edgeKey];
+                    foreach (var center in faceCenters)
+                        averageCenter += center;
+                    averageCenter /= faceCenters.Count;
+
+                    // Create new vertex
+                    Vector3 newVertex = Vector3.Lerp(edgeMidpoint, averageCenter, 0.5f);
+                    edgeToVertexIndex[edgeKey] = newVertices.Count;
+                    newVertices.Add(newVertex);
+                }
+
+                faceNewVertices.Add(edgeToVertexIndex[edgeKey]);
+            }
+
+            // Create triangular faces with consistent winding
+            for (int i = 0; i < face.Length; i++)
+            {
+                int v1 = face[i];
+                int v2 = face[(i + 1) % face.Length];
+                int midVertex = faceNewVertices[i];
+                int nextMidVertex = faceNewVertices[(i + 1) % face.Length];
+
+                // Create faces with consistent winding order
+                AddTriangleWithColor(newFaces, newColorIndices, signatureToColor, ref nextColorIndex,
+                    new[] { v1, v2, midVertex }, newVertices);
+                AddTriangleWithColor(newFaces, newColorIndices, signatureToColor, ref nextColorIndex,
+                    new[] { midVertex, v2, nextMidVertex }, newVertices);
+                AddTriangleWithColor(newFaces, newColorIndices, signatureToColor, ref nextColorIndex,
+                    new[] { midVertex, nextMidVertex, faceNewVertices[(i + 2) % face.Length] }, newVertices);
+            }
+        }
+
+        return NormalizePolyhedron((newVertices.ToArray(), newFaces.ToArray(), newColorIndices.ToArray()));
+    }
+
+    private static void AddTriangleWithColor(
+        List<int[]> faces, 
+        List<int> colorIndices,
+        Dictionary<string, int> signatureToColor,
+        ref int nextColorIndex,
+        int[] triangle,
+        List<Vector3> vertices)
+    {
+        string sig = GetFaceSignature(triangle.Select(idx => vertices[idx]).ToArray());
+        if (!signatureToColor.ContainsKey(sig))
+            signatureToColor[sig] = nextColorIndex++;
+        faces.Add(triangle);
+        colorIndices.Add(signatureToColor[sig]);
     }
 
     public static (Vector3[], int[][], int[]) ApplyFuckedLoft(
