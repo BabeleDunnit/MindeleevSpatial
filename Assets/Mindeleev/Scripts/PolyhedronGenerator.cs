@@ -765,9 +765,13 @@ public class PolyhedronGenerator : MonoBehaviour
     public static (Vector3[], int[][], int[]) ApplyInsetN(
         (Vector3[], int[][], int[]) input,
         int n = 0,
-        float insetDistance = 0.5f,
-        float extrudeDistance = 0.0f)
+        float insetDistance = 0.5f,    // Controls inset amount (0-1)
+        float extrudeDistance = 0.0f)  // Controls extrusion along normal
     {
+
+        insetDistance = 0.6f;
+        extrudeDistance = -0.3f;
+
         var (vertices, faces, colorIndices) = input;
         var newVertices = new List<Vector3>(vertices);
         var newFaces = new List<int[]>();
@@ -776,7 +780,9 @@ public class PolyhedronGenerator : MonoBehaviour
         var signatureToColor = new Dictionary<string, int>();
         int nextColorIndex = 0;
 
-        // Precompute centers and normals for every face
+        Debug.Log($"ApplyInsetN with n={n}, inset={insetDistance}, extrude={extrudeDistance}"); // Debug
+
+        // Precompute centers and normals
         var centers = new Vector3[faces.Length];
         var normals = new Vector3[faces.Length];
         for (int f = 0; f < faces.Length; f++)
@@ -786,10 +792,9 @@ public class PolyhedronGenerator : MonoBehaviour
             normals[f] = CalculateFaceNormal(faceVerts.ToList(), Enumerable.Range(0, faceVerts.Length).ToArray());
         }
 
-        // Map for new inset vertices: [faceIndex][vertexIndexInFace] = newVertexIndex
         var insetVertexMap = new Dictionary<(int, int), int>();
 
-        // Create inset vertices for each target face
+        // Phase 1: Create all inset vertices first
         for (int f = 0; f < faces.Length; f++)
         {
             var face = faces[f];
@@ -797,16 +802,27 @@ public class PolyhedronGenerator : MonoBehaviour
             {
                 for (int i = 0; i < face.Length; i++)
                 {
-                    int v = face[i];
-                    Vector3 insetPoint = Vector3.Lerp(vertices[v], centers[f], insetDistance) + normals[f] * extrudeDistance;
+                    Vector3 originalPos = vertices[face[i]];
+                    Vector3 insetPos = Vector3.Lerp(originalPos, centers[f], insetDistance);
                     int newIdx = newVertices.Count;
-                    newVertices.Add(insetPoint);
+                    newVertices.Add(insetPos);
                     insetVertexMap[(f, i)] = newIdx;
                 }
             }
         }
 
-        // Build new faces
+        // Phase 2: Apply extrusion to all inset vertices
+        if (extrudeDistance != 0)
+        {
+            foreach (var kvp in insetVertexMap)
+            {
+                var (faceIdx, _) = kvp.Key;
+                int vertexIdx = kvp.Value;
+                newVertices[vertexIdx] += normals[faceIdx] * extrudeDistance;
+            }
+        }
+
+        // Phase 3: Build all faces
         for (int f = 0; f < faces.Length; f++)
         {
             var face = faces[f];
@@ -829,9 +845,11 @@ public class PolyhedronGenerator : MonoBehaviour
                     newFaces.Add(quad);
                     newColorIndices.Add(signatureToColor[sig]);
                 }
-                // Inset face (reverse order for correct normal)
+
+                // Inset face (maintain original winding)
                 int[] insetFace = Enumerable.Range(0, nVerts)
-                    .Select(i => insetVertexMap[(f, i)]).Reverse().ToArray();
+                    .Select(i => insetVertexMap[(f, i)])
+                    .ToArray();
                 string insetSig = GetFaceSignature(insetFace.Select(idx => newVertices[idx]).ToArray());
                 if (!signatureToColor.ContainsKey(insetSig))
                     signatureToColor[insetSig] = nextColorIndex++;
@@ -840,7 +858,6 @@ public class PolyhedronGenerator : MonoBehaviour
             }
             else
             {
-                // Non-target faces: just copy
                 newFaces.Add(face);
                 newColorIndices.Add(colorIndices[f]);
             }
