@@ -181,7 +181,7 @@ public class PolyhedronGenerator : MonoBehaviour
         };
 
         // Parse operators and parameters from right to left
-        var tokens = new List<(char op, int? faces, float factor)>();
+        var tokens = new List<(char op, int? faces, float? param0, float? param1)>();
         int i = 0;
         while (i < basePos)
         {
@@ -189,7 +189,8 @@ public class PolyhedronGenerator : MonoBehaviour
             if (char.IsLower(c))
             {
                 int? faces = null;
-                float factor = 0.1f;
+                float? param0 = null;
+                float? param1 = null;
 
                 // Check if next char starts a parameter list
                 if (i + 1 < basePos && recipe[i + 1] == '(')
@@ -212,8 +213,14 @@ public class PolyhedronGenerator : MonoBehaviour
 
                     // Parse second parameter (factor)
                     if (parameters.Length > 1 && float.TryParse(parameters[1], 
-                        NumberStyles.Float, CultureInfo.InvariantCulture, out float factorParam))
-                        factor = factorParam;
+                        NumberStyles.Float, CultureInfo.InvariantCulture, out float factorParam0))
+                        param0 = factorParam0;
+
+                    // Parse second parameter (factor)
+                    if (parameters.Length > 2 && float.TryParse(parameters[2], 
+                        NumberStyles.Float, CultureInfo.InvariantCulture, out float factorParam1))
+                        param1 = factorParam1;
+
 
                     i = closePos + 1;
                 }
@@ -231,7 +238,7 @@ public class PolyhedronGenerator : MonoBehaviour
                     i = j;
                 }
 
-                tokens.Add((c, faces, factor));
+                tokens.Add((c, faces, param0, param1));
             }
             else
             {
@@ -251,24 +258,24 @@ public class PolyhedronGenerator : MonoBehaviour
                 break;
             }
 
-            var (op, faces, factor) = tokens[t];
+            var (op, faces, param0, param1) = tokens[t];
             // Substitute truncate operator with its equivalent sequence
             if (op == 't')
             {
                 // Apply d->k->d sequence for truncation
                 current = ApplyDual(current);
-                current = ApplyKis(current, factor, faces);
+                current = ApplyKis(current, param0 ?? 0.1f, faces);
                 current = ApplyDual(current);
             }
             else
             {
                 current = op switch
                 {
-                    'k' => ApplyKis(current, factor, faces),
+                    'k' => ApplyKis(current, param0 ?? 0.1f, faces),
                     'a' => ApplyAmbo(current),
                     'd' => ApplyDual(current),
                     'f' => ApplyFuckedLoft(current, 0.5f, extrudeDistance: 0, targetFaces: faces), // Fix parameter order
-                    'n' => ApplyInsetN(current),
+                    'n' => ApplyInsetN(current, faces ?? 0, param0 ?? 0.6f, param1 ?? -0.3f),
                     _ => current,
                     
                 };
@@ -769,8 +776,8 @@ public class PolyhedronGenerator : MonoBehaviour
         float extrudeDistance = 0.0f)  // Controls extrusion along normal
     {
 
-        insetDistance = 0.6f;
-        extrudeDistance = -0.3f;
+        // insetDistance = 0.6f;
+        // extrudeDistance = -0.3f;
 
         var (vertices, faces, colorIndices) = input;
         var newVertices = new List<Vector3>(vertices);
