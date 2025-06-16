@@ -268,7 +268,9 @@ public class PolyhedronGenerator : MonoBehaviour
                     'a' => ApplyAmbo(current),
                     'd' => ApplyDual(current),
                     'f' => ApplyFuckedLoft(current, 0.5f, extrudeDistance: 0, targetFaces: faces), // Fix parameter order
-                    _ => current
+                    'n' => ApplyInsetN(current),
+                    _ => current,
+                    
                 };
             }
         }
@@ -754,6 +756,93 @@ public class PolyhedronGenerator : MonoBehaviour
                     signatureToColor[quadSignature] = nextColorIndex++;
                 newFaces.Add(quad);
                 newColorIndices.Add(signatureToColor[quadSignature]);
+            }
+        }
+
+        return NormalizePolyhedron((newVertices.ToArray(), newFaces.ToArray(), newColorIndices.ToArray()));
+    }
+
+    public static (Vector3[], int[][], int[]) ApplyInsetN(
+        (Vector3[], int[][], int[]) input,
+        int n = 0,
+        float insetDistance = 0.5f,
+        float extrudeDistance = 0.0f)
+    {
+        var (vertices, faces, colorIndices) = input;
+        var newVertices = new List<Vector3>(vertices);
+        var newFaces = new List<int[]>();
+        var newColorIndices = new List<int>();
+
+        var signatureToColor = new Dictionary<string, int>();
+        int nextColorIndex = 0;
+
+        // Precompute centers and normals for every face
+        var centers = new Vector3[faces.Length];
+        var normals = new Vector3[faces.Length];
+        for (int f = 0; f < faces.Length; f++)
+        {
+            var faceVerts = faces[f].Select(idx => vertices[idx]).ToArray();
+            centers[f] = CalculateFaceCenter(faceVerts);
+            normals[f] = CalculateFaceNormal(faceVerts.ToList(), Enumerable.Range(0, faceVerts.Length).ToArray());
+        }
+
+        // Map for new inset vertices: [faceIndex][vertexIndexInFace] = newVertexIndex
+        var insetVertexMap = new Dictionary<(int, int), int>();
+
+        // Create inset vertices for each target face
+        for (int f = 0; f < faces.Length; f++)
+        {
+            var face = faces[f];
+            if (n == 0 || face.Length == n)
+            {
+                for (int i = 0; i < face.Length; i++)
+                {
+                    int v = face[i];
+                    Vector3 insetPoint = Vector3.Lerp(vertices[v], centers[f], insetDistance) + normals[f] * extrudeDistance;
+                    int newIdx = newVertices.Count;
+                    newVertices.Add(insetPoint);
+                    insetVertexMap[(f, i)] = newIdx;
+                }
+            }
+        }
+
+        // Build new faces
+        for (int f = 0; f < faces.Length; f++)
+        {
+            var face = faces[f];
+            int nVerts = face.Length;
+            bool isTarget = (n == 0 || nVerts == n);
+
+            if (isTarget)
+            {
+                // Side faces (quads)
+                for (int i = 0; i < nVerts; i++)
+                {
+                    int v0 = face[i];
+                    int v1 = face[(i + 1) % nVerts];
+                    int inset0 = insetVertexMap[(f, i)];
+                    int inset1 = insetVertexMap[(f, (i + 1) % nVerts)];
+                    int[] quad = new int[] { v0, v1, inset1, inset0 };
+                    string sig = GetFaceSignature(quad.Select(idx => newVertices[idx]).ToArray());
+                    if (!signatureToColor.ContainsKey(sig))
+                        signatureToColor[sig] = nextColorIndex++;
+                    newFaces.Add(quad);
+                    newColorIndices.Add(signatureToColor[sig]);
+                }
+                // Inset face (reverse order for correct normal)
+                int[] insetFace = Enumerable.Range(0, nVerts)
+                    .Select(i => insetVertexMap[(f, i)]).Reverse().ToArray();
+                string insetSig = GetFaceSignature(insetFace.Select(idx => newVertices[idx]).ToArray());
+                if (!signatureToColor.ContainsKey(insetSig))
+                    signatureToColor[insetSig] = nextColorIndex++;
+                newFaces.Add(insetFace);
+                newColorIndices.Add(signatureToColor[insetSig]);
+            }
+            else
+            {
+                // Non-target faces: just copy
+                newFaces.Add(face);
+                newColorIndices.Add(colorIndices[f]);
             }
         }
 
