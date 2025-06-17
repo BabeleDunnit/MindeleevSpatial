@@ -20,7 +20,7 @@ public class PolyhedraGridGenerator : MonoBehaviour
 //     private readonly string[] operators = { "", "k(3,.5)", "k" };  // Added empty string for null operation
 //     private readonly string[] operators = { "", "nad", "n3ad", "n4ad", "n(0,0.6, -0.3)", "n",  };  // Added empty string for null operation
 //     private readonly string[] operators = { "", "f", "n(0,0.5,0)", "ff",  };  // Added empty string for null operation
-    private readonly string[] operators = { "", "l", "ll","lll"  };  // Added empty string for null operation
+    private readonly string[] operators = { "", "l", "f" };  // Added empty string for null operation
 
     void Start()
     {

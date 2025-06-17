@@ -274,7 +274,7 @@ public class PolyhedronGenerator : MonoBehaviour
                     'k' => ApplyKis(current, param0 ?? 0.1f, faces),
                     'a' => ApplyAmbo(current),
                     'd' => ApplyDual(current),
-                    'f' => ApplyFuckedLoft(current, 0.5f, extrudeDistance: 0, targetFaces: faces), // Fix parameter order
+                    'f' => ApplyFuckedStellation(current),
                     'n' => ApplyInsetN(current, faces ?? 0, param0 ?? 0.6f, param1 ?? -0.3f),
                     'l' => ApplyStellation(current),
                     _ => current,
@@ -693,8 +693,96 @@ public class PolyhedronGenerator : MonoBehaviour
         return NormalizePolyhedron((newVertices.ToArray(), newFaces.ToArray(), newColorIndices.ToArray()));
     }
 
+    public static (Vector3[], int[][], int[]) ApplyFuckedStellation(
+        (Vector3[], int[][], int[]) input)
+    {
+        var (vertices, faces, colorIndices) = input;
+        var newVertices = new List<Vector3>(vertices);
+        var newFaces = new List<int[]>();
+        var newColorIndices = new List<int>();
+
+        var signatureToColor = new Dictionary<string, int>();
+        int nextColorIndex = 0;
+
+        // First pass: collect all edge-face pairs and their centers
+        var edgeToFaceCenters = new Dictionary<string, List<Vector3>>();
+        var centers = new Vector3[faces.Length];
+
+        for (int f = 0; f < faces.Length; f++)
+        {
+            var face = faces[f];
+            centers[f] = CalculateFaceCenter(faces[f].Select(idx => vertices[idx]).ToArray());
+
+            for (int i = 0; i < face.Length; i++)
+            {
+                int v1 = face[i];
+                int v2 = face[(i + 1) % face.Length];
+                string edgeKey = v1 < v2 ? $"{v1}-{v2}" : $"{v2}-{v1}";
+                
+                if (!edgeToFaceCenters.ContainsKey(edgeKey))
+                    edgeToFaceCenters[edgeKey] = new List<Vector3>();
+                edgeToFaceCenters[edgeKey].Add(centers[f]);
+            }
+        }
+
+        // Second pass: create vertices and faces
+        var edgeToVertexIndex = new Dictionary<string, int>();
+
+        for (int f = 0; f < faces.Length; f++)
+        {
+            var face = faces[f];
+            var faceNewVertices = new List<int>();
+
+            for (int i = 0; i < face.Length; i++)
+            {
+                int v1 = face[i];
+                int v2 = face[(i + 1) % face.Length];
+                string edgeKey = v1 < v2 ? $"{v1}-{v2}" : $"{v2}-{v1}";
+
+                if (!edgeToVertexIndex.ContainsKey(edgeKey))
+                {
+                    // Calculate edge midpoint
+                    Vector3 edgeMidpoint = (vertices[v1] + vertices[v2]) * 0.5f;
+                    
+                    // Average all face centers that share this edge
+                    Vector3 averageCenter = Vector3.zero;
+                    var faceCenters = edgeToFaceCenters[edgeKey];
+                    foreach (var center in faceCenters)
+                        averageCenter += center;
+                    averageCenter /= faceCenters.Count;
+
+                    // Create new vertex
+                    Vector3 newVertex = Vector3.Lerp(edgeMidpoint, averageCenter, 0.5f);
+                    edgeToVertexIndex[edgeKey] = newVertices.Count;
+                    newVertices.Add(newVertex);
+                }
+
+                faceNewVertices.Add(edgeToVertexIndex[edgeKey]);
+            }
+
+            // Create triangular faces with consistent winding
+            for (int i = 0; i < face.Length; i++)
+            {
+                int v1 = face[i];
+                int v2 = face[(i + 1) % face.Length];
+                int midVertex = faceNewVertices[i];
+                int nextMidVertex = faceNewVertices[(i + 1) % face.Length];
+
+                // Create faces with consistent winding order
+                AddTriangleWithColor(newFaces, newColorIndices, signatureToColor, ref nextColorIndex,
+                    new[] { v1, v2, midVertex }, newVertices);
+                AddTriangleWithColor(newFaces, newColorIndices, signatureToColor, ref nextColorIndex,
+                    new[] { midVertex, v2, nextMidVertex }, newVertices);
+                AddTriangleWithColor(newFaces, newColorIndices, signatureToColor, ref nextColorIndex,
+                    new[] { midVertex, nextMidVertex, faceNewVertices[(i + 2) % face.Length] }, newVertices);
+            }
+        }
+
+        return NormalizePolyhedron((newVertices.ToArray(), newFaces.ToArray(), newColorIndices.ToArray()));
+    }
+
     private static void AddTriangleWithColor(
-        List<int[]> faces, 
+        List<int[]> faces,
         List<int> colorIndices,
         Dictionary<string, int> signatureToColor,
         ref int nextColorIndex,
