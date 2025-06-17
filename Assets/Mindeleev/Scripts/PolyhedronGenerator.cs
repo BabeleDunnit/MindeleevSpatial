@@ -619,11 +619,13 @@ public class PolyhedronGenerator : MonoBehaviour
         // First pass: collect all edge-face pairs and their centers
         var edgeToFaceCenters = new Dictionary<string, List<Vector3>>();
         var centers = new Vector3[faces.Length];
+        var faceNewVertices = new Dictionary<int, List<int>>();
 
         for (int f = 0; f < faces.Length; f++)
         {
             var face = faces[f];
             centers[f] = CalculateFaceCenter(faces[f].Select(idx => vertices[idx]).ToArray());
+            faceNewVertices[f] = new List<int>();
 
             for (int i = 0; i < face.Length; i++)
             {
@@ -637,13 +639,12 @@ public class PolyhedronGenerator : MonoBehaviour
             }
         }
 
-        // Second pass: create vertices and faces
+        // Second pass: create vertices
         var edgeToVertexIndex = new Dictionary<string, int>();
 
         for (int f = 0; f < faces.Length; f++)
         {
             var face = faces[f];
-            var faceNewVertices = new List<int>();
 
             for (int i = 0; i < face.Length; i++)
             {
@@ -653,41 +654,47 @@ public class PolyhedronGenerator : MonoBehaviour
 
                 if (!edgeToVertexIndex.ContainsKey(edgeKey))
                 {
-                    // Calculate edge midpoint
                     Vector3 edgeMidpoint = (vertices[v1] + vertices[v2]) * 0.5f;
                     
-                    // Average all face centers that share this edge
                     Vector3 averageCenter = Vector3.zero;
                     var faceCenters = edgeToFaceCenters[edgeKey];
                     foreach (var center in faceCenters)
                         averageCenter += center;
                     averageCenter /= faceCenters.Count;
 
-                    // Create new vertex
                     Vector3 newVertex = Vector3.Lerp(edgeMidpoint, averageCenter, 0.5f);
                     edgeToVertexIndex[edgeKey] = newVertices.Count;
                     newVertices.Add(newVertex);
                 }
 
-                faceNewVertices.Add(edgeToVertexIndex[edgeKey]);
+                faceNewVertices[f].Add(edgeToVertexIndex[edgeKey]);
             }
+        }
+
+        // Third pass: create all faces including central faces
+        for (int f = 0; f < faces.Length; f++)
+        {
+            var face = faces[f];
+            var faceVerts = faceNewVertices[f];
 
             // Create triangular faces with consistent winding
             for (int i = 0; i < face.Length; i++)
             {
                 int v1 = face[i];
                 int v2 = face[(i + 1) % face.Length];
-                int midVertex = faceNewVertices[i];
-                int nextMidVertex = faceNewVertices[(i + 1) % face.Length];
+                int midVertex = faceVerts[i];
+                int nextMidVertex = faceVerts[(i + 1) % face.Length];
 
                 // Create faces with consistent winding order
                 AddTriangleWithColor(newFaces, newColorIndices, signatureToColor, ref nextColorIndex,
                     new[] { v1, v2, midVertex }, newVertices);
                 AddTriangleWithColor(newFaces, newColorIndices, signatureToColor, ref nextColorIndex,
                     new[] { midVertex, v2, nextMidVertex }, newVertices);
-                AddTriangleWithColor(newFaces, newColorIndices, signatureToColor, ref nextColorIndex,
-                    new[] { midVertex, nextMidVertex, faceNewVertices[(i + 2) % face.Length] }, newVertices);
             }
+
+            // Create central face using all edge midpoints
+            AddPolygonWithColor(newFaces, newColorIndices, signatureToColor, ref nextColorIndex,
+                faceVerts.ToArray(), newVertices);
         }
 
         return NormalizePolyhedron((newVertices.ToArray(), newFaces.ToArray(), newColorIndices.ToArray()));
@@ -707,11 +714,13 @@ public class PolyhedronGenerator : MonoBehaviour
         // First pass: collect all edge-face pairs and their centers
         var edgeToFaceCenters = new Dictionary<string, List<Vector3>>();
         var centers = new Vector3[faces.Length];
+        var faceNewVertices = new Dictionary<int, List<int>>();
 
         for (int f = 0; f < faces.Length; f++)
         {
             var face = faces[f];
             centers[f] = CalculateFaceCenter(faces[f].Select(idx => vertices[idx]).ToArray());
+            faceNewVertices[f] = new List<int>();
 
             for (int i = 0; i < face.Length; i++)
             {
@@ -725,13 +734,12 @@ public class PolyhedronGenerator : MonoBehaviour
             }
         }
 
-        // Second pass: create vertices and faces
+        // Second pass: create vertices
         var edgeToVertexIndex = new Dictionary<string, int>();
 
         for (int f = 0; f < faces.Length; f++)
         {
             var face = faces[f];
-            var faceNewVertices = new List<int>();
 
             for (int i = 0; i < face.Length; i++)
             {
@@ -741,44 +749,65 @@ public class PolyhedronGenerator : MonoBehaviour
 
                 if (!edgeToVertexIndex.ContainsKey(edgeKey))
                 {
-                    // Calculate edge midpoint
                     Vector3 edgeMidpoint = (vertices[v1] + vertices[v2]) * 0.5f;
                     
-                    // Average all face centers that share this edge
                     Vector3 averageCenter = Vector3.zero;
                     var faceCenters = edgeToFaceCenters[edgeKey];
                     foreach (var center in faceCenters)
                         averageCenter += center;
                     averageCenter /= faceCenters.Count;
 
-                    // Create new vertex
                     Vector3 newVertex = Vector3.Lerp(edgeMidpoint, averageCenter, 0.5f);
                     edgeToVertexIndex[edgeKey] = newVertices.Count;
                     newVertices.Add(newVertex);
                 }
 
-                faceNewVertices.Add(edgeToVertexIndex[edgeKey]);
+                faceNewVertices[f].Add(edgeToVertexIndex[edgeKey]);
             }
+        }
+
+        // Third pass: create all faces including central faces
+        for (int f = 0; f < faces.Length; f++)
+        {
+            var face = faces[f];
+            var faceVerts = faceNewVertices[f];
 
             // Create triangular faces with consistent winding
             for (int i = 0; i < face.Length; i++)
             {
                 int v1 = face[i];
                 int v2 = face[(i + 1) % face.Length];
-                int midVertex = faceNewVertices[i];
-                int nextMidVertex = faceNewVertices[(i + 1) % face.Length];
+                int midVertex = faceVerts[i];
+                int nextMidVertex = faceVerts[(i + 1) % face.Length];
 
                 // Create faces with consistent winding order
                 AddTriangleWithColor(newFaces, newColorIndices, signatureToColor, ref nextColorIndex,
                     new[] { v1, v2, midVertex }, newVertices);
                 AddTriangleWithColor(newFaces, newColorIndices, signatureToColor, ref nextColorIndex,
                     new[] { midVertex, v2, nextMidVertex }, newVertices);
-                AddTriangleWithColor(newFaces, newColorIndices, signatureToColor, ref nextColorIndex,
-                    new[] { midVertex, nextMidVertex, faceNewVertices[(i + 2) % face.Length] }, newVertices);
             }
+
+            // Create central face using all edge midpoints
+            AddPolygonWithColor(newFaces, newColorIndices, signatureToColor, ref nextColorIndex,
+                faceVerts.ToArray(), newVertices);
         }
 
         return NormalizePolyhedron((newVertices.ToArray(), newFaces.ToArray(), newColorIndices.ToArray()));
+    }
+
+    private static void AddPolygonWithColor(
+        List<int[]> faces,
+        List<int> colorIndices,
+        Dictionary<string, int> signatureToColor,
+        ref int nextColorIndex,
+        int[] polygon,
+        List<Vector3> vertices)
+    {
+        string sig = GetFaceSignature(polygon.Select(idx => vertices[idx]).ToArray());
+        if (!signatureToColor.ContainsKey(sig))
+            signatureToColor[sig] = nextColorIndex++;
+        faces.Add(polygon);
+        colorIndices.Add(signatureToColor[sig]);
     }
 
     private static void AddTriangleWithColor(
@@ -794,87 +823,6 @@ public class PolyhedronGenerator : MonoBehaviour
             signatureToColor[sig] = nextColorIndex++;
         faces.Add(triangle);
         colorIndices.Add(signatureToColor[sig]);
-    }
-
-    public static (Vector3[], int[][], int[]) ApplyFuckedLoft(
-        (Vector3[], int[][], int[]) input,
-        float insetDistance = 0.5f,      // Distance to inset vertices toward the face center
-        float extrudeDistance = -0.2f,   // Distance to extrude vertices along the face normal
-        int? targetFaces = null)         // Target face count (e.g., 3 for triangles, 4 for quads)
-    {
-        var (vertices, faces, colorIndices) = input;
-        var newVertices = new List<Vector3>(vertices); // Start with original vertices
-        var newFaces = new List<int[]>();
-        var newColorIndices = new List<int>();
-
-        var signatureToColor = new Dictionary<string, int>();
-        int nextColorIndex = 0;
-
-        // Precompute centers and normals for every face
-        var centers = new Vector3[faces.Length];
-        var normals = new Vector3[faces.Length];
-        for (int f = 0; f < faces.Length; f++)
-        {
-            var faceVerts = faces[f].Select(idx => vertices[idx]).ToArray();
-            centers[f] = CalculateFaceCenter(faceVerts);
-            normals[f] = CalculateFaceNormal(faceVerts.ToList(), Enumerable.Range(0, faceVerts.Length).ToArray());
-        }
-
-        // Process each face
-        for (int f = 0; f < faces.Length; f++)
-        {
-            var face = faces[f];
-            if (targetFaces.HasValue && face.Length != targetFaces.Value)
-            {
-                // Copy unchanged face
-                newFaces.Add(face);
-                newColorIndices.Add(colorIndices[f]);
-                continue;
-            }
-
-            // Create inset vertices for the current face
-            int[] insetFace = new int[face.Length];
-            for (int i = 0; i < face.Length; i++)
-            {
-                int v = face[i];
-                Vector3 insetPoint = Vector3.Lerp(vertices[v], centers[f], insetDistance);
-                insetPoint += normals[f] * extrudeDistance;
-
-                // Add the inset vertex to the newVertices list
-                insetFace[i] = newVertices.Count;
-                newVertices.Add(insetPoint);
-            }
-
-            // Add the inset face (replacing the original face)
-            Vector3[] insetVerts = insetFace.Select(idx => newVertices[idx]).ToArray();
-            string insetSignature = GetFaceSignature(insetVerts);
-            if (!signatureToColor.ContainsKey(insetSignature))
-                signatureToColor[insetSignature] = nextColorIndex++;
-            newFaces.Add(insetFace);
-            newColorIndices.Add(signatureToColor[insetSignature]);
-
-            // Add side faces (quads) connecting original vertices to inset vertices
-            for (int i = 0; i < face.Length; i++)
-            {
-                int next = (i + 1) % face.Length;
-                int[] quad = new[]
-                {
-                    face[i],
-                    face[next],
-                    insetFace[next],
-                    insetFace[i]
-                };
-
-                Vector3[] quadVerts = quad.Select(idx => newVertices[idx]).ToArray();
-                string quadSignature = GetFaceSignature(quadVerts);
-                if (!signatureToColor.ContainsKey(quadSignature))
-                    signatureToColor[quadSignature] = nextColorIndex++;
-                newFaces.Add(quad);
-                newColorIndices.Add(signatureToColor[quadSignature]);
-            }
-        }
-
-        return NormalizePolyhedron((newVertices.ToArray(), newFaces.ToArray(), newColorIndices.ToArray()));
     }
 
     public static (Vector3[], int[][], int[]) ApplyInsetN(
