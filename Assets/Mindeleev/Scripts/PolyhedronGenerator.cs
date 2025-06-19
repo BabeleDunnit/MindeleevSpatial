@@ -622,23 +622,21 @@ public class PolyhedronGenerator : MonoBehaviour
         var face = faces[f];
         var centerFaceVertices = new List<int>();
         
-        // Calculate face center
         Vector3 faceCenter = CalculateFaceCenter(face.Select(idx => inputVertices[idx]).ToArray());
         
-        // Calculate vertices for central face (moved toward center)
+        // Create central face vertices
         for (int i = 0; i < face.Length; i++)
         {
             int v1Idx = face[i];
             int v2Idx = face[(i + 1) % face.Length];
             Vector3 edgeMidpoint = (inputVertices[v1Idx] + inputVertices[v2Idx]) * 0.5f;
             
-            // Move midpoint toward face center
             Vector3 movedVertex = Vector3.Lerp(edgeMidpoint, faceCenter, 0.5f);
             int newVertexIndex = newVertices.Count;
             centerFaceVertices.Add(newVertexIndex);
             newVertices.Add(movedVertex);
             
-            // Store the edge to vertex mapping
+            // Store both vertices for each edge
             string edgeKey = v1Idx < v2Idx ? $"{v1Idx}-{v2Idx}" : $"{v2Idx}-{v1Idx}";
             if (!edgeToVertices.ContainsKey(edgeKey))
             {
@@ -651,7 +649,7 @@ public class PolyhedronGenerator : MonoBehaviour
             }
         }
         
-        // Create central face
+        // Create central face with original winding
         newFaces.Add(centerFaceVertices.ToArray());
         newColorIndices.Add(colorIndices[f]);
     }
@@ -666,11 +664,14 @@ public class PolyhedronGenerator : MonoBehaviour
         
         if (centerVertex2 != -1)  // Edge is shared by two faces
         {
-            // Create two triangular faces
+            // Create four triangular faces for each edge
             newFaces.Add(new[] { v1, centerVertex1, centerVertex2 });
             newFaces.Add(new[] { v2, centerVertex2, centerVertex1 });
-            newColorIndices.Add(1);  // Next color
-            newColorIndices.Add(1);  // Next color
+            newFaces.Add(new[] { v1, centerVertex2, v2 });
+            newFaces.Add(new[] { v2, centerVertex1, v1 });
+            
+            // Use next color for all connecting faces
+            newColorIndices.AddRange(new[] { 1, 1, 1, 1 });
         }
     }
 
