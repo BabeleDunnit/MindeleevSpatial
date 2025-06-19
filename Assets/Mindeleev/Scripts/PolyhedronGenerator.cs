@@ -613,8 +613,7 @@ public class PolyhedronGenerator : MonoBehaviour
     var newFaces = new List<int[]>();
     var newColorIndices = new List<int>();
     
-    // Dictionary to store edge to centered vertices mapping
-    var edgeToVertices = new Dictionary<string, (int, int)>();
+    var edgeToVertices = new Dictionary<string, List<(int centerVertex, int faceIndex)>>();
     
     // Process each face
     for (int f = 0; f < faces.Length; f++)
@@ -636,22 +635,30 @@ public class PolyhedronGenerator : MonoBehaviour
             centerFaceVertices.Add(newVertexIndex);
             newVertices.Add(movedVertex);
             
-            // Store both vertices for each edge
+            // Store edge information
             string edgeKey = v1Idx < v2Idx ? $"{v1Idx}-{v2Idx}" : $"{v2Idx}-{v1Idx}";
             if (!edgeToVertices.ContainsKey(edgeKey))
             {
-                edgeToVertices[edgeKey] = (newVertexIndex, -1);
+                edgeToVertices[edgeKey] = new List<(int, int)>();
             }
-            else
-            {
-                var (firstVertex, _) = edgeToVertices[edgeKey];
-                edgeToVertices[edgeKey] = (firstVertex, newVertexIndex);
-            }
+            edgeToVertices[edgeKey].Add((newVertexIndex, f));
         }
         
-        // Create central face with original winding
+        // Create central face
         newFaces.Add(centerFaceVertices.ToArray());
         newColorIndices.Add(colorIndices[f]);
+        
+        // Create triangles from each original vertex to its adjacent inner vertices
+        for (int i = 0; i < face.Length; i++)
+        {
+            int originalVertex = face[i];
+            int innerVertex1 = centerFaceVertices[i];
+            int innerVertex2 = centerFaceVertices[(i + face.Length - 1) % face.Length];
+            
+            // Add triangle connecting original vertex to its two adjacent inner vertices
+            newFaces.Add(new[] { originalVertex, innerVertex1, innerVertex2 });
+            newColorIndices.Add(colorIndices[f] + 1);
+        }
     }
     
     // Create edge-connecting triangular faces
@@ -660,18 +667,18 @@ public class PolyhedronGenerator : MonoBehaviour
         string[] vertexIndices = edgeEntry.Key.Split('-');
         int v1 = int.Parse(vertexIndices[0]);
         int v2 = int.Parse(vertexIndices[1]);
-        var (centerVertex1, centerVertex2) = edgeEntry.Value;
+        var centerVertices = edgeEntry.Value;
         
-        if (centerVertex2 != -1)  // Edge is shared by two faces
+        if (centerVertices.Count == 2)
         {
-            // Create four triangular faces for each edge
-            newFaces.Add(new[] { v1, centerVertex1, centerVertex2 });
-            newFaces.Add(new[] { v2, centerVertex2, centerVertex1 });
-            newFaces.Add(new[] { v1, centerVertex2, v2 });
-            newFaces.Add(new[] { v2, centerVertex1, v1 });
+            var (cv1, f1) = centerVertices[0];
+            var (cv2, f2) = centerVertices[1];
             
-            // Use next color for all connecting faces
-            newColorIndices.AddRange(new[] { 1, 1, 1, 1 });
+            // Create connecting triangles between faces
+            newFaces.Add(new[] { v1, cv1, cv2 });
+            newFaces.Add(new[] { v2, cv2, cv1 });
+            newColorIndices.Add(colorIndices[f1] + 1);
+            newColorIndices.Add(colorIndices[f2] + 1);
         }
     }
 
