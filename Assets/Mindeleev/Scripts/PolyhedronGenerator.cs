@@ -608,47 +608,73 @@ public class PolyhedronGenerator : MonoBehaviour
     public static (Vector3[], int[][], int[]) ApplyStellation(
     (Vector3[], int[][], int[]) input)
 {
-    var (vertices, faces, colorIndices) = input;
-    var newVertices = new List<Vector3>(vertices);
+    var (inputVertices, faces, colorIndices) = input;
+    var newVertices = new List<Vector3>(inputVertices);
     var newFaces = new List<int[]>();
     var newColorIndices = new List<int>();
+    
+    // Dictionary to store edge to centered vertices mapping
+    var edgeToVertices = new Dictionary<string, (int, int)>();
     
     // Process each face
     for (int f = 0; f < faces.Length; f++)
     {
         var face = faces[f];
-        var midpointIndices = new List<int>();
+        var centerFaceVertices = new List<int>();
         
-        // Calculate midpoints for all edges in order
+        // Calculate face center
+        Vector3 faceCenter = CalculateFaceCenter(face.Select(idx => inputVertices[idx]).ToArray());
+        
+        // Calculate vertices for central face (moved toward center)
         for (int i = 0; i < face.Length; i++)
         {
             int v1Idx = face[i];
             int v2Idx = face[(i + 1) % face.Length];
-            Vector3 midpoint = (vertices[v1Idx] + vertices[v2Idx]) * 0.5f;
+            Vector3 edgeMidpoint = (inputVertices[v1Idx] + inputVertices[v2Idx]) * 0.5f;
             
-            midpointIndices.Add(newVertices.Count);
-            newVertices.Add(midpoint);
+            // Move midpoint toward face center
+            Vector3 movedVertex = Vector3.Lerp(edgeMidpoint, faceCenter, 0.5f);
+            int newVertexIndex = newVertices.Count;
+            centerFaceVertices.Add(newVertexIndex);
+            newVertices.Add(movedVertex);
+            
+            // Store the edge to vertex mapping
+            string edgeKey = v1Idx < v2Idx ? $"{v1Idx}-{v2Idx}" : $"{v2Idx}-{v1Idx}";
+            if (!edgeToVertices.ContainsKey(edgeKey))
+            {
+                edgeToVertices[edgeKey] = (newVertexIndex, -1);
+            }
+            else
+            {
+                var (firstVertex, _) = edgeToVertices[edgeKey];
+                edgeToVertices[edgeKey] = (firstVertex, newVertexIndex);
+            }
         }
         
-        // Create central face with same winding as original
-        newFaces.Add(midpointIndices.ToArray());
+        // Create central face
+        newFaces.Add(centerFaceVertices.ToArray());
         newColorIndices.Add(colorIndices[f]);
+    }
+    
+    // Create edge-connecting triangular faces
+    foreach (var edgeEntry in edgeToVertices)
+    {
+        string[] vertexIndices = edgeEntry.Key.Split('-');
+        int v1 = int.Parse(vertexIndices[0]);
+        int v2 = int.Parse(vertexIndices[1]);
+        var (centerVertex1, centerVertex2) = edgeEntry.Value;
         
-        // Create outer triangles maintaining proper winding order
-        for (int i = 0; i < face.Length; i++)
+        if (centerVertex2 != -1)  // Edge is shared by two faces
         {
-            int currentVertex = face[i];
-            int nextVertex = face[(i + 1) % face.Length];
-            int currentMidpoint = midpointIndices[i];
-            int nextMidpoint = midpointIndices[(i + 1) % face.Length];
-            
-            // Create triangle maintaining clockwise winding
-            newFaces.Add(new[] { nextVertex, nextMidpoint, currentMidpoint });
-            newColorIndices.Add(colorIndices[f] + 1);
+            // Create two triangular faces
+            newFaces.Add(new[] { v1, centerVertex1, centerVertex2 });
+            newFaces.Add(new[] { v2, centerVertex2, centerVertex1 });
+            newColorIndices.Add(1);  // Next color
+            newColorIndices.Add(1);  // Next color
         }
     }
 
-    return (newVertices.ToArray(), newFaces.ToArray(), newColorIndices.ToArray());
+    return NormalizePolyhedron((newVertices.ToArray(), newFaces.ToArray(), newColorIndices.ToArray()));
 }
 
     public static (Vector3[], int[][], int[]) ApplyFuckedStellation(
