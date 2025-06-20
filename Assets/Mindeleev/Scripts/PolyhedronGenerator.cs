@@ -605,6 +605,34 @@ public class PolyhedronGenerator : MonoBehaviour
         return NormalizePolyhedron(result);
     }
 
+    // Helper: returns true if the face is CCW as seen from outside the polyhedron
+    private static bool IsFaceWindingOutward(Vector3[] allVertices, int[] face, Vector3 polyCenter)
+    {
+        // Calculate face center
+        Vector3 faceCenter = Vector3.zero;
+        foreach (var idx in face)
+            faceCenter += allVertices[idx];
+        faceCenter /= face.Length;
+
+        // Calculate face normal (using Newell's method)
+        Vector3 normal = Vector3.zero;
+        for (int i = 0; i < face.Length; i++)
+        {
+            Vector3 current = allVertices[face[i]];
+            Vector3 next = allVertices[face[(i + 1) % face.Length]];
+            normal.x += (current.y - next.y) * (current.z + next.z);
+            normal.y += (current.z - next.z) * (current.x + next.x);
+            normal.z += (current.x - next.x) * (current.y + next.y);
+        }
+        normal.Normalize();
+
+        // Vector from face center to polyhedron center
+        Vector3 toCenter = (polyCenter - faceCenter).normalized;
+
+        // If the normal points away from the center, it's outward
+        return Vector3.Dot(normal, toCenter) < 0;
+    }
+
     public static (Vector3[], int[][], int[]) ApplyStellation(
     (Vector3[], int[][], int[]) input)
 {
@@ -612,73 +640,87 @@ public class PolyhedronGenerator : MonoBehaviour
     var newVertices = new List<Vector3>(inputVertices);
     var newFaces = new List<int[]>();
     var newColorIndices = new List<int>();
-    
-    var edgeToVertices = new Dictionary<string, List<(int centerVertex, int faceIndex)>>();
-    
-    // Process each face
+
+    // Compute polyhedron centroid for winding checks
+    Vector3 polyCenter = Vector3.zero;
+    foreach (var v in inputVertices) polyCenter += v;
+    polyCenter /= inputVertices.Length;
+
+    // For each edge, store the two "inner" vertices (from each adjacent face) and which face they belong to
+    var edgeToInnerVertices = new Dictionary<(int, int), List<(int innerIdx, int faceIdx, int localEdgeIdx)>>();
+
+    // For each face, store the indices of its inner (central) vertices
+    var faceInnerVertices = new List<List<int>>();
+
+    // Build inner vertices and mapping
     for (int f = 0; f < faces.Length; f++)
     {
         var face = faces[f];
-        var centerFaceVertices = new List<int>();
-        
-        Vector3 faceCenter = CalculateFaceCenter(face.Select(idx => inputVertices[idx]).ToArray());
-        
-        // Create central face vertices
+        var faceCenter = CalculateFaceCenter(face.Select(idx => inputVertices[idx]).ToArray());
+        var innerVerts = new List<int>();
+
         for (int i = 0; i < face.Length; i++)
         {
-            int v1Idx = face[i];
-            int v2Idx = face[(i + 1) % face.Length];
-            Vector3 edgeMidpoint = (inputVertices[v1Idx] + inputVertices[v2Idx]) * 0.5f;
-            
-            Vector3 movedVertex = Vector3.Lerp(edgeMidpoint, faceCenter, 0.5f);
-            int newVertexIndex = newVertices.Count;
-            centerFaceVertices.Add(newVertexIndex);
-            newVertices.Add(movedVertex);
-            
-            // Store edge information
-            string edgeKey = v1Idx < v2Idx ? $"{v1Idx}-{v2Idx}" : $"{v2Idx}-{v1Idx}";
-            if (!edgeToVertices.ContainsKey(edgeKey))
-            {
-                edgeToVertices[edgeKey] = new List<(int, int)>();
-            }
-            edgeToVertices[edgeKey].Add((newVertexIndex, f));
+            int v1 = face[i];
+            int v2 = face[(i + 1) % face.Length];
+            Vector3 edgeMid = (inputVertices[v1] + inputVertices[v2]) * 0.5f;
+            Vector3 moved = Vector3.Lerp(edgeMid, faceCenter, 0.5f);
+            int idx = newVertices.Count;
+            newVertices.Add(moved);
+            innerVerts.Add(idx);
+
+            // Store for edge, always with (min, max) order
+            var edgeKey = v1 < v2 ? (v1, v2) : (v2, v1);
+            if (!edgeToInnerVertices.ContainsKey(edgeKey))
+                edgeToInnerVertices[edgeKey] = new List<(int, int, int)>();
+            edgeToInnerVertices[edgeKey].Add((idx, f, i));
         }
-        
-        // Create central face
-        newFaces.Add(centerFaceVertices.ToArray());
+        faceInnerVertices.Add(innerVerts);
+
+        // Central face (keep winding as original)
+        var centralFace = innerVerts.ToArray();
+        if (!IsFaceWindingOutward(newVertices.ToArray(), centralFace, polyCenter))
+            System.Array.Reverse(centralFace);
+        newFaces.Add(centralFace);
         newColorIndices.Add(colorIndices[f]);
-        
-        // Create triangles from each original vertex to its adjacent inner vertices
-        for (int i = 0; i < face.Length; i++)
+
+        // Star triangles: original vertex, its inner, previous inner (CCW)
+        for (int i = 0; i < face.Count(); i++)
         {
-            int originalVertex = face[i];
-            int innerVertex1 = centerFaceVertices[i];
-            int innerVertex2 = centerFaceVertices[(i + face.Length - 1) % face.Length];
-            
-            // Add triangle connecting original vertex to its two adjacent inner vertices
-            newFaces.Add(new[] { originalVertex, innerVertex1, innerVertex2 });
-            newColorIndices.Add(colorIndices[f] + 1);
+            int orig = face[i];
+            int inner1 = innerVerts[i];
+            int inner2 = innerVerts[(i - 1 + face.Count()) % face.Count()];
+            var tri = new[] { orig, inner1, inner2 };
+            if (!IsFaceWindingOutward(newVertices.ToArray(), tri, polyCenter))
+                System.Array.Reverse(tri);
+            newFaces.Add(tri);
+            newColorIndices.Add((colorIndices[f] + 1) % colorIndices.Length);
         }
     }
-    
-    // Create edge-connecting triangular faces
-    foreach (var edgeEntry in edgeToVertices)
+
+    // Edge triangles: for each edge, two triangles to fill the quad
+    foreach (var kvp in edgeToInnerVertices)
     {
-        string[] vertexIndices = edgeEntry.Key.Split('-');
-        int v1 = int.Parse(vertexIndices[0]);
-        int v2 = int.Parse(vertexIndices[1]);
-        var centerVertices = edgeEntry.Value;
-        
-        if (centerVertices.Count == 2)
+        var edge = kvp.Key;
+        var inners = kvp.Value;
+        if (inners.Count == 2)
         {
-            var (cv1, f1) = centerVertices[0];
-            var (cv2, f2) = centerVertices[1];
-            
-            // Create connecting triangles between faces
-            newFaces.Add(new[] { v1, cv1, cv2 });
-            newFaces.Add(new[] { v2, cv2, cv1 });
-            newColorIndices.Add(colorIndices[f1] + 1);
-            newColorIndices.Add(colorIndices[f2] + 1);
+            int v1 = edge.Item1;
+            int v2 = edge.Item2;
+            var (iA, fA, localA) = inners[0];
+            var (iB, fB, localB) = inners[1];
+
+            var tri1 = new[] { v1, iA, iB };
+            if (!IsFaceWindingOutward(newVertices.ToArray(), tri1, polyCenter))
+                System.Array.Reverse(tri1);
+            newFaces.Add(tri1);
+            newColorIndices.Add((colorIndices[fA] + 1) % colorIndices.Length);
+
+            var tri2 = new[] { v2, iB, iA };
+            if (!IsFaceWindingOutward(newVertices.ToArray(), tri2, polyCenter))
+                System.Array.Reverse(tri2);
+            newFaces.Add(tri2);
+            newColorIndices.Add((colorIndices[fB] + 1) % colorIndices.Length);
         }
     }
 
@@ -924,10 +966,10 @@ public class PolyhedronGenerator : MonoBehaviour
 
         // Calculate face normal and outward direction
         Vector3 normal = CalculateFaceNormal(vertices, faceIndices);
-        Vector3 outwardDir = (faceCenter - center).normalized;
+        Vector3 outward = (faceCenter - center).normalized;
 
         // Return true if normal points inward
-        return Vector3.Dot(normal, outwardDir) < 0;
+        return Vector3.Dot(normal, outward) < 0;
     }
 
     // Helper function to calculate face normal
