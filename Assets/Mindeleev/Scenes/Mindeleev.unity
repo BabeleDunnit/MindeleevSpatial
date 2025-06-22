@@ -143,12 +143,12 @@ PrefabInstance:
     - target: {fileID: 8404194606809146210, guid: a4b29d65d516b4ae19b3532179b68cd4,
         type: 3}
       propertyPath: m_IsActive
-      value: 0
+      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 8404194606809146211, guid: a4b29d65d516b4ae19b3532179b68cd4,
         type: 3}
       propertyPath: polyhedronRecipe
-      value: k(3,.5)k(3,.5)O
+      value: llC
       objectReference: {fileID: 0}
     - target: {fileID: 8404194606809146211, guid: a4b29d65d516b4ae19b3532179b68cd4,
         type: 3}
@@ -1359,7 +1359,7 @@ MonoBehaviour:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1190650401}
-  m_Enabled: 1
+  m_Enabled: 0
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 0711865f929554705a516f29d22e5de7, type: 3}
   m_Name: 

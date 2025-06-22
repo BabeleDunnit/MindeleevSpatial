@@ -640,9 +640,12 @@ public class PolyhedronGenerator : MonoBehaviour
     var newVertices = new List<Vector3>(inputVertices);
     var newFaces = new List<int[]>();
     var newColorIndices = new List<int>();
+    var signatureToColor = new Dictionary<string, int>();
+    int nextColorIndex = 0;
+
 
     // Compute polyhedron centroid for winding checks
-    Vector3 polyCenter = Vector3.zero;
+        Vector3 polyCenter = Vector3.zero;
     foreach (var v in inputVertices) polyCenter += v;
     polyCenter /= inputVertices.Length;
 
@@ -656,6 +659,7 @@ public class PolyhedronGenerator : MonoBehaviour
     for (int f = 0; f < faces.Length; f++)
     {
         var face = faces[f];
+        Debug.Log($"face vertices: {string.Join(",", face)}");
         var faceCenter = CalculateFaceCenter(face.Select(idx => inputVertices[idx]).ToArray());
         var innerVerts = new List<int>();
 
@@ -682,20 +686,38 @@ public class PolyhedronGenerator : MonoBehaviour
         if (!IsFaceWindingOutward(newVertices.ToArray(), centralFace, polyCenter))
             System.Array.Reverse(centralFace);
         newFaces.Add(centralFace);
-        newColorIndices.Add(colorIndices[f]);
 
-        // Star triangles: original vertex, its inner, previous inner (CCW)
-        for (int i = 0; i < face.Count(); i++)
-        {
-            int orig = face[i];
-            int inner1 = innerVerts[i];
-            int inner2 = innerVerts[(i - 1 + face.Count()) % face.Count()];
-            var tri = new[] { orig, inner1, inner2 };
-            if (!IsFaceWindingOutward(newVertices.ToArray(), tri, polyCenter))
-                System.Array.Reverse(tri);
-            newFaces.Add(tri);
-            newColorIndices.Add((colorIndices[f] + 1) % colorIndices.Length);
-        }
+        Debug.Log($"cenral face vertices: {string.Join(",", centralFace)}");
+
+        string signature = GetFaceSignature(centralFace.Select(idx => newVertices[idx]).ToArray());
+            Debug.Log(signature);
+        if (!signatureToColor.ContainsKey(signature))
+                signatureToColor[signature] = nextColorIndex++;
+
+        newColorIndices.Add(signatureToColor[signature]);
+            //         newColorIndices.Add(0);
+            //newColorIndices.Add(colorIndices[f]);
+
+            // Star triangles: original vertex, its inner, previous inner (CCW)
+            for (int i = 0; i < face.Count(); i++)
+            {
+                int orig = face[i];
+                int inner1 = innerVerts[i];
+                int inner2 = innerVerts[(i - 1 + face.Count()) % face.Count()];
+                var tri = new[] { orig, inner1, inner2 };
+                if (!IsFaceWindingOutward(newVertices.ToArray(), tri, polyCenter))
+                    System.Array.Reverse(tri);
+                newFaces.Add(tri);
+                // newColorIndices.Add((colorIndices[f] + 1) % colorIndices.Length);
+
+        signature = GetFaceSignature(tri.Select(idx => newVertices[idx]).ToArray(), 1);
+        if (!signatureToColor.ContainsKey(signature))
+                signatureToColor[signature] = nextColorIndex++;
+
+        newColorIndices.Add(signatureToColor[signature]);
+
+
+            }
     }
 
     // Edge triangles: for each edge, two triangles to fill the quad
@@ -703,24 +725,38 @@ public class PolyhedronGenerator : MonoBehaviour
     {
         var edge = kvp.Key;
         var inners = kvp.Value;
-        if (inners.Count == 2)
-        {
-            int v1 = edge.Item1;
-            int v2 = edge.Item2;
-            var (iA, fA, localA) = inners[0];
-            var (iB, fB, localB) = inners[1];
+            if (inners.Count == 2)
+            {
+                int v1 = edge.Item1;
+                int v2 = edge.Item2;
+                var (iA, fA, localA) = inners[0];
+                var (iB, fB, localB) = inners[1];
 
-            var tri1 = new[] { v1, iA, iB };
-            if (!IsFaceWindingOutward(newVertices.ToArray(), tri1, polyCenter))
-                System.Array.Reverse(tri1);
-            newFaces.Add(tri1);
-            newColorIndices.Add((colorIndices[fA] + 1) % colorIndices.Length);
+                var tri1 = new[] { v1, iA, iB };
+                if (!IsFaceWindingOutward(newVertices.ToArray(), tri1, polyCenter))
+                    System.Array.Reverse(tri1);
+                newFaces.Add(tri1);
+                // newColorIndices.Add((colorIndices[fA] + 1) % colorIndices.Length);
 
-            var tri2 = new[] { v2, iB, iA };
-            if (!IsFaceWindingOutward(newVertices.ToArray(), tri2, polyCenter))
-                System.Array.Reverse(tri2);
-            newFaces.Add(tri2);
-            newColorIndices.Add((colorIndices[fB] + 1) % colorIndices.Length);
+                string signature = GetFaceSignature(tri1.Select(idx => newVertices[idx]).ToArray());
+                if (!signatureToColor.ContainsKey(signature))
+                    signatureToColor[signature] = nextColorIndex++;
+
+                newColorIndices.Add(signatureToColor[signature]);
+
+
+                var tri2 = new[] { v2, iB, iA };
+                if (!IsFaceWindingOutward(newVertices.ToArray(), tri2, polyCenter))
+                    System.Array.Reverse(tri2);
+                newFaces.Add(tri2);
+                // newColorIndices.Add((colorIndices[fB] + 1) % colorIndices.Length);
+            
+                    signature = GetFaceSignature(tri2.Select(idx => newVertices[idx]).ToArray());
+        if (!signatureToColor.ContainsKey(signature))
+                signatureToColor[signature] = nextColorIndex++;
+
+        newColorIndices.Add(signatureToColor[signature]);
+
         }
     }
 
