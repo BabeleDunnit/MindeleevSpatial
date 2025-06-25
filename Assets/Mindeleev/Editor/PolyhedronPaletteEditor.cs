@@ -1,6 +1,7 @@
 using UnityEngine;
 using UnityEditor;
 using System.Collections.Generic;
+using System.Linq;
 
 [CustomEditor(typeof(PolyhedronPalette))]
 public class PolyhedronPaletteEditor : Editor
@@ -13,10 +14,7 @@ public class PolyhedronPaletteEditor : Editor
     {
         Color.RGBToHSV(a, out float h1, out float s1, out float v1);
         Color.RGBToHSV(b, out float h2, out float s2, out float v2);
-        
-        // Handle hue wraparound
         float hueDiff = Mathf.Min(Mathf.Abs(h1 - h2), 1f - Mathf.Abs(h1 - h2));
-        
         return hueDiff + 0.5f * (Mathf.Abs(s1 - s2) + Mathf.Abs(v1 - v2));
     }
 
@@ -29,12 +27,10 @@ public class PolyhedronPaletteEditor : Editor
         do
         {
             newColor = Color.HSVToRGB(
-                Random.value,           // Hue: full random range [0-1]
-                Random.Range(0.7f, 1f), // Saturation: high [0.7-1]
-                Random.Range(0.9f, 1f)  // Value: very high [0.9-1]
+                Random.value,
+                Random.Range(0.7f, 1f),
+                Random.Range(0.9f, 1f)
             );
-            
-            // Check if color is different enough from existing ones
             bool isDifferentEnough = true;
             foreach (Color existing in existingColors)
             {
@@ -44,76 +40,76 @@ public class PolyhedronPaletteEditor : Editor
                     break;
                 }
             }
-            
             if (isDifferentEnough) break;
             attempts++;
-        } 
+        }
         while (attempts < maxAttempts);
 
         return newColor;
     }
 
+    private static readonly Color[] DefaultColors = new Color[]
+    {
+        Color.red, Color.green, Color.blue, Color.cyan, Color.magenta, Color.yellow
+    };
+
     public override void OnInspectorGUI()
     {
         PolyhedronPalette palette = (PolyhedronPalette)target;
 
-        EditorGUI.BeginChangeCheck();
-        SerializedProperty colorsProp = serializedObject.FindProperty("colors");
+        EditorGUILayout.LabelField("Polyhedron Palette", EditorStyles.boldLabel);
 
-        // Add Random Colors button at the top
-        if (GUILayout.Button("Randomize Palette"))
+        // Reset Palette Button
+        if (GUILayout.Button("Reset Palette"))
         {
-            Undo.RecordObject(palette, "Randomize Palette");
-            var newColors = new List<Color>();
-            
-            for (int i = 0; i < colorsProp.arraySize; i++)
-            {
-                var colorProp = colorsProp.GetArrayElementAtIndex(i);
-                Color newColor = GenerateRandomColor(newColors);
-                newColors.Add(newColor);
-                colorProp.colorValue = newColor;
-            }
-            
-            serializedObject.ApplyModifiedProperties();
+            palette.colors = new List<Color>(DefaultColors);
             EditorUtility.SetDirty(palette);
-            GUI.changed = true;
         }
 
-        EditorGUILayout.PropertyField(colorsProp.FindPropertyRelative("Array.size"));
+        // Randomize Palette Button
+        if (GUILayout.Button("Randomize Palette"))
+        {
+            var newColors = new List<Color>();
+            for (int i = 0; i < palette.colors.Count; i++)
+            {
+                newColors.Add(GenerateRandomColor(newColors));
+            }
+            palette.colors = newColors;
+            EditorUtility.SetDirty(palette);
+        }
 
-        for (int i = 0; i < colorsProp.arraySize; i++)
+        // Show each color with delete, copy, and paste buttons
+        for (int i = 0; i < palette.colors.Count; i++)
         {
             EditorGUILayout.BeginHorizontal();
-            
-            // Color field
-            SerializedProperty colorProp = colorsProp.GetArrayElementAtIndex(i);
-            EditorGUILayout.PropertyField(colorProp, new GUIContent($"Color {i}"));
-            
-            // Copy button
-            if (GUILayout.Button("Copy", GUILayout.Width(50)))
+            // palette.colors[i] = EditorGUILayout.ColorField($"Color {i + 1}", palette.colors[i], false, true,);
+            palette.colors[i] = EditorGUILayout.ColorField(new GUIContent($"Color {i + 1}"), palette.colors[i], false, false, false);
+            if (GUILayout.Button("Copy", GUILayout.Width(45)))
             {
-                copiedColor = palette.colors[i];
-                hasCopiedColor = true;
+                GUIUtility.systemCopyBuffer = $"#{ColorUtility.ToHtmlStringRGB(palette.colors[i])}";
             }
-            
-            // Paste button
-            GUI.enabled = hasCopiedColor;
-            if (GUILayout.Button("Paste", GUILayout.Width(50)))
+            if (GUILayout.Button("Paste", GUILayout.Width(45)))
             {
-                Undo.RecordObject(palette, "Paste Color");
-                colorProp.colorValue = copiedColor;  // Use the serialized property instead
-                serializedObject.ApplyModifiedProperties();  // Apply changes
-                EditorUtility.SetDirty(palette);  // Mark for saving
-                GUI.changed = true;  // Force inspector refresh
+                if (ColorUtility.TryParseHtmlString(GUIUtility.systemCopyBuffer, out Color c))
+                {
+                    palette.colors[i] = c;
+                    EditorUtility.SetDirty(palette);
+                }
             }
-            GUI.enabled = true;
-            
+            if (GUILayout.Button("Delete", GUILayout.Width(60)))
+            {
+                palette.colors.RemoveAt(i);
+                EditorUtility.SetDirty(palette);
+                break; // Avoid modifying collection during iteration
+            }
             EditorGUILayout.EndHorizontal();
         }
 
-        if (EditorGUI.EndChangeCheck())
+        // Add Color Button
+        if (GUILayout.Button("Add Color"))
         {
-            serializedObject.ApplyModifiedProperties();
+            palette.colors.Add(Color.white);
+            EditorUtility.SetDirty(palette);
         }
     }
 }
