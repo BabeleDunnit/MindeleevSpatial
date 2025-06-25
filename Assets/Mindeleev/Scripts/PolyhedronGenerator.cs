@@ -1164,7 +1164,7 @@ public class PolyhedronGenerator : MonoBehaviour
     }
 
     // Add this as a class-level method, before any operator methods
-    private static string GetFaceSignature(Vector3[] faceVerts, float rounding = 1)
+    private static string GetFaceSignature(Vector3[] faceVerts, float rounding = 0)
     {
         var lengths = new List<float>();
         for (int i = 0; i < faceVerts.Length; i++)
