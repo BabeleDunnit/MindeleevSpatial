@@ -4,5 +4,10 @@
 EditorBuildSettings:
   m_ObjectHideFlags: 0
   serializedVersion: 2
-  m_Scenes: []
-  m_configObjects: {}
+  m_Scenes:
+  - enabled: 1
+    path: Assets/Mindeleev/Scenes/Mindeleev.unity
+    guid: f72f3c75600e0473f85942f117b0ceec
+  m_configObjects:
+    com.unity.addressableassets: {fileID: 11400000, guid: 68c4d21ce785a4445a446e735e58f85a,
+      type: 2}
