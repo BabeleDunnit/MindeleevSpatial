@@ -7,7 +7,7 @@ using System.Linq;
 public class PolyhedronPaletteEditor : Editor
 {
     private static Color copiedColor;
-    private static bool hasCopiedColor = false;
+    // private static bool hasCopiedColor = false;
     private const float MIN_COLOR_DISTANCE = 0.2f; // Minimum HSV distance between colors
 
     private float GetHSVDistance(Color a, Color b)

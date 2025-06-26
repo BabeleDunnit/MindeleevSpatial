@@ -290,7 +290,8 @@ public class PolyhedronGenerator : MonoBehaviour
     public static (Vector3[], int[][], int[]) ApplyKis(
         (Vector3[], int[][], int[]) input, 
         float height, 
-        int? targetFaces = null)
+        int? targetFaces = null,
+        int faceSignatureRounding = 0)
     {
         var (vertices, faces, colorIndices) = input;
         var newVertices = new List<Vector3>(vertices);
@@ -300,53 +301,42 @@ public class PolyhedronGenerator : MonoBehaviour
         var signatureToColor = new Dictionary<string, int>();
         int nextColorIndex = 0;
 
-        // Process each face
         for (int f = 0; f < faces.Length; f++)
         {
             int[] face = faces[f];
-            
-            // Calculate face signature even for unchanged faces
             Vector3[] faceVerts = face.Select(idx => vertices[idx]).ToArray();
-            string signature = GetFaceSignature(faceVerts);
-            
+            string signature = GetFaceSignature(faceVerts, faceSignatureRounding);
+
             if (targetFaces.HasValue && face.Length != targetFaces.Value)
             {
-                // Copy face unchanged but still use its signature for coloring
                 newFaces.Add(face);
-                
-                // Assign color based on signature
                 if (!signatureToColor.ContainsKey(signature))
                     signatureToColor[signature] = nextColorIndex++;
                 newColorIndices.Add(signatureToColor[signature]);
                 continue;
             }
 
-            // Calculate face center and normal for pyramidal faces
             Vector3 center = Vector3.zero;
             foreach (int idx in face)
                 center += vertices[idx];
             center /= face.Length;
 
-            // Add apex vertex
             Vector3 normal = CalculateFaceNormal(vertices, face);
             Vector3 apex = center + normal * height;
             int apexIndex = newVertices.Count;
             newVertices.Add(apex);
 
-            // Create new triangular faces
             for (int i = 0; i < face.Length; i++)
             {
                 int v1 = face[i];
                 int v2 = face[(i + 1) % face.Length];
                 int[] newFace = new[] { v1, v2, apexIndex };
-                
-                // Calculate signature for new triangular face
                 Vector3[] newFaceVerts = newFace.Select(idx => newVertices[idx]).ToArray();
-                string newSignature = GetFaceSignature(newFaceVerts);
-                
+                string newSignature = GetFaceSignature(newFaceVerts, faceSignatureRounding);
+
                 if (!signatureToColor.ContainsKey(newSignature))
                     signatureToColor[newSignature] = nextColorIndex++;
-                
+
                 newFaces.Add(newFace);
                 newColorIndices.Add(signatureToColor[newSignature]);
             }
@@ -355,7 +345,9 @@ public class PolyhedronGenerator : MonoBehaviour
         return NormalizePolyhedron((newVertices.ToArray(), newFaces.ToArray(), newColorIndices.ToArray()));
     }
 
-    public static (Vector3[], int[][], int[]) ApplyAmbo((Vector3[], int[][], int[]) input)
+    public static (Vector3[], int[][], int[]) ApplyAmbo(
+        (Vector3[], int[][], int[]) input,
+        int faceSignatureRounding = 0)
     {
         var (vertices, faces, colorIndices) = input;
         var newVertices = new List<Vector3>();
@@ -510,7 +502,9 @@ public class PolyhedronGenerator : MonoBehaviour
         return NormalizePolyhedron(result);
     }
 
-    public static (Vector3[], int[][], int[]) ApplyDual((Vector3[], int[][], int[]) input)
+    public static (Vector3[], int[][], int[]) ApplyDual(
+        (Vector3[], int[][], int[]) input,
+        int faceSignatureRounding = 0)
     {
         var (vertices, faces, colorIndices) = input;
         
@@ -593,7 +587,7 @@ public class PolyhedronGenerator : MonoBehaviour
                 orderedFaces.Reverse();
 
             // Calculate color based on face signature
-            string signature = GetFaceSignature(faceVerts);
+            string signature = GetFaceSignature(faceVerts, faceSignatureRounding);
             if (!signatureToColor.ContainsKey(signature))
                 signatureToColor[signature] = nextColorIndex++;
 
@@ -634,7 +628,8 @@ public class PolyhedronGenerator : MonoBehaviour
     }
 
     public static (Vector3[], int[][], int[]) ApplyStellation(
-    (Vector3[], int[][], int[]) input)
+    (Vector3[], int[][], int[]) input,
+    int faceSignatureRounding = 0)
 {
     var (inputVertices, faces, colorIndices) = input;
     var newVertices = new List<Vector3>(inputVertices);
@@ -689,7 +684,7 @@ public class PolyhedronGenerator : MonoBehaviour
 
         Debug.Log($"cenral face vertices: {string.Join(",", centralFace)}");
 
-        string signature = GetFaceSignature(centralFace.Select(idx => newVertices[idx]).ToArray());
+        string signature = GetFaceSignature(centralFace.Select(idx => newVertices[idx]).ToArray(), faceSignatureRounding);
             Debug.Log(signature);
         if (!signatureToColor.ContainsKey(signature))
                 signatureToColor[signature] = nextColorIndex++;
@@ -710,7 +705,7 @@ public class PolyhedronGenerator : MonoBehaviour
                 newFaces.Add(tri);
                 // newColorIndices.Add((colorIndices[f] + 1) % colorIndices.Length);
 
-        signature = GetFaceSignature(tri.Select(idx => newVertices[idx]).ToArray(), 1);
+        signature = GetFaceSignature(tri.Select(idx => newVertices[idx]).ToArray(), faceSignatureRounding);
         if (!signatureToColor.ContainsKey(signature))
                 signatureToColor[signature] = nextColorIndex++;
 
@@ -738,7 +733,7 @@ public class PolyhedronGenerator : MonoBehaviour
                 newFaces.Add(tri1);
                 // newColorIndices.Add((colorIndices[fA] + 1) % colorIndices.Length);
 
-                string signature = GetFaceSignature(tri1.Select(idx => newVertices[idx]).ToArray());
+                string signature = GetFaceSignature(tri1.Select(idx => newVertices[idx]).ToArray(), faceSignatureRounding);
                 if (!signatureToColor.ContainsKey(signature))
                     signatureToColor[signature] = nextColorIndex++;
 
@@ -751,7 +746,7 @@ public class PolyhedronGenerator : MonoBehaviour
                 newFaces.Add(tri2);
                 // newColorIndices.Add((colorIndices[fB] + 1) % colorIndices.Length);
             
-                    signature = GetFaceSignature(tri2.Select(idx => newVertices[idx]).ToArray());
+                    signature = GetFaceSignature(tri2.Select(idx => newVertices[idx]).ToArray(), faceSignatureRounding);
         if (!signatureToColor.ContainsKey(signature))
                 signatureToColor[signature] = nextColorIndex++;
 
@@ -764,7 +759,8 @@ public class PolyhedronGenerator : MonoBehaviour
 }
 
     public static (Vector3[], int[][], int[]) ApplyFuckedStellation(
-        (Vector3[], int[][], int[]) input)
+        (Vector3[], int[][], int[]) input,
+        int faceSignatureRounding = 0)
     {
         var (vertices, faces, colorIndices) = input;
         var newVertices = new List<Vector3>(vertices);
@@ -845,9 +841,9 @@ public class PolyhedronGenerator : MonoBehaviour
 
                 // Create faces with consistent winding order
                 AddTriangleWithColor(newFaces, newColorIndices, signatureToColor, ref nextColorIndex,
-                    new[] { v1, v2, midVertex }, newVertices);
+                    new[] { v1, v2, midVertex }, newVertices, faceSignatureRounding);
                 AddTriangleWithColor(newFaces, newColorIndices, signatureToColor, ref nextColorIndex,
-                    new[] { midVertex, v2, nextMidVertex }, newVertices);
+                    new[] { midVertex, v2, nextMidVertex }, newVertices, faceSignatureRounding);
             }
 
             // Create central face using all edge midpoints
@@ -864,9 +860,10 @@ public class PolyhedronGenerator : MonoBehaviour
         Dictionary<string, int> signatureToColor,
         ref int nextColorIndex,
         int[] polygon,
-        List<Vector3> vertices)
+        List<Vector3> vertices,
+        int faceSignatureRounding = 0)
     {
-        string sig = GetFaceSignature(polygon.Select(idx => vertices[idx]).ToArray());
+        string sig = GetFaceSignature(polygon.Select(idx => vertices[idx]).ToArray(), faceSignatureRounding);
         if (!signatureToColor.ContainsKey(sig))
             signatureToColor[sig] = nextColorIndex++;
         faces.Add(polygon);
@@ -879,9 +876,10 @@ public class PolyhedronGenerator : MonoBehaviour
         Dictionary<string, int> signatureToColor,
         ref int nextColorIndex,
         int[] triangle,
-        List<Vector3> vertices)
+        List<Vector3> vertices,
+        int faceSignatureRounding = 0)
     {
-        string sig = GetFaceSignature(triangle.Select(idx => vertices[idx]).ToArray());
+        string sig = GetFaceSignature(triangle.Select(idx => vertices[idx]).ToArray(), faceSignatureRounding);
         if (!signatureToColor.ContainsKey(sig))
             signatureToColor[sig] = nextColorIndex++;
         faces.Add(triangle);
@@ -891,8 +889,9 @@ public class PolyhedronGenerator : MonoBehaviour
     public static (Vector3[], int[][], int[]) ApplyInsetN(
         (Vector3[], int[][], int[]) input,
         int n = 0,
-        float insetDistance = 0.5f,    // Controls inset amount (0-1)
-        float extrudeDistance = 0.0f)  // Controls extrusion along normal
+        float insetDistance = 0.5f,
+        float extrudeDistance = 0.0f,
+        int faceSignatureRounding = 0)
     {
 
         // insetDistance = 0.6f;
@@ -965,7 +964,7 @@ public class PolyhedronGenerator : MonoBehaviour
                     int inset0 = insetVertexMap[(f, i)];
                     int inset1 = insetVertexMap[(f, (i + 1) % nVerts)];
                     int[] quad = new int[] { v0, v1, inset1, inset0 };
-                    string sig = GetFaceSignature(quad.Select(idx => newVertices[idx]).ToArray());
+                    string sig = GetFaceSignature(quad.Select(idx => newVertices[idx]).ToArray(), faceSignatureRounding);
                     if (!signatureToColor.ContainsKey(sig))
                         signatureToColor[sig] = nextColorIndex++;
                     newFaces.Add(quad);
@@ -976,7 +975,7 @@ public class PolyhedronGenerator : MonoBehaviour
                 int[] insetFace = Enumerable.Range(0, nVerts)
                     .Select(i => insetVertexMap[(f, i)])
                     .ToArray();
-                string insetSig = GetFaceSignature(insetFace.Select(idx => newVertices[idx]).ToArray());
+                string insetSig = GetFaceSignature(insetFace.Select(idx => newVertices[idx]).ToArray(), faceSignatureRounding);
                 if (!signatureToColor.ContainsKey(insetSig))
                     signatureToColor[insetSig] = nextColorIndex++;
                 newFaces.Add(insetFace);
@@ -1164,7 +1163,7 @@ public class PolyhedronGenerator : MonoBehaviour
     }
 
     // Add this as a class-level method, before any operator methods
-    private static string GetFaceSignature(Vector3[] faceVerts, float rounding = 0)
+    private static string GetFaceSignature(Vector3[] faceVerts, int rounding)
     {
         var lengths = new List<float>();
         for (int i = 0; i < faceVerts.Length; i++)
@@ -1176,7 +1175,7 @@ public class PolyhedronGenerator : MonoBehaviour
         lengths.Sort();
         // Use rounding parameter to control precision
         var signature = string.Join(",", lengths.Select(l =>
-            Math.Round(l, (int)rounding).ToString($"F{(int)rounding}", CultureInfo.InvariantCulture)));
+            Math.Round(l, rounding).ToString($"F{rounding}", CultureInfo.InvariantCulture)));
         return signature;
     }
 
