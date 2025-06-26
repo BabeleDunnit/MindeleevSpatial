@@ -181,14 +181,15 @@ public class PolyhedronGenerator : MonoBehaviour
         };
 
         // Parse operators and parameters from right to left
-        var tokens = new List<(char op, int? faces, float? param0, float? param1)>();
+        var tokens = new List<(char op, int facesSidesFilter, int faceSignatureRounding, float? param0, float? param1)>();
         int i = 0;
         while (i < basePos)
         {
             char c = recipe[i];
             if (char.IsLower(c))
             {
-                int? faces = null;
+                int facesSidesFilter = 0;
+                int faceSignatureRounding = 1;
                 float? param0 = null;
                 float? param1 = null;
 
@@ -207,21 +208,24 @@ public class PolyhedronGenerator : MonoBehaviour
                     string paramStr = recipe.Substring(i + 2, closePos - (i + 2));
                     string[] parameters = paramStr.Split(',').Select(p => p.Trim()).ToArray();
 
-                    // Parse first parameter (faces)
-                    if (parameters.Length > 0 && int.TryParse(parameters[0], out int facesParam))
-                        faces = facesParam;
+                    // Parse parameter 1 (facesSidesFilter)
+                    if (parameters.Length > 0 && int.TryParse(parameters[0], out int facesSidesFilterParam))
+                        facesSidesFilter = facesSidesFilterParam;
 
-                    // Parse second parameter (factor)
-                    if (parameters.Length > 1 && float.TryParse(parameters[1], 
+                    // Parse parameter 2 (faceSignatureRounding)
+                    if (parameters.Length > 1 && int.TryParse(parameters[1], out int faceSignatureRoundingParam))
+                        faceSignatureRounding = faceSignatureRoundingParam;
+
+                    // Parse parameter 3 (float0)
+                    if (parameters.Length > 2 && float.TryParse(parameters[2], 
                         NumberStyles.Float, CultureInfo.InvariantCulture, out float factorParam0))
                         param0 = factorParam0;
 
-                    // Parse second parameter (factor)
-                    if (parameters.Length > 2 && float.TryParse(parameters[2], 
+                    // Parse parameter 4 (float1)
+                    if (parameters.Length > 3 && float.TryParse(parameters[3], 
                         NumberStyles.Float, CultureInfo.InvariantCulture, out float factorParam1))
                         param1 = factorParam1;
-
-
+                        
                     i = closePos + 1;
                 }
                 else
@@ -233,12 +237,12 @@ public class PolyhedronGenerator : MonoBehaviour
                     {
                         string numStr = recipe.Substring(i + 1, j - (i + 1));
                         if (int.TryParse(numStr, out int simpleParam))
-                            faces = simpleParam;
+                            facesSidesFilter = simpleParam;
                     }
                     i = j;
                 }
 
-                tokens.Add((c, faces, param0, param1));
+                tokens.Add((c, facesSidesFilter, faceSignatureRounding, param0, param1));
             }
             else
             {
@@ -258,25 +262,25 @@ public class PolyhedronGenerator : MonoBehaviour
                 break;
             }
 
-            var (op, faces, param0, param1) = tokens[t];
+            var (op, facesSidesFilter, faceSignatureRounding, param0, param1) = tokens[t];
             // Substitute truncate operator with its equivalent sequence
             if (op == 't')
             {
                 // Apply d->k->d sequence for truncation
-                current = ApplyDual(current);
-                current = ApplyKis(current, param0 ?? 0.1f, faces);
-                current = ApplyDual(current);
+                current = ApplyDual(current, faceSignatureRounding);
+                current = ApplyKis(current, facesSidesFilter, faceSignatureRounding, param0 ?? 0.1f);
+                current = ApplyDual(current, faceSignatureRounding);
             }
             else
             {
                 current = op switch
                 {
-                    'k' => ApplyKis(current, param0 ?? 0.1f, faces),
-                    'a' => ApplyAmbo(current),
-                    'd' => ApplyDual(current),
-                    'f' => ApplyFuckedStellation(current),
-                    'n' => ApplyInsetN(current, faces ?? 0, param0 ?? 0.6f, param1 ?? -0.3f),
-                    'l' => ApplyStellation(current),
+                    'k' => ApplyKis(current, facesSidesFilter, faceSignatureRounding, param0 ?? 0.1f),
+                    'a' => ApplyAmbo(current, faceSignatureRounding),
+                    'd' => ApplyDual(current, faceSignatureRounding),
+                    'f' => ApplyFuckedStellation(current, faceSignatureRounding),
+                    'n' => ApplyInsetN(current, facesSidesFilter, faceSignatureRounding, param0 ?? 0.6f, param1 ?? -0.3f),
+                    'l' => ApplyStellation(current, faceSignatureRounding),
                     _ => current,
                     
                 };
@@ -289,9 +293,9 @@ public class PolyhedronGenerator : MonoBehaviour
     /* ---------------------- OPERATORS -------------------------------- */
     public static (Vector3[], int[][], int[]) ApplyKis(
         (Vector3[], int[][], int[]) input, 
-        float height, 
-        int? targetFaces = null,
-        int faceSignatureRounding = 0)
+        int targetFacesFilter,
+        int faceSignatureRounding,
+        float height)
     {
         var (vertices, faces, colorIndices) = input;
         var newVertices = new List<Vector3>(vertices);
@@ -307,7 +311,7 @@ public class PolyhedronGenerator : MonoBehaviour
             Vector3[] faceVerts = face.Select(idx => vertices[idx]).ToArray();
             string signature = GetFaceSignature(faceVerts, faceSignatureRounding);
 
-            if (targetFaces.HasValue && face.Length != targetFaces.Value)
+            if (targetFacesFilter != 0 && face.Length != targetFacesFilter)
             {
                 newFaces.Add(face);
                 if (!signatureToColor.ContainsKey(signature))
@@ -347,7 +351,7 @@ public class PolyhedronGenerator : MonoBehaviour
 
     public static (Vector3[], int[][], int[]) ApplyAmbo(
         (Vector3[], int[][], int[]) input,
-        int faceSignatureRounding = 0)
+        int faceSignatureRounding)
     {
         var (vertices, faces, colorIndices) = input;
         var newVertices = new List<Vector3>();
@@ -504,7 +508,7 @@ public class PolyhedronGenerator : MonoBehaviour
 
     public static (Vector3[], int[][], int[]) ApplyDual(
         (Vector3[], int[][], int[]) input,
-        int faceSignatureRounding = 0)
+        int faceSignatureRounding)
     {
         var (vertices, faces, colorIndices) = input;
         
@@ -629,7 +633,7 @@ public class PolyhedronGenerator : MonoBehaviour
 
     public static (Vector3[], int[][], int[]) ApplyStellation(
     (Vector3[], int[][], int[]) input,
-    int faceSignatureRounding = 0)
+    int faceSignatureRounding)
 {
     var (inputVertices, faces, colorIndices) = input;
     var newVertices = new List<Vector3>(inputVertices);
@@ -760,7 +764,7 @@ public class PolyhedronGenerator : MonoBehaviour
 
     public static (Vector3[], int[][], int[]) ApplyFuckedStellation(
         (Vector3[], int[][], int[]) input,
-        int faceSignatureRounding = 0)
+        int faceSignatureRounding)
     {
         var (vertices, faces, colorIndices) = input;
         var newVertices = new List<Vector3>(vertices);
@@ -848,7 +852,7 @@ public class PolyhedronGenerator : MonoBehaviour
 
             // Create central face using all edge midpoints
             AddPolygonWithColor(newFaces, newColorIndices, signatureToColor, ref nextColorIndex,
-                faceVerts.ToArray(), newVertices);
+                faceVerts.ToArray(), newVertices, faceSignatureRounding);
         }
 
         return NormalizePolyhedron((newVertices.ToArray(), newFaces.ToArray(), newColorIndices.ToArray()));
@@ -861,7 +865,7 @@ public class PolyhedronGenerator : MonoBehaviour
         ref int nextColorIndex,
         int[] polygon,
         List<Vector3> vertices,
-        int faceSignatureRounding = 0)
+        int faceSignatureRounding)
     {
         string sig = GetFaceSignature(polygon.Select(idx => vertices[idx]).ToArray(), faceSignatureRounding);
         if (!signatureToColor.ContainsKey(sig))
@@ -877,7 +881,7 @@ public class PolyhedronGenerator : MonoBehaviour
         ref int nextColorIndex,
         int[] triangle,
         List<Vector3> vertices,
-        int faceSignatureRounding = 0)
+        int faceSignatureRounding)
     {
         string sig = GetFaceSignature(triangle.Select(idx => vertices[idx]).ToArray(), faceSignatureRounding);
         if (!signatureToColor.ContainsKey(sig))
@@ -888,10 +892,10 @@ public class PolyhedronGenerator : MonoBehaviour
 
     public static (Vector3[], int[][], int[]) ApplyInsetN(
         (Vector3[], int[][], int[]) input,
-        int n = 0,
-        float insetDistance = 0.5f,
-        float extrudeDistance = 0.0f,
-        int faceSignatureRounding = 0)
+        int facesSidesFilter,
+        int faceSignatureRounding,
+        float insetDistance,
+        float extrudeDistance)
     {
 
         // insetDistance = 0.6f;
@@ -905,7 +909,7 @@ public class PolyhedronGenerator : MonoBehaviour
         var signatureToColor = new Dictionary<string, int>();
         int nextColorIndex = 0;
 
-        Debug.Log($"ApplyInsetN with n={n}, inset={insetDistance}, extrude={extrudeDistance}"); // Debug
+        Debug.Log($"ApplyInsetN with n={facesSidesFilter}, inset={insetDistance}, extrude={extrudeDistance}"); // Debug
 
         // Precompute centers and normals
         var centers = new Vector3[faces.Length];
@@ -923,7 +927,7 @@ public class PolyhedronGenerator : MonoBehaviour
         for (int f = 0; f < faces.Length; f++)
         {
             var face = faces[f];
-            if (n == 0 || face.Length == n)
+            if (facesSidesFilter == 0 || face.Length == facesSidesFilter)
             {
                 for (int i = 0; i < face.Length; i++)
                 {
@@ -952,7 +956,7 @@ public class PolyhedronGenerator : MonoBehaviour
         {
             var face = faces[f];
             int nVerts = face.Length;
-            bool isTarget = (n == 0 || nVerts == n);
+            bool isTarget = (facesSidesFilter == 0 || nVerts == facesSidesFilter);
 
             if (isTarget)
             {
