@@ -270,7 +270,7 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 90173616}
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: -33.88, y: 0.21, z: -19.9}
+  m_LocalPosition: {x: 4, y: 0.21, z: -15.4}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -540,6 +540,28 @@ Transform:
   m_Father: {fileID: 0}
   m_RootOrder: 2
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &615529996 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 8404194606809146210, guid: a4b29d65d516b4ae19b3532179b68cd4,
+    type: 3}
+  m_PrefabInstance: {fileID: 1804194452}
+  m_PrefabAsset: {fileID: 0}
+--- !u!114 &615530001
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 615529996}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e759782bc66bf4495a73059db8a67dce, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  polytronPrefab: {fileID: 8404194606809146210, guid: a4b29d65d516b4ae19b3532179b68cd4,
+    type: 3}
+  orbitalRadius: 5
+  orbitalYOffset: 0
 --- !u!1 &648480486
 GameObject:
   m_ObjectHideFlags: 0
@@ -1351,7 +1373,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!114 &1190650402
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1650,12 +1672,12 @@ PrefabInstance:
     - target: {fileID: 8404194606809146210, guid: a4b29d65d516b4ae19b3532179b68cd4,
         type: 3}
       propertyPath: m_IsActive
-      value: 0
+      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 8404194606809146211, guid: a4b29d65d516b4ae19b3532179b68cd4,
         type: 3}
       propertyPath: polyhedronRecipe
-      value: aT
+      value: T
       objectReference: {fileID: 0}
     - target: {fileID: 8404194606809146211, guid: a4b29d65d516b4ae19b3532179b68cd4,
         type: 3}
@@ -1690,12 +1712,12 @@ PrefabInstance:
     - target: {fileID: 8404194606809146214, guid: a4b29d65d516b4ae19b3532179b68cd4,
         type: 3}
       propertyPath: m_LocalPosition.y
-      value: 0.86
+      value: 2.03
       objectReference: {fileID: 0}
     - target: {fileID: 8404194606809146214, guid: a4b29d65d516b4ae19b3532179b68cd4,
         type: 3}
       propertyPath: m_LocalPosition.z
-      value: 0
+      value: -3.17
       objectReference: {fileID: 0}
     - target: {fileID: 8404194606809146214, guid: a4b29d65d516b4ae19b3532179b68cd4,
         type: 3}
