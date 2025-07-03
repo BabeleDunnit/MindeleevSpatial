@@ -51,7 +51,7 @@ public class PolytronOrbital : MonoBehaviour
     public void GenerateAufbau()
     {
         Debug.Log("inizio Aufbau");
-        int maxZ = 30; // cambia a piacere
+        int maxZ = 120; // cambia a piacere
         var elettroni = new List<Elettrone>();
 
         // Generazione completa
@@ -91,7 +91,8 @@ public class PolytronOrbital : MonoBehaviour
             Debug.Log($"z: {z}");
             Debug.Log(string.Join(" ",
                 config
-                    .OrderBy(kvp => ParseOrder(kvp.Key)) // garantisce ordine orbitale
+                    .OrderBy(kvp => int.Parse(kvp.Key.Substring(0, kvp.Key.Length - 1))) // n
+                    .ThenBy(kvp => "spdfgh".IndexOf(kvp.Key[^1])) // l: s=0, p=1, d=2, ...
                     .Select(kvp => $"{kvp.Key}{kvp.Value}")
             ));
             Debug.Log("");
