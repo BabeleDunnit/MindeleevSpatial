@@ -3,6 +3,9 @@ using System.Linq;
 using System.Collections.Generic;
 using System;
 using System.Globalization;
+using TMPro;
+
+
 
 public class PolytronOrbital : MonoBehaviour
 {
@@ -204,6 +207,9 @@ public class PolytronOrbital : MonoBehaviour
                     }
 
                     poly.name = $"P_{polytronNumber}_{recipe}";
+
+                    CreateLabel(poly, recipe, position);
+
                     polytronNumber++;
 
                 }
@@ -214,7 +220,46 @@ public class PolytronOrbital : MonoBehaviour
 
 
     }
+
+
+    private void CreateLabel(GameObject parent, string recipe, Vector3 position)
+    {
+        // Create a TextMeshPro object for the label
+        GameObject label = new GameObject($"Label_{recipe}");
+        label.transform.parent = parent.transform;
+        label.transform.localPosition = Vector3.down * 1.5f;
+        
+        // Add TextMeshPro component instead of TextMesh
+        TextMeshPro tmpText = label.AddComponent<TextMeshPro>();
+        tmpText.text = recipe;
+        tmpText.fontSize = 3;  // TMP uses different scale for font size
+        tmpText.alignment = TextAlignmentOptions.Center;
+        tmpText.color = Color.white;
+        
+        // Configure the TMP text
+        tmpText.enableAutoSizing = true;
+        tmpText.fontSizeMin = 1;
+        tmpText.fontSizeMax = 2;
+        
+        // Set material and other rendering properties
+        tmpText.material = new Material(Shader.Find("TextMeshPro/Mobile/Distance Field"));
+        
+        // Make text more readable by placing it vertically and facing forward
+        label.transform.localRotation = Quaternion.identity;
+        
+        // Set rect transform properties
+        RectTransform rectTransform = tmpText.GetComponent<RectTransform>();
+        rectTransform.sizeDelta = new Vector2(2, 0.5f);  // Width and height of the text area
+    
+        // Optional: Add horizontal billboard script for camera facing
+        // label.AddComponent<HorizontalBillboard>();
+    }
+
+
 }
+
+
+
 
 public static class PolyhedronRecipeEnumerator
 {
