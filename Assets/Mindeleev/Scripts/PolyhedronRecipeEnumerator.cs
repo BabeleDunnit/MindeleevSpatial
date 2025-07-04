@@ -129,35 +129,24 @@ public static class PolyhedronRecipeEnumerator
         return recipe;
     }
 
-    /*
+    public static bool AreRecipesEquivalent(string r1, string r2)
+    {
+        var polyData1 = Polyhedronisme.ParsePolyhedronRecipe(r1);
+        var polyFinalData1 = Polyhedronisme.ApplyFlatShade(polyData1);
 
-        MeshFilter filter = GetComponent<MeshFilter>();
-        MeshRenderer renderer = GetComponent<MeshRenderer>();
+        var polyData2 = Polyhedronisme.ParsePolyhedronRecipe(r2);
+        var polyFinalData2 = Polyhedronisme.ApplyFlatShade(polyData2);
 
-        var polyData = ParsePolyhedronRecipe(polyhedronRecipe);
-        var polyFinalData = ApplyFlatShade(polyData, palette);
-        filter.mesh = BuildMesh(polyFinalData);
-        ApplyPolyhedronMaterial(renderer);
+        // Compare meshVertices
+        bool vertsEqual = polyFinalData1.meshVertices.SequenceEqual(polyFinalData2.meshVertices);
+        // Compare triangles
+        bool trisEqual = polyFinalData1.triangles.SequenceEqual(polyFinalData2.triangles);
+        // Compare normals
+        bool normalsEqual = polyFinalData1.normals.SequenceEqual(polyFinalData2.normals);
+        // Compare color indices
+        bool colorsEqual = polyFinalData1.colorIndices.SequenceEqual(polyFinalData2.colorIndices);
 
-            if (showVertexIndices)
-            {
-                ShowVertexIndices(polyData.Item1); // Use logical vertices
+        return vertsEqual && trisEqual && normalsEqual && colorsEqual;
+    }
 
-                */
-
-
-    
-        public static bool AreRecipesEquivalent(string r1, string r2)
-        {
-            var polyData1 = Polyhedronisme.ParsePolyhedronRecipe(r1);
-            var polyFinalData1 = Polyhedronisme.ApplyFlatShade(polyData1);
-
-            var polyData2 = Polyhedronisme.ParsePolyhedronRecipe(r2);
-            var polyFinalData2 = Polyhedronisme.ApplyFlatShade(polyData2);
-
-            return polyFinalData1 == polyFinalData2;
-
-
-        }
-    
 }
