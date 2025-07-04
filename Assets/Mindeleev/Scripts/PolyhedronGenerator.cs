@@ -130,7 +130,8 @@ public class PolyhedronGenerator : MonoBehaviour
         MeshRenderer renderer = GetComponent<MeshRenderer>();
 
         var polyData = ParsePolyhedronRecipe(polyhedronRecipe);
-        filter.mesh = ApplyFlatShade(polyData, palette);
+        var polyFinalData = ApplyFlatShade(polyData, palette);
+        filter.mesh = BuildMesh(polyFinalData);
         ApplyPolyhedronMaterial(renderer);
 
         if (showVertexIndices)
@@ -1038,12 +1039,11 @@ public class PolyhedronGenerator : MonoBehaviour
 
 
     /* ---------------------- FINAL FLAT SHADE ------------------------ */
-    public static Mesh ApplyFlatShade(
-        (Vector3[], int[][], int[]) input,
-        PolyhedronPalette palette)
+    public static (List<Vector3> meshVertices, List<int> triangles, List<Vector3> normals, List<Color> colors)
+    ApplyFlatShade((Vector3[], int[][], int[]) input, PolyhedronPalette palette)
     {
         var (vertices, faces, colorIndices) = input;
-        
+
         List<Vector3> meshVertices = new List<Vector3>();
         List<int> triangles = new List<int>();
         List<Vector3> normals = new List<Vector3>();
@@ -1068,7 +1068,7 @@ public class PolyhedronGenerator : MonoBehaviour
 
             // Get face vertices
             Vector3[] faceVerts = face.Select(idx => vertices[idx]).ToArray();
-            
+
             // Calculate face normal using Newell's method
             Vector3 normal = CalculateFaceNormal(faceVerts.ToList(), Enumerable.Range(0, faceVerts.Length).ToArray());
 
@@ -1084,6 +1084,14 @@ public class PolyhedronGenerator : MonoBehaviour
             );
         }
 
+        return (meshVertices, triangles, normals, colors);
+    }
+
+    public static Mesh BuildMesh(
+        (List<Vector3> meshVertices, List<int>triangles, List<Vector3> normals, List<Color> colors) input)
+    {
+        var (meshVertices, triangles, normals, colors) = input;
+
         Mesh mesh = new Mesh();
         mesh.SetVertices(meshVertices);
         mesh.SetTriangles(triangles, 0);
@@ -1093,7 +1101,7 @@ public class PolyhedronGenerator : MonoBehaviour
     }
 
     private static void TriangulatePlanarFace(
-        Vector3[] faceVertices, 
+        Vector3[] faceVertices,
         Vector3 faceNormal,
         List<Vector3> vertices,
         List<int> tris,

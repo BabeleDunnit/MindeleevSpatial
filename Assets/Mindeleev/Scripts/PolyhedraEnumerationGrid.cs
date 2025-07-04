@@ -38,7 +38,7 @@ public class PolyhedraEnumerationGrid : MonoBehaviour
 
                     poly.name = $"P_{polytronNumber}_{recipe}";
 
-                    CreateLabel(poly, recipe, position);
+                    CreateLabel(poly, poly.name, position);
 
                     polytronNumber++;
 

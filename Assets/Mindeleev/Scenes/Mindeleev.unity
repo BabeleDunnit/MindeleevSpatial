@@ -1025,7 +1025,7 @@ MeshRenderer:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 2070295493}
-  m_Enabled: 1
+  m_Enabled: 0
   m_CastShadows: 1
   m_ReceiveShadows: 1
   m_DynamicOccludee: 1
@@ -1097,8 +1097,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   polytronPrefab: {fileID: 8404194606809146210, guid: a4b29d65d516b4ae19b3532179b68cd4,
     type: 3}
-  orbitalRadius: 2
-  orbitalYOffset: 0
+  distance: 2
+  scale: 0.3
 --- !u!1 &912565125070056584
 GameObject:
   m_ObjectHideFlags: 0
