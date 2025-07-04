@@ -145,16 +145,19 @@ public static class PolyhedronRecipeEnumerator
 
                 */
 
-    /*
-        bool AreRecipesEquivalent(string r1, string r2)
-        {
-            var polyData1 = ParsePolyhedronRecipe(r1);
-            var polyFinalData1 = ApplyFlatShade(polyData1, palette);
 
-            var polyData2 = ParsePolyhedronRecipe(r2);
-            var polyFinalData2 = ApplyFlatShade(polyData2, palette);
+    
+        public static bool AreRecipesEquivalent(string r1, string r2)
+        {
+            var polyData1 = Polyhedronisme.ParsePolyhedronRecipe(r1);
+            var polyFinalData1 = Polyhedronisme.ApplyFlatShade(polyData1);
+
+            var polyData2 = Polyhedronisme.ParsePolyhedronRecipe(r2);
+            var polyFinalData2 = Polyhedronisme.ApplyFlatShade(polyData2);
+
+            return polyFinalData1 == polyFinalData2;
+
 
         }
-        */
-
+    
 }
