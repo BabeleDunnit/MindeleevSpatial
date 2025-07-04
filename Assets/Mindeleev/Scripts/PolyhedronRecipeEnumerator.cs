@@ -129,8 +129,39 @@ public static class PolyhedronRecipeEnumerator
         return recipe;
     }
 
-    // Map a recipe string to an integer (inverse mapping)
-    // This is more complex and requires parsing the recipe string.
-    // You can implement this by parsing each token and base polyhedron, then combining the indices using the same mixed-radix logic as above.
-    // For brevity, only IntToRecipe is shown here.
+    /*
+
+        MeshFilter filter = GetComponent<MeshFilter>();
+        MeshRenderer renderer = GetComponent<MeshRenderer>();
+
+        var polyData = ParsePolyhedronRecipe(polyhedronRecipe);
+        var polyFinalData = ApplyFlatShade(polyData, palette);
+        filter.mesh = BuildMesh(polyFinalData);
+        ApplyPolyhedronMaterial(renderer);
+
+            if (showVertexIndices)
+            {
+                ShowVertexIndices(polyData.Item1); // Use logical vertices
+
+                */
+
+    /*
+        bool AreRecipesEquivalent(string r1, string r2)
+        {
+            var polyData1 = ParsePolyhedronRecipe(r1);
+            var polyFinalData1 = ApplyFlatShade(polyData1, palette);
+
+            var polyData2 = ParsePolyhedronRecipe(r2);
+            var polyFinalData2 = ApplyFlatShade(polyData2, palette);
+
+        }
+        */
+
+}
+
+        
+
+
+
+
 }
