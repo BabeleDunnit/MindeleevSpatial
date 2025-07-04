@@ -258,9 +258,6 @@ public class PolytronOrbital : MonoBehaviour
 
 }
 
-
-
-
 public static class PolyhedronRecipeEnumerator
 {
     // Operator codes and their parameter spaces
