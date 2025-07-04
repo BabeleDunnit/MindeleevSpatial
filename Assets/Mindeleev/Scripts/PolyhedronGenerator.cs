@@ -130,8 +130,8 @@ public class PolyhedronGenerator : MonoBehaviour
         MeshRenderer renderer = GetComponent<MeshRenderer>();
 
         var polyData = ParsePolyhedronRecipe(polyhedronRecipe);
-        var polyFinalData = ApplyFlatShade(polyData, palette);
-        filter.mesh = BuildMesh(polyFinalData);
+        var polyFinalData = ApplyFlatShade(polyData);
+        filter.mesh = BuildMesh(polyFinalData, palette);
         ApplyPolyhedronMaterial(renderer);
 
         if (showVertexIndices)
@@ -1039,58 +1039,62 @@ public class PolyhedronGenerator : MonoBehaviour
 
 
     /* ---------------------- FINAL FLAT SHADE ------------------------ */
-    public static (List<Vector3> meshVertices, List<int> triangles, List<Vector3> normals, List<Color> colors)
-    ApplyFlatShade((Vector3[], int[][], int[]) input, PolyhedronPalette palette)
+    public static (List<Vector3> meshVertices, List<int> triangles, List<Vector3> normals, List<int> colorIndices)
+ApplyFlatShade((Vector3[], int[][], int[]) input)
+{
+    var (vertices, faces, faceColorIndices) = input;
+
+    List<Vector3> meshVertices = new List<Vector3>();
+    List<int> triangles = new List<int>();
+    List<Vector3> normals = new List<Vector3>();
+    List<int> colorIndices = new List<int>();
+
+    for (int f = 0; f < faces.Length; f++)
     {
-        var (vertices, faces, colorIndices) = input;
+        var face = faces[f];
+        int colorIndex = faceColorIndices[f];
 
-        List<Vector3> meshVertices = new List<Vector3>();
-        List<int> triangles = new List<int>();
-        List<Vector3> normals = new List<Vector3>();
-        List<Color> colors = new List<Color>();
+        Vector3[] faceVerts = face.Select(idx => vertices[idx]).ToArray();
+        Vector3 normal = CalculateFaceNormal(faceVerts.ToList(), Enumerable.Range(0, faceVerts.Length).ToArray());
 
-        // Validate color indices
-        for (int f = 0; f < faces.Length; f++)
-        {
-            if (colorIndices[f] < 0)
-            {
-                Debug.LogError($"Invalid color index {colorIndices[f]} for face {f}. Using fallback color index 0.");
-                colorIndices[f] = 0;
-            }
-        }
-
-        Debug.Log($"[FlatShade] Mesh has {faces.Length} faces, {vertices.Length} vertices");
-
-        for (int f = 0; f < faces.Length; f++)
-        {
-            var face = faces[f];
-            Color faceColor = palette.GetColor(colorIndices[f]);
-
-            // Get face vertices
-            Vector3[] faceVerts = face.Select(idx => vertices[idx]).ToArray();
-
-            // Calculate face normal using Newell's method
-            Vector3 normal = CalculateFaceNormal(faceVerts.ToList(), Enumerable.Range(0, faceVerts.Length).ToArray());
-
-            // Triangulate the planar face
-            TriangulatePlanarFace(
-                faceVerts,
-                normal,
-                meshVertices,
-                triangles,
-                normals,
-                colors,
-                faceColor
-            );
-        }
-
-        return (meshVertices, triangles, normals, colors);
+        // Triangulate the planar face
+        TriangulatePlanarFace(
+            faceVerts,
+            normal,
+            meshVertices,
+            triangles,
+            normals,
+            colorIndices,
+            colorIndex // pass color index instead of Color
+        );
     }
 
+    return (meshVertices, triangles, normals, colorIndices);
+}
+
+    /*
+        public static Mesh BuildMesh(
+            (List<Vector3> meshVertices, List<int> triangles, List<Vector3> normals, List<Color> colors) input)
+        {
+            var (meshVertices, triangles, normals, colors) = input;
+
+            Mesh mesh = new Mesh();
+            mesh.SetVertices(meshVertices);
+            mesh.SetTriangles(triangles, 0);
+            mesh.SetNormals(normals);
+            mesh.SetColors(colors);
+            return mesh;
+        }
+    */
+
     public static Mesh BuildMesh(
-        (List<Vector3> meshVertices, List<int>triangles, List<Vector3> normals, List<Color> colors) input)
+    (List<Vector3> meshVertices, List<int> triangles, List<Vector3> normals, List<int> colorIndices) input,
+    PolyhedronPalette palette)
     {
-        var (meshVertices, triangles, normals, colors) = input;
+        var (meshVertices, triangles, normals, colorIndices) = input;
+
+        // Map color indices to actual colors
+        var colors = colorIndices.Select(idx => palette.GetColor(idx)).ToList();
 
         Mesh mesh = new Mesh();
         mesh.SetVertices(meshVertices);
@@ -1106,8 +1110,8 @@ public class PolyhedronGenerator : MonoBehaviour
         List<Vector3> vertices,
         List<int> tris,
         List<Vector3> normals,
-        List<Color> colors,
-        Color faceColor)
+        List<int> colorIndices,
+        int faceColorIndex)
     {
         // Calculate face center
         Vector3 center = Vector3.zero;
@@ -1119,7 +1123,7 @@ public class PolyhedronGenerator : MonoBehaviour
         int centerIndex = vertices.Count;
         vertices.Add(center);
         normals.Add(faceNormal);
-        colors.Add(faceColor);
+        colorIndices.Add(faceColorIndex);
 
         // Add perimeter vertices
         int baseIndex = vertices.Count;
@@ -1127,7 +1131,7 @@ public class PolyhedronGenerator : MonoBehaviour
         {
             vertices.Add(v);
             normals.Add(faceNormal);
-            colors.Add(faceColor);
+            colorIndices.Add(faceColorIndex);
         }
 
         // Check winding direction for first triangle
