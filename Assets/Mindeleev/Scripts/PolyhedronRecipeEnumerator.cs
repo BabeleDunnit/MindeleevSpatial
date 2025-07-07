@@ -144,7 +144,8 @@ public static class PolyhedronRecipeEnumerator
             throw new ArgumentException("Unknown base polyhedron: " + basePoly);
 
         // 2. Parse tokens (left to right)
-        List<int> tokenInts = new List<int>();
+        List<int> digits = new List<int>();
+        List<int> radixes = new List<int>();
         int i = 0;
         while (i < basePos)
         {
@@ -153,85 +154,55 @@ public static class PolyhedronRecipeEnumerator
             if (opIdx < 0)
                 throw new ArgumentException($"Unknown operator: {op}");
 
-            int facesSidesIdx = 0, roundingIdx = 0, param0Idx = 0, param1Idx = 0;
-            if (i + 1 < basePos && recipe[i + 1] == '(')
+            digits.Add(opIdx);
+            radixes.Add(Operators.Length);
+            i++;
+
+            if (i < basePos && recipe[i] == '(')
             {
-                int closePos = recipe.IndexOf(')', i + 2);
+                int closePos = recipe.IndexOf(')', i + 1);
                 if (closePos == -1)
                     throw new ArgumentException("Malformed recipe: missing ')'");
 
-                string paramStr = recipe.Substring(i + 2, closePos - (i + 2));
+                string paramStr = recipe.Substring(i + 1, closePos - (i + 1));
                 string[] parameters = paramStr.Split(',').Select(p => p.Trim()).ToArray();
 
                 if (op == 'k' || op == 't')
                 {
-                    if (parameters.Length > 0)
-                        facesSidesIdx = Array.IndexOf(FaceSidesFilter, int.Parse(parameters[0]));
-                    if (parameters.Length > 1)
-                        roundingIdx = Array.IndexOf(FaceSignatureRounding, int.Parse(parameters[1]));
-                    if (parameters.Length > 2)
-                        param0Idx = Array.IndexOf(ParamValues, float.Parse(parameters[2], CultureInfo.InvariantCulture));
+                    int facesSidesIdx = Array.IndexOf(FaceSidesFilter, int.Parse(parameters[0]));
+                    int roundingIdx = Array.IndexOf(FaceSignatureRounding, int.Parse(parameters[1]));
+                    int param0Idx = Array.IndexOf(ParamValues, float.Parse(parameters[2], CultureInfo.InvariantCulture));
+                    digits.Add(facesSidesIdx); radixes.Add(FaceSidesFilter.Length);
+                    digits.Add(roundingIdx);   radixes.Add(FaceSignatureRounding.Length);
+                    digits.Add(param0Idx);     radixes.Add(ParamValues.Length);
                 }
                 else if (op == 'n')
                 {
-                    if (parameters.Length > 0)
-                        facesSidesIdx = Array.IndexOf(FaceSidesFilter, int.Parse(parameters[0]));
-                    if (parameters.Length > 1)
-                        roundingIdx = Array.IndexOf(FaceSignatureRounding, int.Parse(parameters[1]));
-                    if (parameters.Length > 2)
-                        param0Idx = Array.IndexOf(ParamValues, float.Parse(parameters[2], CultureInfo.InvariantCulture));
-                    if (parameters.Length > 3)
-                        param1Idx = Array.IndexOf(ParamValues, float.Parse(parameters[3], CultureInfo.InvariantCulture));
+                    int facesSidesIdx = Array.IndexOf(FaceSidesFilter, int.Parse(parameters[0]));
+                    int roundingIdx = Array.IndexOf(FaceSignatureRounding, int.Parse(parameters[1]));
+                    int param0Idx = Array.IndexOf(ParamValues, float.Parse(parameters[2], CultureInfo.InvariantCulture));
+                    int param1Idx = Array.IndexOf(ParamValues, float.Parse(parameters[3], CultureInfo.InvariantCulture));
+                    digits.Add(facesSidesIdx); radixes.Add(FaceSidesFilter.Length);
+                    digits.Add(roundingIdx);   radixes.Add(FaceSignatureRounding.Length);
+                    digits.Add(param0Idx);     radixes.Add(ParamValues.Length);
+                    digits.Add(param1Idx);     radixes.Add(ParamValues.Length);
                 }
                 else // a, d, l
                 {
-                    if (parameters.Length > 0)
-                        roundingIdx = Array.IndexOf(FaceSignatureRounding, int.Parse(parameters[0]));
+                    int roundingIdx = Array.IndexOf(FaceSignatureRounding, int.Parse(parameters[0]));
+                    digits.Add(roundingIdx);   radixes.Add(FaceSignatureRounding.Length);
                 }
-
-                // Encode token
-                int tokenInt = 0;
-                if (op == 'k' || op == 't')
-                {
-                    tokenInt = opIdx
-                        + Operators.Length * facesSidesIdx
-                        + Operators.Length * FaceSidesFilter.Length * roundingIdx
-                        + Operators.Length * FaceSidesFilter.Length * FaceSignatureRounding.Length * param0Idx;
-                }
-                else if (op == 'n')
-                {
-                    tokenInt = opIdx
-                        + Operators.Length * facesSidesIdx
-                        + Operators.Length * FaceSidesFilter.Length * roundingIdx
-                        + Operators.Length * FaceSidesFilter.Length * FaceSignatureRounding.Length * param0Idx
-                        + Operators.Length * FaceSidesFilter.Length * FaceSignatureRounding.Length * ParamValues.Length * param1Idx;
-                }
-                else // a, d, l
-                {
-                    tokenInt = opIdx
-                        + Operators.Length * roundingIdx;
-                }
-
-                tokenInts.Add(tokenInt);
                 i = closePos + 1;
             }
-            else
-            {
-                // No params, just operator
-                int tokenInt = opIdx;
-                tokenInts.Add(tokenInt);
-                i++;
-            }
         }
 
-        // 3. Combine tokens and base polyhedron into integer (reverse of IntToRecipe)
-        int n = basePolyIdx;
-        int radix = BasePolyhedra.Length;
-        for (int t = tokenInts.Count - 1; t >= 0; t--)
+        // 3. Combine digits into integer (reverse of IntToRecipe)
+        int n = 0;
+        for (int d = digits.Count - 1; d >= 0; d--)
         {
-            n = n * Operators.Length + tokenInts[t];
-            radix *= Operators.Length;
+            n = n * radixes[d] + digits[d];
         }
+        n = n * BasePolyhedra.Length + basePolyIdx;
         return n;
     }
 

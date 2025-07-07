@@ -79,12 +79,12 @@ public class EnumerationTests
             {
                 if (i != recovered)
                 {
-                    Debug.Log($"{i} maps to recipe {recipe}, {recovered} maps to {recipeFromRecovered} but the recipes are equivalent");
+                    Debug.Log($"int {i} maps to recipe {recipe}, which back-maps to int {recovered}, which maps to recipe {recipeFromRecovered}, but the recipes are equivalent");
                 }
             }
             else
             {
-                Assert.Fail($"{i} maps to recipe {recipe}, {recovered} maps to {recipeFromRecovered} but the recipes are NOT equivalent. Test FAILED.");
+                Assert.Fail($"int {i} maps to recipe {recipe}, which back-maps to int {recovered}, which maps to recipe {recipeFromRecovered}, but the recipes are NOT equivalent. Test FAILED.");
             }
         }
         Debug.Log("RecipeToInt/IntToRecipe roundtrip test passed for 0..999");
