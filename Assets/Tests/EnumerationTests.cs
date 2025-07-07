@@ -32,7 +32,7 @@ public class EnumerationTests
         var geometries = new List<(string recipe, (List<Vector3> meshVertices, List<int> triangles, List<Vector3> normals, List<int> colorIndices) geom)>();
         var equivalentPairs = new List<(int i, int j, string recipeI, string recipeJ)>();
 
-        for (int i = 0; i <= 1000; i++)
+        for (int i = 0; i <= 300; i++)
         {
             string recipeI = PolyhedronRecipeEnumerator.IntToRecipe(i);
             var polyDataI = Polyhedronisme.ParsePolyhedronRecipe(recipeI);

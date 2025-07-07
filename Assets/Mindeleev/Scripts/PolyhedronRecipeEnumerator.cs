@@ -129,6 +129,8 @@ public static class PolyhedronRecipeEnumerator
         return recipe;
     }
 
+    
+
     public static bool AreRecipesEquivalent(string r1, string r2)
     {
         var polyData1 = Polyhedronisme.ParsePolyhedronRecipe(r1);

@@ -620,7 +620,7 @@ public static class Polyhedronisme
         for (int f = 0; f < faces.Length; f++)
         {
             var face = faces[f];
-            Debug.Log($"face vertices: {string.Join(",", face)}");
+            // Debug.Log($"face vertices: {string.Join(",", face)}");
             var faceCenter = CalculateFaceCenter(face.Select(idx => inputVertices[idx]).ToArray());
             var innerVerts = new List<int>();
 
@@ -648,10 +648,10 @@ public static class Polyhedronisme
                 System.Array.Reverse(centralFace);
             newFaces.Add(centralFace);
 
-            Debug.Log($"cenral face vertices: {string.Join(",", centralFace)}");
+            // Debug.Log($"cenral face vertices: {string.Join(",", centralFace)}");
 
             string signature = GetFaceSignature(centralFace.Select(idx => newVertices[idx]).ToArray(), faceSignatureRounding);
-            Debug.Log(signature);
+            // Debug.Log(signature);
             if (!signatureToColor.ContainsKey(signature))
                 signatureToColor[signature] = nextColorIndex++;
 
@@ -871,7 +871,7 @@ public static class Polyhedronisme
         var signatureToColor = new Dictionary<string, int>();
         int nextColorIndex = 0;
 
-        Debug.Log($"ApplyInsetN with n={facesSidesFilter}, inset={insetDistance}, extrude={extrudeDistance}"); // Debug
+        // Debug.Log($"ApplyInsetN with n={facesSidesFilter}, inset={insetDistance}, extrude={extrudeDistance}"); // Debug
 
         // Precompute centers and normals
         var centers = new Vector3[faces.Length];
