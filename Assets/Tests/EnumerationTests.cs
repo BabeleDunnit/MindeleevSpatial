@@ -81,6 +81,10 @@ public class EnumerationTests
                 {
                     Debug.Log($"int {i} maps to recipe {recipe}, which back-maps to int {recovered}, which maps to recipe {recipeFromRecovered}, but the recipes are equivalent");
                 }
+                else
+                {
+                    Debug.Log($"int {i} maps to recipe {recipe}, which back-maps to int {recovered}. OK.");
+                }
             }
             else
             {

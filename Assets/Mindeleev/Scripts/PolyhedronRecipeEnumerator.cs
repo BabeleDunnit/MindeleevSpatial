@@ -31,28 +31,23 @@ public static class PolyhedronRecipeEnumerator
     // Encode a single token as an integer
     private static int EncodeToken(Token t)
     {
-        // For each operator, encode only relevant params
         switch (Operators[t.opIdx])
         {
             case 'k': // Kis
-                return t.opIdx
-                    + Operators.Length * t.faceSidesIdx
-                    + Operators.Length * FaceSidesFilter.Length * t.roundingIdx
-                    + Operators.Length * FaceSidesFilter.Length * FaceSignatureRounding.Length * t.param0Idx;
-            case 'n': // InsetN
-                return t.opIdx
-                    + Operators.Length * t.faceSidesIdx
-                    + Operators.Length * FaceSidesFilter.Length * t.roundingIdx
-                    + Operators.Length * FaceSidesFilter.Length * FaceSignatureRounding.Length * t.param0Idx
-                    + Operators.Length * FaceSidesFilter.Length * FaceSignatureRounding.Length * ParamValues.Length * t.param1Idx;
             case 't': // Truncate (same as Kis)
-                return t.opIdx
-                    + Operators.Length * t.faceSidesIdx
-                    + Operators.Length * FaceSidesFilter.Length * t.roundingIdx
-                    + Operators.Length * FaceSidesFilter.Length * FaceSignatureRounding.Length * t.param0Idx;
+                return t.param0Idx
+                    + ParamValues.Length * t.roundingIdx
+                    + ParamValues.Length * FaceSignatureRounding.Length * t.faceSidesIdx
+                    + ParamValues.Length * FaceSignatureRounding.Length * FaceSidesFilter.Length * t.opIdx;
+            case 'n': // InsetN
+                return t.param1Idx
+                    + ParamValues.Length * t.param0Idx
+                    + ParamValues.Length * ParamValues.Length * t.roundingIdx
+                    + ParamValues.Length * ParamValues.Length * FaceSignatureRounding.Length * t.faceSidesIdx
+                    + ParamValues.Length * ParamValues.Length * FaceSignatureRounding.Length * FaceSidesFilter.Length * t.opIdx;
             default: // a, d, l: only rounding
-                return t.opIdx
-                    + Operators.Length * t.roundingIdx;
+                return t.roundingIdx
+                    + FaceSignatureRounding.Length * t.opIdx;
         }
     }
 
@@ -83,39 +78,52 @@ public static class PolyhedronRecipeEnumerator
     // Map an integer to a recipe string
     public static string IntToRecipe(int n)
     {
-        // 1. Choose base polyhedron
         int basePolyIdx = n % BasePolyhedra.Length;
         n /= BasePolyhedra.Length;
 
-        // 2. Build operator tokens (from least to most significant)
         List<string> tokens = new List<string>();
         int tokenCount = 0;
         while (n > 0 && tokenCount < MaxTokens)
         {
-            int opIdx = n % Operators.Length;
-            n /= Operators.Length;
+            // Find which operator this token is
+            int opIdx = 0;
+            int tokenInt = 0;
+            // Try all operators to find which fits
+            int running = n;
+            for (int testOpIdx = 0; testOpIdx < Operators.Length; testOpIdx++)
+            {
+                int tokenSpace = TokenSpaceSize(testOpIdx);
+                if (running < tokenSpace)
+                {
+                    opIdx = testOpIdx;
+                    tokenInt = running;
+                    break;
+                }
+                running -= tokenSpace;
+            }
+            n = (n - tokenInt) / TokenSpaceSize(opIdx);
 
             char op = Operators[opIdx];
             string token = op.ToString();
 
             if (op == 'k' || op == 't')
             {
-                int param0Idx = n % ParamValues.Length; n /= ParamValues.Length;
-                int roundingIdx = n % FaceSignatureRounding.Length; n /= FaceSignatureRounding.Length;
-                int faceSidesIdx = n % FaceSidesFilter.Length; n /= FaceSidesFilter.Length;
+                int param0Idx = tokenInt % ParamValues.Length; tokenInt /= ParamValues.Length;
+                int roundingIdx = tokenInt % FaceSignatureRounding.Length; tokenInt /= FaceSignatureRounding.Length;
+                int faceSidesIdx = tokenInt % FaceSidesFilter.Length; tokenInt /= FaceSidesFilter.Length;
                 token += $"({FaceSidesFilter[faceSidesIdx]},{FaceSignatureRounding[roundingIdx]},{ParamValues[param0Idx].ToString("0.0", CultureInfo.InvariantCulture)})";
             }
             else if (op == 'n')
             {
-                int param1Idx = n % ParamValues.Length; n /= ParamValues.Length;
-                int param0Idx = n % ParamValues.Length; n /= ParamValues.Length;
-                int roundingIdx = n % FaceSignatureRounding.Length; n /= FaceSignatureRounding.Length;
-                int faceSidesIdx = n % FaceSidesFilter.Length; n /= FaceSidesFilter.Length;
+                int param1Idx = tokenInt % ParamValues.Length; tokenInt /= ParamValues.Length;
+                int param0Idx = tokenInt % ParamValues.Length; tokenInt /= ParamValues.Length;
+                int roundingIdx = tokenInt % FaceSignatureRounding.Length; tokenInt /= FaceSignatureRounding.Length;
+                int faceSidesIdx = tokenInt % FaceSidesFilter.Length; tokenInt /= FaceSidesFilter.Length;
                 token += $"({FaceSidesFilter[faceSidesIdx]},{FaceSignatureRounding[roundingIdx]},{ParamValues[param0Idx].ToString("0.0", CultureInfo.InvariantCulture)},{ParamValues[param1Idx].ToString("0.0", CultureInfo.InvariantCulture)})";
             }
             else // a, d, l
             {
-                int roundingIdx = n % FaceSignatureRounding.Length; n /= FaceSignatureRounding.Length;
+                int roundingIdx = tokenInt % FaceSignatureRounding.Length; tokenInt /= FaceSignatureRounding.Length;
                 token += $"({FaceSignatureRounding[roundingIdx]})";
             }
 
@@ -123,7 +131,6 @@ public static class PolyhedronRecipeEnumerator
             tokenCount++;
         }
 
-        // 3. Compose recipe (reverse tokens for left-to-right application)
         tokens.Reverse();
         string recipe = string.Concat(tokens) + BasePolyhedra[basePolyIdx];
         return recipe;
@@ -144,63 +151,88 @@ public static class PolyhedronRecipeEnumerator
             throw new ArgumentException("Unknown base polyhedron: " + basePoly);
 
         // 2. Parse tokens (left to right)
-        List<int> digits = new List<int>();
-        List<int> radixes = new List<int>();
+        List<int> tokenInts = new List<int>();
+        List<int> tokenRadixes = new List<int>();
         int i = 0;
         while (i < basePos)
         {
+            // Skip any whitespace (optional, if your recipes can have spaces)
+            while (i < basePos && char.IsWhiteSpace(recipe[i]))
+                i++;
+
+            // Expect an operator
             char op = recipe[i];
             int opIdx = Array.IndexOf(Operators, op);
             if (opIdx < 0)
                 throw new ArgumentException($"Unknown operator: {op}");
 
-            digits.Add(opIdx);
-            radixes.Add(Operators.Length);
-            i++;
+            int faceSidesIdx = 0, roundingIdx = 0, param0Idx = 0, param1Idx = 0;
+            i++; // Move past operator
 
             if (i < basePos && recipe[i] == '(')
             {
-                int closePos = recipe.IndexOf(')', i + 1);
+                int openPos = i;
+                int closePos = recipe.IndexOf(')', openPos);
                 if (closePos == -1)
                     throw new ArgumentException("Malformed recipe: missing ')'");
 
-                string paramStr = recipe.Substring(i + 1, closePos - (i + 1));
+                string paramStr = recipe.Substring(openPos + 1, closePos - (openPos + 1));
                 string[] parameters = paramStr.Split(',').Select(p => p.Trim()).ToArray();
 
                 if (op == 'k' || op == 't')
                 {
-                    int facesSidesIdx = Array.IndexOf(FaceSidesFilter, int.Parse(parameters[0]));
-                    int roundingIdx = Array.IndexOf(FaceSignatureRounding, int.Parse(parameters[1]));
-                    int param0Idx = Array.IndexOf(ParamValues, float.Parse(parameters[2], CultureInfo.InvariantCulture));
-                    digits.Add(facesSidesIdx); radixes.Add(FaceSidesFilter.Length);
-                    digits.Add(roundingIdx);   radixes.Add(FaceSignatureRounding.Length);
-                    digits.Add(param0Idx);     radixes.Add(ParamValues.Length);
+                    faceSidesIdx = Array.IndexOf(FaceSidesFilter, int.Parse(parameters[0]));
+                    roundingIdx = Array.IndexOf(FaceSignatureRounding, int.Parse(parameters[1]));
+                    param0Idx = FindClosestParamIndex(float.Parse(parameters[2], CultureInfo.InvariantCulture));
                 }
                 else if (op == 'n')
                 {
-                    int facesSidesIdx = Array.IndexOf(FaceSidesFilter, int.Parse(parameters[0]));
-                    int roundingIdx = Array.IndexOf(FaceSignatureRounding, int.Parse(parameters[1]));
-                    int param0Idx = Array.IndexOf(ParamValues, float.Parse(parameters[2], CultureInfo.InvariantCulture));
-                    int param1Idx = Array.IndexOf(ParamValues, float.Parse(parameters[3], CultureInfo.InvariantCulture));
-                    digits.Add(facesSidesIdx); radixes.Add(FaceSidesFilter.Length);
-                    digits.Add(roundingIdx);   radixes.Add(FaceSignatureRounding.Length);
-                    digits.Add(param0Idx);     radixes.Add(ParamValues.Length);
-                    digits.Add(param1Idx);     radixes.Add(ParamValues.Length);
+                    faceSidesIdx = Array.IndexOf(FaceSidesFilter, int.Parse(parameters[0]));
+                    roundingIdx = Array.IndexOf(FaceSignatureRounding, int.Parse(parameters[1]));
+                    param0Idx = FindClosestParamIndex(float.Parse(parameters[2], CultureInfo.InvariantCulture));
+                    param1Idx = FindClosestParamIndex(float.Parse(parameters[3], CultureInfo.InvariantCulture));
                 }
                 else // a, d, l
                 {
-                    int roundingIdx = Array.IndexOf(FaceSignatureRounding, int.Parse(parameters[0]));
-                    digits.Add(roundingIdx);   radixes.Add(FaceSignatureRounding.Length);
+                    roundingIdx = Array.IndexOf(FaceSignatureRounding, int.Parse(parameters[0]));
                 }
-                i = closePos + 1;
+
+                // Encode token using your EncodeToken logic
+                var token = new Token
+                {
+                    opIdx = opIdx,
+                    faceSidesIdx = faceSidesIdx,
+                    roundingIdx = roundingIdx,
+                    param0Idx = param0Idx,
+                    param1Idx = param1Idx
+                };
+                int tokenInt = EncodeToken(token);
+                int tokenRadix = TokenSpaceSize(opIdx);
+
+                tokenInts.Add(tokenInt);
+                tokenRadixes.Add(tokenRadix);
+
+                i = closePos + 1; // Move past ')'
+            }
+            else
+            {
+                // No params, just operator
+                var token = new Token { opIdx = opIdx };
+                int tokenInt = EncodeToken(token);
+                int tokenRadix = TokenSpaceSize(opIdx);
+
+                tokenInts.Add(tokenInt);
+                tokenRadixes.Add(tokenRadix);
+
+                // i already points to next operator
             }
         }
 
-        // 3. Combine digits into integer (reverse of IntToRecipe)
+        // 3. Combine token ints into integer (reverse of IntToRecipe)
         int n = 0;
-        for (int d = digits.Count - 1; d >= 0; d--)
+        for (int t = tokenInts.Count - 1; t >= 0; t--)
         {
-            n = n * radixes[d] + digits[d];
+            n = n * tokenRadixes[t] + tokenInts[t];
         }
         n = n * BasePolyhedra.Length + basePolyIdx;
         return n;
@@ -224,6 +256,17 @@ public static class PolyhedronRecipeEnumerator
         bool colorsEqual = polyFinalData1.colorIndices.SequenceEqual(polyFinalData2.colorIndices);
 
         return vertsEqual && trisEqual && normalsEqual && colorsEqual;
+    }
+
+    private static int FindClosestParamIndex(float value)
+    {
+        float epsilon = 1e-4f;
+        for (int i = 0; i < ParamValues.Length; i++)
+        {
+            if (Mathf.Abs(ParamValues[i] - value) < epsilon)
+                return i;
+        }
+        throw new ArgumentException($"Value {value} not found in ParamValues.");
     }
 
 }
