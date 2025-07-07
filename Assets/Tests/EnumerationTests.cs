@@ -83,11 +83,12 @@ public class EnumerationTests
                 }
                 else
                 {
-                    Debug.Log($"int {i} maps to recipe {recipe}, which back-maps to int {recovered}. OK.");
+                    // Debug.Log($"int {i} maps to recipe {recipe}, which back-maps to int {recovered}. OK.");
                 }
             }
             else
             {
+                Debug.Log($"int {i-1} maps to recipe { PolyhedronRecipeEnumerator.IntToRecipe(i-1)}, which back-maps to int {PolyhedronRecipeEnumerator.RecipeToInt(PolyhedronRecipeEnumerator.IntToRecipe(i-1))}, which maps to recipe {PolyhedronRecipeEnumerator.IntToRecipe(PolyhedronRecipeEnumerator.RecipeToInt(PolyhedronRecipeEnumerator.IntToRecipe(i-1)))}");
                 Assert.Fail($"int {i} maps to recipe {recipe}, which back-maps to int {recovered}, which maps to recipe {recipeFromRecovered}, but the recipes are NOT equivalent. Test FAILED.");
             }
         }

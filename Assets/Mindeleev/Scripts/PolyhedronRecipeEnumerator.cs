@@ -229,8 +229,11 @@ public static class PolyhedronRecipeEnumerator
         }
 
         // 3. Combine token ints into integer (reverse of IntToRecipe)
+        tokenInts.Reverse();
+        tokenRadixes.Reverse();
+
         int n = 0;
-        for (int t = tokenInts.Count - 1; t >= 0; t--)
+        for (int t = 0; t < tokenInts.Count; t++)
         {
             n = n * tokenRadixes[t] + tokenInts[t];
         }
