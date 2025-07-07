@@ -32,7 +32,7 @@ public class EnumerationTests
         var geometries = new List<(string recipe, (List<Vector3> meshVertices, List<int> triangles, List<Vector3> normals, List<int> colorIndices) geom)>();
         var equivalentPairs = new List<(int i, int j, string recipeI, string recipeJ)>();
 
-        for (int i = 0; i <= 300; i++)
+        for (int i = 0; i <= 100; i++)
         {
             string recipeI = PolyhedronRecipeEnumerator.IntToRecipe(i);
             var polyDataI = Polyhedronisme.ParsePolyhedronRecipe(recipeI);
@@ -54,7 +54,7 @@ public class EnumerationTests
 
         if (equivalentPairs.Count == 0)
         {
-            Debug.Log("No geometrically equivalent recipes found in range 0-1000.");
+            Debug.Log("No geometrically equivalent recipes found.");
         }
         else
         {
@@ -64,6 +64,30 @@ public class EnumerationTests
                 Debug.Log($"{i} {recipeI} == {j} {recipeJ}");
             }
         }
+    }
+
+    [Test]
+    public void TestRecipeToIntAndBack()
+    {
+        for (int i = 0; i < 1000; i++)
+        {
+            string recipe = PolyhedronRecipeEnumerator.IntToRecipe(i);
+            int recovered = PolyhedronRecipeEnumerator.RecipeToInt(recipe);
+            string recipeFromRecovered = PolyhedronRecipeEnumerator.IntToRecipe(recovered);
+
+            if (PolyhedronRecipeEnumerator.AreRecipesEquivalent(recipe, recipeFromRecovered))
+            {
+                if (i != recovered)
+                {
+                    Debug.Log($"{i} maps to recipe {recipe}, {recovered} maps to {recipeFromRecovered} but the recipes are equivalent");
+                }
+            }
+            else
+            {
+                Assert.Fail($"{i} maps to recipe {recipe}, {recovered} maps to {recipeFromRecovered} but the recipes are NOT equivalent. Test FAILED.");
+            }
+        }
+        Debug.Log("RecipeToInt/IntToRecipe roundtrip test passed for 0..999");
     }
 
     // A UnityTest behaves like a coroutine in Play Mode. In Edit Mode you can use

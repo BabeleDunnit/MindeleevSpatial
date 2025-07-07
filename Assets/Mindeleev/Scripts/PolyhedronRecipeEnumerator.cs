@@ -129,7 +129,111 @@ public static class PolyhedronRecipeEnumerator
         return recipe;
     }
 
-    
+    public static int RecipeToInt(string recipe)
+    {
+        // 1. Find base polyhedron (last uppercase letter)
+        int basePos = recipe.Length - 1;
+        while (basePos >= 0 && !char.IsUpper(recipe[basePos]))
+            basePos--;
+        if (basePos < 0)
+            throw new ArgumentException("No base polyhedron found in recipe.");
+
+        char basePoly = recipe[basePos];
+        int basePolyIdx = Array.IndexOf(BasePolyhedra, basePoly);
+        if (basePolyIdx < 0)
+            throw new ArgumentException("Unknown base polyhedron: " + basePoly);
+
+        // 2. Parse tokens (left to right)
+        List<int> tokenInts = new List<int>();
+        int i = 0;
+        while (i < basePos)
+        {
+            char op = recipe[i];
+            int opIdx = Array.IndexOf(Operators, op);
+            if (opIdx < 0)
+                throw new ArgumentException($"Unknown operator: {op}");
+
+            int facesSidesIdx = 0, roundingIdx = 0, param0Idx = 0, param1Idx = 0;
+            if (i + 1 < basePos && recipe[i + 1] == '(')
+            {
+                int closePos = recipe.IndexOf(')', i + 2);
+                if (closePos == -1)
+                    throw new ArgumentException("Malformed recipe: missing ')'");
+
+                string paramStr = recipe.Substring(i + 2, closePos - (i + 2));
+                string[] parameters = paramStr.Split(',').Select(p => p.Trim()).ToArray();
+
+                if (op == 'k' || op == 't')
+                {
+                    if (parameters.Length > 0)
+                        facesSidesIdx = Array.IndexOf(FaceSidesFilter, int.Parse(parameters[0]));
+                    if (parameters.Length > 1)
+                        roundingIdx = Array.IndexOf(FaceSignatureRounding, int.Parse(parameters[1]));
+                    if (parameters.Length > 2)
+                        param0Idx = Array.IndexOf(ParamValues, float.Parse(parameters[2], CultureInfo.InvariantCulture));
+                }
+                else if (op == 'n')
+                {
+                    if (parameters.Length > 0)
+                        facesSidesIdx = Array.IndexOf(FaceSidesFilter, int.Parse(parameters[0]));
+                    if (parameters.Length > 1)
+                        roundingIdx = Array.IndexOf(FaceSignatureRounding, int.Parse(parameters[1]));
+                    if (parameters.Length > 2)
+                        param0Idx = Array.IndexOf(ParamValues, float.Parse(parameters[2], CultureInfo.InvariantCulture));
+                    if (parameters.Length > 3)
+                        param1Idx = Array.IndexOf(ParamValues, float.Parse(parameters[3], CultureInfo.InvariantCulture));
+                }
+                else // a, d, l
+                {
+                    if (parameters.Length > 0)
+                        roundingIdx = Array.IndexOf(FaceSignatureRounding, int.Parse(parameters[0]));
+                }
+
+                // Encode token
+                int tokenInt = 0;
+                if (op == 'k' || op == 't')
+                {
+                    tokenInt = opIdx
+                        + Operators.Length * facesSidesIdx
+                        + Operators.Length * FaceSidesFilter.Length * roundingIdx
+                        + Operators.Length * FaceSidesFilter.Length * FaceSignatureRounding.Length * param0Idx;
+                }
+                else if (op == 'n')
+                {
+                    tokenInt = opIdx
+                        + Operators.Length * facesSidesIdx
+                        + Operators.Length * FaceSidesFilter.Length * roundingIdx
+                        + Operators.Length * FaceSidesFilter.Length * FaceSignatureRounding.Length * param0Idx
+                        + Operators.Length * FaceSidesFilter.Length * FaceSignatureRounding.Length * ParamValues.Length * param1Idx;
+                }
+                else // a, d, l
+                {
+                    tokenInt = opIdx
+                        + Operators.Length * roundingIdx;
+                }
+
+                tokenInts.Add(tokenInt);
+                i = closePos + 1;
+            }
+            else
+            {
+                // No params, just operator
+                int tokenInt = opIdx;
+                tokenInts.Add(tokenInt);
+                i++;
+            }
+        }
+
+        // 3. Combine tokens and base polyhedron into integer (reverse of IntToRecipe)
+        int n = basePolyIdx;
+        int radix = BasePolyhedra.Length;
+        for (int t = tokenInts.Count - 1; t >= 0; t--)
+        {
+            n = n * Operators.Length + tokenInts[t];
+            radix *= Operators.Length;
+        }
+        return n;
+    }
 
     public static bool AreRecipesEquivalent(string r1, string r2)
     {
