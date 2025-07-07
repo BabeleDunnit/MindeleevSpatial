@@ -41,7 +41,7 @@ public class OrbitalGeneticInstantiator : MonoBehaviour
             float angle = i * Mathf.PI * 2f / innerOrbitCount;
             Vector3 offset = new Vector3(
                 Mathf.Cos(angle) * innerOrbitRadius,
-                0.7f,
+                0.0f,
                 Mathf.Sin(angle) * innerOrbitRadius
             );
             Vector3 position = transform.position + offset;
@@ -51,7 +51,7 @@ public class OrbitalGeneticInstantiator : MonoBehaviour
             string randomRecipe = PolyhedronRecipeEnumerator.IntToRecipe(randomInt);
 
             GameObject poly = Instantiate(polytronPrefab, position, Quaternion.identity, transform);
-            poly.transform.localScale = transform.localScale * 0.3f;
+            poly.transform.localScale = transform.localScale * 0.4f;
             var gen = poly.GetComponent<PolyhedronGenerator>();
             if (gen != null)
                 gen.polyhedronRecipe = randomRecipe;
@@ -71,7 +71,7 @@ public class OrbitalGeneticInstantiator : MonoBehaviour
             innerPolyhedra.Add(poly);
         }
     }
-
+/*
     // Called by InnerPolyhedronCollisionHandler
     public void OnInnerPolyhedronCollision(GameObject collidedPoly, string collidedRecipe)
     {
@@ -94,13 +94,45 @@ public class OrbitalGeneticInstantiator : MonoBehaviour
             string offspringRecipe = population[0];
 
             GameObject offspring = Instantiate(polytronPrefab, position, Quaternion.identity, collidedPoly.transform);
-            offspring.transform.localScale = collidedPoly.transform.localScale * 0.9f;
+            offspring.transform.localScale = collidedPoly.transform.localScalef;
             var gen = offspring.GetComponent<PolyhedronGenerator>();
             if (gen != null)
                 gen.polyhedronRecipe = offspringRecipe;
             offspring.name = $"Offspring_{offspringRecipe}";
             CreateLabel(offspring, offspringRecipe, Vector3.zero);
         }
+    }
+*/
+
+    public List<GameObject> SpawnOffspring(GameObject collidedPoly, string collidedRecipe)
+    {
+        List<GameObject> offspringList = new List<GameObject>();
+        string nucleus = nucleusRecipe;
+
+        for (int m = 0; m < offspringCount; m++)
+        {
+            float angle = m * Mathf.PI * 2f / offspringCount;
+            Vector3 offset = new Vector3(
+                Mathf.Cos(angle) * offspringOrbitRadius,
+                0,
+                Mathf.Sin(angle) * offspringOrbitRadius
+            );
+            Vector3 position = collidedPoly.transform.position + offset;
+
+            var population = PolyhedraGeneticEngine.CrossoverRecipes(nucleus, collidedRecipe, 1);
+            string offspringRecipe = population[0];
+
+            GameObject offspring = Instantiate(polytronPrefab, position, Quaternion.identity, collidedPoly.transform);
+            offspring.transform.localScale = collidedPoly.transform.localScale * 0.7f;
+            var gen = offspring.GetComponent<PolyhedronGenerator>();
+            if (gen != null)
+                gen.polyhedronRecipe = offspringRecipe;
+            offspring.name = $"Offspring_{offspringRecipe}";
+            CreateLabel(offspring, offspringRecipe, Vector3.zero);
+
+            offspringList.Add(offspring);
+        }
+        return offspringList;
     }
 
     private void CreateLabel(GameObject parent, string recipe, Vector3 position)
@@ -130,13 +162,29 @@ public class InnerPolyhedronCollisionHandler : MonoBehaviour
     [HideInInspector] public OrbitalGeneticInstantiator parent;
     [HideInInspector] public string myRecipe;
 
+    // Keep track of spawned offspring
+    private List<GameObject> spawnedOffspring = new List<GameObject>();
+
     private void OnTriggerEnter(Collider other)
+    {
+        if ((other.CompareTag("Player") || other.GetComponent<CharacterController>() != null) && spawnedOffspring.Count == 0)
+        {
+            // Spawn offspring and keep references
+            spawnedOffspring = parent.SpawnOffspring(gameObject, myRecipe);
+        }
+    }
+
+    private void OnTriggerExit(Collider other)
     {
         if (other.CompareTag("Player") || other.GetComponent<CharacterController>() != null)
         {
-            parent.OnInnerPolyhedronCollision(gameObject, myRecipe);
-            // Optionally, disable further collisions or destroy this handler
-            Destroy(this);
+            // Destroy all spawned offspring
+            foreach (var child in spawnedOffspring)
+            {
+                if (child != null)
+                    Destroy(child);
+            }
+            spawnedOffspring.Clear();
         }
     }
 }
