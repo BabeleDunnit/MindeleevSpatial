@@ -41,7 +41,7 @@ public class OrbitalGeneticInstantiator : MonoBehaviour
             float angle = i * Mathf.PI * 2f / innerOrbitCount;
             Vector3 offset = new Vector3(
                 Mathf.Cos(angle) * innerOrbitRadius,
-                0,
+                0.7f,
                 Mathf.Sin(angle) * innerOrbitRadius
             );
             Vector3 position = transform.position + offset;
@@ -94,7 +94,7 @@ public class OrbitalGeneticInstantiator : MonoBehaviour
             string offspringRecipe = population[0];
 
             GameObject offspring = Instantiate(polytronPrefab, position, Quaternion.identity, collidedPoly.transform);
-            offspring.transform.localScale = collidedPoly.transform.localScale * 0.5f;
+            offspring.transform.localScale = collidedPoly.transform.localScale * 0.9f;
             var gen = offspring.GetComponent<PolyhedronGenerator>();
             if (gen != null)
                 gen.polyhedronRecipe = offspringRecipe;
