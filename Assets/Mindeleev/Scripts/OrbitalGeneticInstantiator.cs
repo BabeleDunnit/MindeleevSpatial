@@ -124,4 +124,19 @@ public class OrbitalGeneticInstantiator : MonoBehaviour
     }
 }
 
-// Handles collision for inner
+// Handles collision for inner orbit polyhedra
+public class InnerPolyhedronCollisionHandler : MonoBehaviour
+{
+    [HideInInspector] public OrbitalGeneticInstantiator parent;
+    [HideInInspector] public string myRecipe;
+
+    private void OnTriggerEnter(Collider other)
+    {
+        if (other.CompareTag("Player") || other.GetComponent<CharacterController>() != null)
+        {
+            parent.OnInnerPolyhedronCollision(gameObject, myRecipe);
+            // Optionally, disable further collisions or destroy this handler
+            Destroy(this);
+        }
+    }
+}
