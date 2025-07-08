@@ -187,6 +187,74 @@ public class PolyhedronRecipeTests
         Assert.AreEqual(1, parsed.Tokens[0].Parameter("faceSignatureRounding"));
     }
 
+    [Test]
+    public void Test_Builder_Matches_ParsePolyhedronRecipe_Kis()
+    {
+        // Kis changed parameters order
+        var expected = Polyhedronisme.ParsePolyhedronRecipe("k(2,4,0.2)C");
+
+        var parsed = PolyhedronRecipeParser.Parse("k(4,2,0.2)C");
+        var built = PolyhedronRecipeBuilder.Build(parsed);
+
+        AssertPolyhedronTuplesEqual(expected, built);
+    }
+
+    [Test]
+    public void Test_Builder_Matches_ParsePolyhedronRecipe_Truncate()
+    {
+        // Truncate changed parameters order because uses Kis
+        var expected = Polyhedronisme.ParsePolyhedronRecipe("t(2,4,0.3)O");
+
+        var parsed = PolyhedronRecipeParser.Parse("t(4,2,0.3)O");
+        var built = PolyhedronRecipeBuilder.Build(parsed);
+
+        AssertPolyhedronTuplesEqual(expected, built);
+    }
+
+    [Test]
+    public void Test_Builder_Matches_ParsePolyhedronRecipe_InsetN()
+    {
+        string recipeStr = "n(5,1,0.7,-0.2)I";
+        var expected = Polyhedronisme.ParsePolyhedronRecipe(recipeStr);
+
+        var parsed = PolyhedronRecipeParser.Parse(recipeStr);
+        var built = PolyhedronRecipeBuilder.Build(parsed);
+
+        AssertPolyhedronTuplesEqual(expected, built);
+    }
+
+    private void AssertPolyhedronTuplesEqual((Vector3[], int[][], int[]) a, (Vector3[], int[][], int[]) b)
+    {
+        Assert.AreEqual(a.Item1.Length, b.Item1.Length, "Vertex count mismatch");
+        Assert.AreEqual(a.Item2.Length, b.Item2.Length, "Face count mismatch");
+        Assert.AreEqual(a.Item3.Length, b.Item3.Length, "Color index count mismatch");
+
+        for (int i = 0; i < a.Item1.Length; i++)
+            Assert.That(a.Item1[i], Is.EqualTo(b.Item1[i]).Using(Vector3ComparerWithTolerance(1e-5f)), $"Vertex {i} mismatch");
+
+        for (int i = 0; i < a.Item2.Length; i++)
+            CollectionAssert.AreEqual(a.Item2[i], b.Item2[i], $"Face {i} mismatch");
+
+        for (int i = 0; i < a.Item3.Length; i++)
+            Assert.AreEqual(a.Item3[i], b.Item3[i], $"Color index {i} mismatch");
+    }
+
+    private static IEqualityComparer<Vector3> Vector3ComparerWithTolerance(float tolerance)
+    {
+        return new Vector3EqualityComparer(tolerance);
+    }
+
+    private class Vector3EqualityComparer : IEqualityComparer<Vector3>
+    {
+        private readonly float _tolerance;
+        public Vector3EqualityComparer(float tolerance) => _tolerance = tolerance;
+        public bool Equals(Vector3 a, Vector3 b) =>
+            Mathf.Abs(a.x - b.x) < _tolerance &&
+            Mathf.Abs(a.y - b.y) < _tolerance &&
+            Mathf.Abs(a.z - b.z) < _tolerance;
+        public int GetHashCode(Vector3 obj) => obj.GetHashCode();
+    }
+
 
 
     // A UnityTest behaves like a coroutine in Play Mode. In Edit Mode you can use

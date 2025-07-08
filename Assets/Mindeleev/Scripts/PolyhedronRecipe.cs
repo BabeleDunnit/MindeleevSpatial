@@ -1,3 +1,4 @@
+using UnityEngine;
 using System;
 using System.Collections.Generic;
 using System.Globalization;
@@ -275,5 +276,85 @@ public static class PolyhedronRecipeParser
 
         // Otherwise, treat as string
         return param;
+    }
+}
+
+/// <summary>
+/// Builds a polyhedron mesh tuple from a PolyhedronRecipe, mimicking Polyhedronisme.ParsePolyhedronRecipe logic.
+/// </summary>
+public static class PolyhedronRecipeBuilder
+{
+    public static (Vector3[], int[][], int[]) Build(PolyhedronRecipe recipe)
+    {
+        // Get base polyhedron
+        (Vector3[], int[][], int[]) current = recipe.BasePolyhedron switch
+        {
+            'C' => Polyhedronisme.Cube,
+            'T' => Polyhedronisme.Tetrahedron,
+            'O' => Polyhedronisme.Octahedron,
+            'D' => Polyhedronisme.Dodecahedron,
+            'I' => Polyhedronisme.Icosahedron,
+            _ => Polyhedronisme.Cube
+        };
+
+        // Apply operators from right to left (last token is applied first)
+        for (int t = recipe.Tokens.Count - 1; t >= 0; t--)
+        {
+            var token = recipe.Tokens[t];
+            string op = token.Operator;
+
+            // Use named parameter access for clarity
+            int faceSignatureRounding = Convert.ToInt32(token.Parameter("faceSignatureRounding"));
+            int facesSidesFilter = Convert.ToInt32(token.Parameter("facesSidesFilter"));
+
+            switch (op)
+            {
+                case "k":
+                    current = Polyhedronisme.ApplyKis(
+                        current,
+                        facesSidesFilter,
+                        faceSignatureRounding,
+                        Convert.ToSingle(token.Parameter("centerVertexHeight"))
+                    );
+                    break;
+                case "t":
+                    // Truncate: d -> k -> d
+                    current = Polyhedronisme.ApplyDual(current, faceSignatureRounding);
+                    current = Polyhedronisme.ApplyKis(
+                        current,
+                        facesSidesFilter,
+                        faceSignatureRounding,
+                        Convert.ToSingle(token.Parameter("centerVertexHeight"))
+                    );
+                    current = Polyhedronisme.ApplyDual(current, faceSignatureRounding);
+                    break;
+                case "a":
+                    current = Polyhedronisme.ApplyAmbo(current, faceSignatureRounding);
+                    break;
+                case "d":
+                    current = Polyhedronisme.ApplyDual(current, faceSignatureRounding);
+                    break;
+                case "n":
+                    current = Polyhedronisme.ApplyInsetN(
+                        current,
+                        facesSidesFilter,
+                        faceSignatureRounding,
+                        Convert.ToSingle(token.Parameter("insetHeight")),
+                        Convert.ToSingle(token.Parameter("extrudeHeight"))
+                    );
+                    break;
+                case "l":
+                    current = Polyhedronisme.ApplyStellation(current, faceSignatureRounding);
+                    break;
+                case "f":
+                    current = Polyhedronisme.ApplyFuckedStellation(current, faceSignatureRounding);
+                    break;
+                default:
+                    // Unknown operator: skip
+                    break;
+            }
+        }
+
+        return current;
     }
 }

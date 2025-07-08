@@ -10,7 +10,7 @@ public static class Polyhedronisme
      *  STATIC DATA: 5 canonical polyhedra expressed as (vertices, faces)
      * ----------------------------------------------------------------*/
     // Cube (C)
-    private static readonly (Vector3[], int[][], int[]) Cube = (
+    public static readonly (Vector3[], int[][], int[]) Cube = (
         new Vector3[]
         {
             new Vector3(-1, -1, -1), new Vector3(1, -1, -1), new Vector3(1, 1, -1), new Vector3(-1, 1, -1),
@@ -29,7 +29,7 @@ public static class Polyhedronisme
     );
 
     // Tetrahedron (T)
-    private static readonly (Vector3[], int[][], int[]) Tetrahedron = (
+    public static readonly (Vector3[], int[][], int[]) Tetrahedron = (
         new Vector3[]
         {
             new Vector3( 1,  1,  1),
@@ -48,7 +48,7 @@ public static class Polyhedronisme
     );
 
     // Octahedron (O)
-    private static readonly (Vector3[], int[][], int[]) Octahedron = (
+    public static readonly (Vector3[], int[][], int[]) Octahedron = (
         new Vector3[]
         {
             new Vector3(1, 0, 0), new Vector3(-1, 0, 0), new Vector3(0, 1, 0),
@@ -63,7 +63,7 @@ public static class Polyhedronisme
     );
 
     // Dodecahedron (D)
-    private static readonly (Vector3[], int[][], int[]) Dodecahedron = (
+    public static readonly (Vector3[], int[][], int[]) Dodecahedron = (
         new Vector3[]
         {
             new Vector3( 0.618034f,  0.618034f,  0.618034f), new Vector3( 0.618034f,  0.618034f, -0.618034f),
@@ -88,7 +88,7 @@ public static class Polyhedronisme
     );
 
     // Icosahedron (I)
-    private static readonly (Vector3[], int[][], int[]) Icosahedron = (
+    public static readonly (Vector3[], int[][], int[]) Icosahedron = (
         new Vector3[]
         {
             new Vector3(-1,  1.618034f,  0).normalized,
