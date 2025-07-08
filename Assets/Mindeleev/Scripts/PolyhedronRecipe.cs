@@ -10,18 +10,87 @@ using System.Text.RegularExpressions;
 public class RecipeToken
 {
     public string Operator { get; set; }
-    public List<object> Parameters { get; set; } = new List<object>();
+    public List<object> PositionalParameters { get; set; } = new List<object>();
+    public Dictionary<string, object> NamedParameters { get; set; } = new Dictionary<string, object>(StringComparer.OrdinalIgnoreCase);
+
+    // Operator parameter mapping: operator -> (positional index, named key)
+    public static readonly Dictionary<string, (int index, string key)[]> OperatorParamMap = new Dictionary<string, (int, string)[]>
+    {
+        // For each operator, define the mapping of positional index to named key
+        // Order: faceSignatureRounding, facesSidesFilter, centerVertexHeight/insetHeight, extrudeHeight
+        { "t", new[] { (0, "faceSignatureRounding"), (1, "facesSidesFilter"), (2, "centerVertexHeight") } },
+        { "k", new[] { (0, "faceSignatureRounding"), (1, "facesSidesFilter"), (2, "centerVertexHeight") } },
+        { "n", new[] { (0, "faceSignatureRounding"), (1, "facesSidesFilter"), (2, "insetHeight"), (3, "extrudeHeight") } },
+        { "a", new[] { (0, "faceSignatureRounding") } },
+        { "d", new[] { (0, "faceSignatureRounding") } },
+        { "l", new[] { (0, "faceSignatureRounding") } },
+    };
+
+    // Default values for named parameters
+    public static readonly Dictionary<string, object> NamedDefaults = new Dictionary<string, object>(StringComparer.OrdinalIgnoreCase)
+    {
+        { "faceSignatureRounding", 1 },
+        { "facesSidesFilter", 0 },
+        { "centerVertexHeight", 0.1f },
+        { "insetHeight", 0.6f },
+        { "extrudeHeight", -0.3f }
+    };
 
     public RecipeToken(string op)
     {
         Operator = op;
     }
 
+    /// <summary>
+    /// Get the value of a named parameter, considering overrides and defaults.
+    /// </summary>
+    public object Parameter(string name)
+    {
+        // 1. If present as named parameter, return it
+        if (NamedParameters.TryGetValue(name, out var val))
+            return val;
+
+        // 2. If mapped to a positional parameter, return that if present
+        if (OperatorParamMap.TryGetValue(Operator, out var map))
+        {
+            for (int i = 0; i < map.Length; i++)
+            {
+                if (string.Equals(map[i].key, name, StringComparison.OrdinalIgnoreCase))
+                {
+                    if (i < PositionalParameters.Count)
+                        return PositionalParameters[i];
+                }
+            }
+        }
+
+        // 3. Otherwise, return default
+        if (NamedDefaults.TryGetValue(name, out var def))
+            return def;
+
+        // 4. Not found
+        throw new ArgumentException($"Parameter '{name}' not found for operator '{Operator}'.");
+    }
+
     public override string ToString()
     {
-        if (Parameters.Count == 0)
+        var paramList = new List<string>();
+        // Add positional parameters
+        paramList.AddRange(PositionalParameters.Select(p => FormatParam(p)));
+        // Add named parameters (not already present as positional)
+        foreach (var kv in NamedParameters)
+        {
+            paramList.Add($"{kv.Key}:{FormatParam(kv.Value)}");
+        }
+        if (paramList.Count == 0)
             return Operator;
-        return $"{Operator}({string.Join(",", Parameters)})";
+        return $"{Operator}({string.Join(",", paramList)})";
+    }
+
+    private string FormatParam(object p)
+    {
+        if (p is float f)
+            return f.ToString("0.###", CultureInfo.InvariantCulture);
+        return p.ToString();
     }
 }
 
@@ -44,6 +113,8 @@ public class PolyhedronRecipe
 /// </summary>
 public static class PolyhedronRecipeParser
 {
+
+    /*
     // Default parameter values for each operator and parameter index
     private static readonly Dictionary<string, object[]> OperatorDefaultParameters = new Dictionary<string, object[]>
     {
@@ -58,6 +129,7 @@ public static class PolyhedronRecipeParser
         { "l", new object[] { 1 } },           // l: (int)
         // Add more operators and their default parameters as needed
     };
+    */
 
     // Regex for parsing tokens: operator + optional (params)
     private static readonly Regex TokenRegex = new Regex(
@@ -96,26 +168,54 @@ public static class PolyhedronRecipeParser
 
             var token = new RecipeToken(op);
 
-            // Get default parameters for this operator
-            object[] defaults = OperatorDefaultParameters.ContainsKey(op)
-                ? OperatorDefaultParameters[op]
-                : Array.Empty<object>();
-
-            // Parse parameters
+            // Parse parameters (mixed positional and named)
             if (!string.IsNullOrEmpty(paramStr))
             {
                 var paramParts = SplitParams(paramStr);
-                for (int i = 0; i < paramParts.Count; i++)
+                foreach (var part in paramParts)
                 {
-                    object parsed = ParseParameter(paramParts[i]);
-                    token.Parameters.Add(parsed);
+                    var kv = KeyValueRegex.Match(part);
+                    if (kv.Success)
+                    {
+                        // Named parameter
+                        string key = kv.Groups[1].Value;
+                        object value = ParseParameter(kv.Groups[2].Value);
+                        token.NamedParameters[key] = value;
+                    }
+                    else
+                    {
+                        // Positional parameter
+                        token.PositionalParameters.Add(ParseParameter(part));
+                    }
                 }
             }
 
-            // Fill in missing parameters with defaults
-            for (int i = token.Parameters.Count; i < defaults.Length; i++)
+            // Override positional parameters with named ones if present
+            if (RecipeToken.OperatorParamMap.TryGetValue(op, out var map))
             {
-                token.Parameters.Add(defaults[i]);
+                for (int i = 0; i < map.Length; i++)
+                {
+                    string key = map[i].key;
+                    if (token.NamedParameters.ContainsKey(key))
+                    {
+                        // Override positional value with named value
+                        if (i < token.PositionalParameters.Count)
+                            token.PositionalParameters[i] = token.NamedParameters[key];
+                        else
+                        {
+                            // Fill missing positional slots up to i
+                            while (token.PositionalParameters.Count < i)
+                                token.PositionalParameters.Add(RecipeToken.NamedDefaults[key]);
+                            token.PositionalParameters.Add(token.NamedParameters[key]);
+                        }
+                    }
+                }
+                // Fill missing positional parameters with defaults
+                for (int i = token.PositionalParameters.Count; i < map.Length; i++)
+                {
+                    string key = map[i].key;
+                    token.PositionalParameters.Add(RecipeToken.NamedDefaults[key]);
+                }
             }
 
             tokens.Add(token);
@@ -152,15 +252,10 @@ public static class PolyhedronRecipeParser
     }
 
     /// <summary>
-    /// Parses a single parameter: tries int, float, key:value, or string.
+    /// Parses a single parameter: tries int, float, or string.
     /// </summary>
     private static object ParseParameter(string param)
     {
-        // Try key:value
-        var kv = KeyValueRegex.Match(param);
-        if (kv.Success)
-            return new KeyValuePair<string, object>(kv.Groups[1].Value, ParseParameter(kv.Groups[2].Value));
-
         // Try int
         if (int.TryParse(param, NumberStyles.Integer, CultureInfo.InvariantCulture, out int iVal))
             return iVal;
