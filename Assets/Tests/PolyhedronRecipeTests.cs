@@ -27,6 +27,8 @@ public class PolyhedronRecipeTests
         Assert.AreEqual(3, parsed.Tokens[1].Parameters[0]);
         Assert.AreEqual(1, parsed.Tokens[1].Parameters[1]);
         Assert.AreEqual(0.2f, (float)parsed.Tokens[1].Parameters[2], 1e-6);
+
+        Assert.AreEqual(recipe, parsed.ToString());
     }
 
     [Test]
@@ -43,14 +45,15 @@ public class PolyhedronRecipeTests
         Assert.AreEqual(3, parsed.Tokens[0].Parameters.Count);
         Assert.AreEqual(1, parsed.Tokens[0].Parameters[0]);
         Assert.AreEqual(2, parsed.Tokens[0].Parameters[1]);
-        Assert.AreEqual(-0.3f, (float)parsed.Tokens[0].Parameters[2], 1e-6);
+        Assert.AreEqual(0.1f, (float)parsed.Tokens[0].Parameters[2], 1e-6);
 
         // k(3) should fill second and third param with defaults 0, -0.5f
         Assert.AreEqual("k", parsed.Tokens[1].Operator);
         Assert.AreEqual(3, parsed.Tokens[1].Parameters.Count);
         Assert.AreEqual(3, parsed.Tokens[1].Parameters[0]);
         Assert.AreEqual(0, parsed.Tokens[1].Parameters[1]);
-        Assert.AreEqual(-0.5f, (float)parsed.Tokens[1].Parameters[2], 1e-6);
+        Assert.AreEqual(0.1f, (float)parsed.Tokens[1].Parameters[2], 1e-6);
+
     }
 
     [Test]
@@ -84,9 +87,9 @@ public class PolyhedronRecipeTests
 
         Assert.AreEqual("t", parsed.Tokens[0].Operator);
         Assert.AreEqual(3, parsed.Tokens[0].Parameters.Count);
-        Assert.AreEqual(0, parsed.Tokens[0].Parameters[0]);
+        Assert.AreEqual(1, parsed.Tokens[0].Parameters[0]);
         Assert.AreEqual(0, parsed.Tokens[0].Parameters[1]);
-        Assert.AreEqual(-0.3f, (float)parsed.Tokens[0].Parameters[2], 1e-6);
+        Assert.AreEqual(0.1f, (float)parsed.Tokens[0].Parameters[2], 1e-6);
     }
 
     [Test]
@@ -100,9 +103,9 @@ public class PolyhedronRecipeTests
 
         Assert.AreEqual("t", parsed.Tokens[0].Operator);
         Assert.AreEqual(3, parsed.Tokens[0].Parameters.Count);
-        Assert.AreEqual(0, parsed.Tokens[0].Parameters[0]);
+        Assert.AreEqual(1, parsed.Tokens[0].Parameters[0]);
         Assert.AreEqual(0, parsed.Tokens[0].Parameters[1]);
-        Assert.AreEqual(-0.3f, (float)parsed.Tokens[0].Parameters[2], 1e-6);
+        Assert.AreEqual(0.1f, (float)parsed.Tokens[0].Parameters[2], 1e-6);
     }
 
 

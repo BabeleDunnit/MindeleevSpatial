@@ -45,15 +45,17 @@ public class PolyhedronRecipe
 public static class PolyhedronRecipeParser
 {
     // Default parameter values for each operator and parameter index
-    // Example: { "t", new object[] { 0, 0, -0.3f } }
     private static readonly Dictionary<string, object[]> OperatorDefaultParameters = new Dictionary<string, object[]>
     {
-        { "t", new object[] { 0, 0, -0.3f } }, // truncate: (int, int, float)
-        { "k", new object[] { 0, 0, -0.5f } }, // kis: (int, int, float)
-        { "a", new object[] { 0 } },           // ambo: (int)
-        { "d", new object[] { 0 } },           // dual: (int)
-        { "n", new object[] { 0, 0, -0.5f, -0.5f } }, // n: (int, int, float, float)
-        { "l", new object[] { 0 } },           // l: (int)
+        // first parameter is faceSignatureRounding for all
+        // second parameter is facesSidesFilter for the operators which support that
+        // other parameters depend from the operator
+        { "t", new object[] { 1, 0, 0.1f } }, // truncate: (int, int, float)
+        { "k", new object[] { 1, 0, 0.1f } }, // kis: (int, int, float)
+        { "a", new object[] { 1 } },           // ambo: (int)
+        { "d", new object[] { 1 } },           // dual: (int)
+        { "n", new object[] { 1, 0, 0.6f, -0.3f } }, // n: (int, int, float, float)
+        { "l", new object[] { 1 } },           // l: (int)
         // Add more operators and their default parameters as needed
     };
 
