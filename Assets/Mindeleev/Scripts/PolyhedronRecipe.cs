@@ -177,10 +177,19 @@ public static class PolyhedronRecipeParser
                     var kv = KeyValueRegex.Match(part);
                     if (kv.Success)
                     {
-                        // Named parameter
                         string key = kv.Groups[1].Value;
                         object value = ParseParameter(kv.Groups[2].Value);
-                        token.NamedParameters[key] = value;
+
+                        // Only treat as named parameter if key is in the known set
+                        if (RecipeToken.NamedDefaults.ContainsKey(key))
+                        {
+                            token.NamedParameters[key] = value;
+                        }
+                        else
+                        {
+                            // Otherwise, treat as positional KeyValuePair
+                            token.PositionalParameters.Add(new KeyValuePair<string, object>(key, value));
+                        }
                     }
                     else
                     {
