@@ -115,7 +115,7 @@ public static class Polyhedronisme
     );
 
     /* ---------------------- PARSE RECIPE ----------------------------- */
-    public static (Vector3[], int[][], int[]) ParsePolyhedronRecipe(string recipe)
+    public static (Vector3[], int[][], int[]) ParsePolyhedronRecipe_obsolete(string recipe)
     {
         if (string.IsNullOrWhiteSpace(recipe))
             return Cube;

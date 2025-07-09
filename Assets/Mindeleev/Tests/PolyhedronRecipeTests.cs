@@ -191,7 +191,7 @@ public class PolyhedronRecipeTests
     public void Test_Builder_Matches_ParsePolyhedronRecipe_Kis()
     {
         // Kis changed parameters order
-        var expected = Polyhedronisme.ParsePolyhedronRecipe("k(2,4,0.2)C");
+        var expected = Polyhedronisme.ParsePolyhedronRecipe_obsolete("k(2,4,0.2)C");
 
         var parsed = PolyhedronRecipeParser.Parse("k(4,2,0.2)C");
         var built = PolyhedronRecipeBuilder.Build(parsed);
@@ -203,7 +203,7 @@ public class PolyhedronRecipeTests
     public void Test_Builder_Matches_ParsePolyhedronRecipe_Truncate()
     {
         // Truncate changed parameters order because uses Kis
-        var expected = Polyhedronisme.ParsePolyhedronRecipe("t(2,4,0.3)O");
+        var expected = Polyhedronisme.ParsePolyhedronRecipe_obsolete("t(2,4,0.3)O");
 
         var parsed = PolyhedronRecipeParser.Parse("t(4,2,0.3)O");
         var built = PolyhedronRecipeBuilder.Build(parsed);
@@ -215,7 +215,7 @@ public class PolyhedronRecipeTests
     public void Test_Builder_Matches_ParsePolyhedronRecipe_InsetN()
     {
         string recipeStr = "n(5,1,0.7,-0.2)I";
-        var expected = Polyhedronisme.ParsePolyhedronRecipe(recipeStr);
+        var expected = Polyhedronisme.ParsePolyhedronRecipe_obsolete(recipeStr);
 
         var parsed = PolyhedronRecipeParser.Parse(recipeStr);
         var built = PolyhedronRecipeBuilder.Build(parsed);

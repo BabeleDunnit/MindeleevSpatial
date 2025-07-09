@@ -6,7 +6,9 @@ using System.Globalization;
 using TMPro;
 
 
-public static class PolyhedronRecipeEnumerator
+
+// obsolete class
+public static class PolyhedronRecipeEnumerator_obsolete
 {
     // Operator codes and their parameter spaces
     private static readonly char[] Operators = { 't', 'k', 'a', 'd', 'n', 'l' };
@@ -57,7 +59,7 @@ public static class PolyhedronRecipeEnumerator
     }
 
 
-     // Decode a single token from an integer (for demonstration, not used in main mapping)
+    // Decode a single token from an integer (for demonstration, not used in main mapping)
     // ...
 
     // Get the number of possible tokens for each operator
@@ -82,7 +84,7 @@ public static class PolyhedronRecipeEnumerator
     }
 
     // Map an integer to a recipe string
-     // Map an integer to a recipe string
+    // Map an integer to a recipe string
     public static string IntToRecipe(int n)
     {
         // 1. Choose base polyhedron
@@ -237,12 +239,13 @@ public static class PolyhedronRecipeEnumerator
         return n;
     }
 
-       public static bool AreRecipesEquivalent(string r1, string r2)
+
+    public static bool AreRecipesEquivalent(string r1, string r2)
     {
-        var polyData1 = Polyhedronisme.ParsePolyhedronRecipe(r1);
+        var polyData1 = Polyhedronisme.ParsePolyhedronRecipe_obsolete(r1);
         var polyFinalData1 = Polyhedronisme.ApplyFlatShade(polyData1);
 
-        var polyData2 = Polyhedronisme.ParsePolyhedronRecipe(r2);
+        var polyData2 = Polyhedronisme.ParsePolyhedronRecipe_obsolete(r2);
         var polyFinalData2 = Polyhedronisme.ApplyFlatShade(polyData2);
 
         // Compare meshVertices

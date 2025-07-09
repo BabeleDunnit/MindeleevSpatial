@@ -22,7 +22,9 @@ public class PolyhedronGenerator : MonoBehaviour
         MeshFilter filter = GetComponent<MeshFilter>();
         MeshRenderer renderer = GetComponent<MeshRenderer>();
 
-        var polyData = Polyhedronisme.ParsePolyhedronRecipe(polyhedronRecipe);
+        // var polyData = Polyhedronisme.ParsePolyhedronRecipe(polyhedronRecipe);
+        var parsed = PolyhedronRecipeParser.Parse(polyhedronRecipe);
+        var polyData = PolyhedronRecipeBuilder.Build(parsed);
         var polyFinalData = Polyhedronisme.ApplyFlatShade(polyData);
         filter.mesh = Polyhedronisme.BuildMesh(polyFinalData, palette);
         ApplyPolyhedronMaterial(renderer);

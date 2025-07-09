@@ -48,7 +48,7 @@ public class OrbitalGeneticInstantiator : MonoBehaviour
 
             // Generate a random recipe using IntToRecipe
             int randomInt = Random.Range(0, 2000);
-            string randomRecipe = PolyhedronRecipeEnumerator.IntToRecipe(randomInt);
+            string randomRecipe = PolyhedronRecipeEnumerator_obsolete.IntToRecipe(randomInt);
 
             GameObject poly = Instantiate(polytronPrefab, position, Quaternion.identity, transform);
             poly.transform.localScale = transform.localScale * 0.4f;
