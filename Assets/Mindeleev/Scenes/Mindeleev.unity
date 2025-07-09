@@ -622,11 +622,10 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   polytronPrefab: {fileID: 8404194606809146210, guid: a4b29d65d516b4ae19b3532179b68cd4,
     type: 3}
-  innerOrbitCount: 8
   innerOrbitRadius: 4
   offspringCount: 10
   offspringOrbitRadius: 1.5
-  nucleusRecipe: lakC
+  nucleusRecipe: lakk(2, 3, 0.1)C
 --- !u!1 &1008321069
 GameObject:
   m_ObjectHideFlags: 0

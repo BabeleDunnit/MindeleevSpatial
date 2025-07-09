@@ -6,7 +6,7 @@ public class OrbitalGeneticInstantiator : MonoBehaviour
 {
     [Header("Prefabs and Parameters")]
     public GameObject polytronPrefab; // Assign the Polytron prefab in the inspector
-    public int innerOrbitCount = 8;
+    // public int innerOrbitCount = 8;
     public float innerOrbitRadius = 4.0f;
     public int offspringCount = 5;
     public float offspringOrbitRadius = 1.5f;
@@ -36,9 +36,10 @@ public class OrbitalGeneticInstantiator : MonoBehaviour
 
     void InstantiateInnerOrbit()
     {
-        for (int i = 0; i < innerOrbitCount; i++)
+        List<PolyhedronRecipe> permutations = PolyhedronRecipeUtils.AllTokenPermutations(nucleusRecipe);
+        for (int i = 0; i < permutations.Count; i++)
         {
-            float angle = i * Mathf.PI * 2f / innerOrbitCount;
+            float angle = i * Mathf.PI * 2f / permutations.Count;
             Vector3 offset = new Vector3(
                 Mathf.Cos(angle) * innerOrbitRadius,
                 0.0f,
@@ -47,8 +48,9 @@ public class OrbitalGeneticInstantiator : MonoBehaviour
             Vector3 position = transform.position + offset;
 
             // Generate a random recipe using IntToRecipe
-            int randomInt = Random.Range(0, 2000);
-            string randomRecipe = PolyhedronRecipeEnumerator_obsolete.IntToRecipe(randomInt);
+            // int randomInt = Random.Range(0, 2000);
+            // string randomRecipe = PolyhedronRecipeEnumerator_obsolete.IntToRecipe(randomInt);
+            string randomRecipe = permutations[i].ToString();
 
             GameObject poly = Instantiate(polytronPrefab, position, Quaternion.identity, transform);
             poly.transform.localScale = transform.localScale * 0.4f;
