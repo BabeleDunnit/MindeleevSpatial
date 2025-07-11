@@ -10,7 +10,7 @@ public static class Polyhedronisme
      *  STATIC DATA: 5 canonical polyhedra expressed as (vertices, faces)
      * ----------------------------------------------------------------*/
     // Cube (C)
-    private static readonly (Vector3[], int[][], int[]) Cube = (
+    public static readonly (Vector3[], int[][], int[]) Cube = (
         new Vector3[]
         {
             new Vector3(-1, -1, -1), new Vector3(1, -1, -1), new Vector3(1, 1, -1), new Vector3(-1, 1, -1),
@@ -29,7 +29,7 @@ public static class Polyhedronisme
     );
 
     // Tetrahedron (T)
-    private static readonly (Vector3[], int[][], int[]) Tetrahedron = (
+    public static readonly (Vector3[], int[][], int[]) Tetrahedron = (
         new Vector3[]
         {
             new Vector3( 1,  1,  1),
@@ -48,7 +48,7 @@ public static class Polyhedronisme
     );
 
     // Octahedron (O)
-    private static readonly (Vector3[], int[][], int[]) Octahedron = (
+    public static readonly (Vector3[], int[][], int[]) Octahedron = (
         new Vector3[]
         {
             new Vector3(1, 0, 0), new Vector3(-1, 0, 0), new Vector3(0, 1, 0),
@@ -63,7 +63,7 @@ public static class Polyhedronisme
     );
 
     // Dodecahedron (D)
-    private static readonly (Vector3[], int[][], int[]) Dodecahedron = (
+    public static readonly (Vector3[], int[][], int[]) Dodecahedron = (
         new Vector3[]
         {
             new Vector3( 0.618034f,  0.618034f,  0.618034f), new Vector3( 0.618034f,  0.618034f, -0.618034f),
@@ -88,7 +88,7 @@ public static class Polyhedronisme
     );
 
     // Icosahedron (I)
-    private static readonly (Vector3[], int[][], int[]) Icosahedron = (
+    public static readonly (Vector3[], int[][], int[]) Icosahedron = (
         new Vector3[]
         {
             new Vector3(-1,  1.618034f,  0).normalized,
@@ -115,7 +115,7 @@ public static class Polyhedronisme
     );
 
     /* ---------------------- PARSE RECIPE ----------------------------- */
-    public static (Vector3[], int[][], int[]) ParsePolyhedronRecipe(string recipe)
+    public static (Vector3[], int[][], int[]) ParsePolyhedronRecipe_obsolete(string recipe)
     {
         if (string.IsNullOrWhiteSpace(recipe))
             return Cube;
@@ -1159,6 +1159,35 @@ public static class Polyhedronisme
         foreach (var v in faceVerts)
             center += v;
         return center / faceVerts.Length;
+    }
+
+    public static (Vector3[], int[][], int[]) ApplyColorRemap(
+        (Vector3[], int[][], int[]) input,
+        Dictionary<int, int> colorRemap,
+        int paletteLength = 6 // Default, or pass your actual palette length
+    )
+    {
+        var (vertices, faces, colorIndices) = input;
+        var newColorIndices = new int[colorIndices.Length];
+        for (int i = 0; i < colorIndices.Length; i++)
+        {
+            int oldIdx = colorIndices[i];
+            bool remapped = false;
+            foreach (var kv in colorRemap)
+            {
+                if ((oldIdx % paletteLength) == (kv.Key % paletteLength))
+                {
+                    // Preserve the offset from the base index
+                    int offset = oldIdx - kv.Key;
+                    newColorIndices[i] = kv.Value + offset;
+                    remapped = true;
+                    break;
+                }
+            }
+            if (!remapped)
+                newColorIndices[i] = oldIdx;
+        }
+        return (vertices, faces, newColorIndices);
     }
 }
 

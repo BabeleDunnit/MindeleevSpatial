@@ -22,7 +22,7 @@ public class PolyhedraEnumerationGrid : MonoBehaviour
             {
                 for (int z = 0; z < 10; z++)
                 {
-                    string recipe = PolyhedronRecipeEnumerator.IntToRecipe(polytronNumber);
+                    string recipe = PolyhedronRecipeEnumerator_obsolete.IntToRecipe(polytronNumber);
                     Debug.Log($"{polytronNumber} {recipe}");
                     Vector3 offset = new Vector3(x * distance, y * distance, z * distance);
                     Vector3 position = transform.position + offset;
