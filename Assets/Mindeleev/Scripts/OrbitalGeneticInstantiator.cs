@@ -31,7 +31,10 @@ public class OrbitalGeneticInstantiator : MonoBehaviour
         if (gen != null)
             gen.polyhedronRecipe = nucleusRecipe;
         nucleusObject.name = "Nucleus";
-        CreateLabel(nucleusObject, nucleusRecipe, Vector3.zero);
+        CreateLabel(nucleusObject, nucleusRecipe
+            + " "
+            + PolyhedronRecipeUtils.ComputeComplexity(PolyhedronRecipeParser.Parse(nucleusRecipe)),
+            Vector3.zero);
     }
 
     void InstantiateInnerOrbit()
@@ -58,7 +61,10 @@ public class OrbitalGeneticInstantiator : MonoBehaviour
             if (gen != null)
                 gen.polyhedronRecipe = randomRecipe;
             poly.name = $"Inner_{i}_{randomRecipe}";
-            CreateLabel(poly, randomRecipe, Vector3.zero);
+            CreateLabel(poly, randomRecipe
+                + " "
+                + PolyhedronRecipeUtils.ComputeComplexity(PolyhedronRecipeParser.Parse(randomRecipe)),
+                Vector3.zero);
 
             // Enable collision and add handler
             var collider = poly.GetComponent<Collider>();
@@ -73,38 +79,6 @@ public class OrbitalGeneticInstantiator : MonoBehaviour
             innerPolyhedra.Add(poly);
         }
     }
-/*
-    // Called by InnerPolyhedronCollisionHandler
-    public void OnInnerPolyhedronCollision(GameObject collidedPoly, string collidedRecipe)
-    {
-        // Get nucleus recipe
-        string nucleus = nucleusRecipe;
-
-        // Place offspring in a small orbit around the collided polyhedron
-        for (int m = 0; m < offspringCount; m++)
-        {
-            float angle = m * Mathf.PI * 2f / offspringCount;
-            Vector3 offset = new Vector3(
-                Mathf.Cos(angle) * offspringOrbitRadius,
-                0,
-                Mathf.Sin(angle) * offspringOrbitRadius
-            );
-            Vector3 position = collidedPoly.transform.position + offset;
-
-            // Generate a genetic recipe from nucleus and collided polyhedron
-            var population = PolyhedraGeneticEngine.CrossoverRecipes(nucleus, collidedRecipe, 1);
-            string offspringRecipe = population[0];
-
-            GameObject offspring = Instantiate(polytronPrefab, position, Quaternion.identity, collidedPoly.transform);
-            offspring.transform.localScale = collidedPoly.transform.localScalef;
-            var gen = offspring.GetComponent<PolyhedronGenerator>();
-            if (gen != null)
-                gen.polyhedronRecipe = offspringRecipe;
-            offspring.name = $"Offspring_{offspringRecipe}";
-            CreateLabel(offspring, offspringRecipe, Vector3.zero);
-        }
-    }
-*/
 
     public List<GameObject> SpawnOffspring(GameObject collidedPoly, string collidedRecipe)
     {
@@ -130,7 +104,10 @@ public class OrbitalGeneticInstantiator : MonoBehaviour
             if (gen != null)
                 gen.polyhedronRecipe = offspringRecipe;
             offspring.name = $"Offspring_{offspringRecipe}";
-            CreateLabel(offspring, offspringRecipe, Vector3.zero);
+            CreateLabel(offspring, offspringRecipe
+                + " "
+                + PolyhedronRecipeUtils.ComputeComplexity(PolyhedronRecipeParser.Parse(offspringRecipe)),
+                Vector3.zero);
 
             offspringList.Add(offspring);
         }
