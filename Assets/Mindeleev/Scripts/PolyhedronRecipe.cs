@@ -114,24 +114,6 @@ public class PolyhedronRecipe
 /// </summary>
 public static class PolyhedronRecipeParser
 {
-
-    /*
-    // Default parameter values for each operator and parameter index
-    private static readonly Dictionary<string, object[]> OperatorDefaultParameters = new Dictionary<string, object[]>
-    {
-        // first parameter is faceSignatureRounding for all
-        // second parameter is facesSidesFilter for the operators which support that
-        // other parameters depend from the operator
-        { "t", new object[] { 1, 0, 0.1f } }, // truncate: (int, int, float)
-        { "k", new object[] { 1, 0, 0.1f } }, // kis: (int, int, float)
-        { "a", new object[] { 1 } },           // ambo: (int)
-        { "d", new object[] { 1 } },           // dual: (int)
-        { "n", new object[] { 1, 0, 0.6f, -0.3f } }, // n: (int, int, float, float)
-        { "l", new object[] { 1 } },           // l: (int)
-        // Add more operators and their default parameters as needed
-    };
-    */
-
     // Regex for parsing tokens: operator + optional (params)
     private static readonly Regex TokenRegex = new Regex(
         @"([a-z])(?:\(([^)]*)\))?",
@@ -169,9 +151,26 @@ public static class PolyhedronRecipeParser
 
             var token = new RecipeToken(op);
 
-            // Parse parameters (mixed positional and named)
-            if (!string.IsNullOrEmpty(paramStr))
+            // Special handling for color remap operator
+            if (op == "c" && !string.IsNullOrEmpty(paramStr))
             {
+                var paramParts = SplitParams(paramStr);
+                var colorRemap = new Dictionary<int, int>();
+                foreach (var part in paramParts)
+                {
+                    var kv = KeyValueRegex.Match(part);
+                    if (kv.Success &&
+                        int.TryParse(kv.Groups[1].Value, out int from) &&
+                        int.TryParse(kv.Groups[2].Value, out int to))
+                    {
+                        colorRemap[from] = to;
+                    }
+                }
+                token.NamedParameters["colorRemap"] = colorRemap;
+            }
+            else if (!string.IsNullOrEmpty(paramStr))
+            {
+                // Parse parameters (mixed positional and named)
                 var paramParts = SplitParams(paramStr);
                 foreach (var part in paramParts)
                 {
@@ -348,6 +347,12 @@ public static class PolyhedronRecipeBuilder
                     break;
                 case "f":
                     current = Polyhedronisme.ApplyFuckedStellation(current, faceSignatureRounding);
+                    break;
+                case "c":
+                    if (token.NamedParameters.TryGetValue("colorRemap", out var remapObj) && remapObj is Dictionary<int, int> remapDict)
+                        current = Polyhedronisme.ApplyColorRemap(current,
+                            remapDict
+                        );
                     break;
                 default:
                     // Unknown operator: skip

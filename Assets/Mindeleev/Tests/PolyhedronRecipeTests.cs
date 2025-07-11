@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using NUnit.Framework;
 using UnityEngine;
 using UnityEngine.TestTools;
+using System.Linq;
 
 public class PolyhedronRecipeTests
 {
@@ -221,6 +222,71 @@ public class PolyhedronRecipeTests
         var built = PolyhedronRecipeBuilder.Build(parsed);
 
         AssertPolyhedronTuplesEqual(expected, built);
+    }
+
+    [Test]
+    public void Test_Parse_ColorRemapOperator()
+    {
+        var recipe = "c(0:1,2:3)C";
+        var parsed = PolyhedronRecipeParser.Parse(recipe);
+
+        Assert.AreEqual('C', parsed.BasePolyhedron);
+        Assert.AreEqual(1, parsed.Tokens.Count);
+        Assert.AreEqual("c", parsed.Tokens[0].Operator);
+
+        var remap = parsed.Tokens[0].NamedParameters["colorRemap"] as Dictionary<int, int>;
+        Assert.IsNotNull(remap);
+        Assert.AreEqual(2, remap.Count);
+        Assert.AreEqual(1, remap[0]);
+        Assert.AreEqual(3, remap[2]);
+    }
+
+    [Test]
+    public void Test_Builder_ApplyColorRemap()
+    {
+        // Start from a simple cube with known color indices
+        var baseTuple = Polyhedronisme.Cube;
+        // All faces start with color index 0
+        Assert.IsTrue(baseTuple.Item3.All(ci => ci == 0));
+
+        // Build a recipe that remaps color 0 to 5
+        var recipe = "c(0:5)C";
+        var parsed = PolyhedronRecipeParser.Parse(recipe);
+        var built = PolyhedronRecipeBuilder.Build(parsed);
+
+        // All color indices should now be 5
+        Assert.IsTrue(built.Item3.All(ci => ci == 5));
+    }
+
+    [Test]
+    public void Test_Builder_ApplyColorRemap2()
+    {
+        var recipe = "c(0:1)lakk(2, 3, 0.1)C";
+        // var recipe = "lakk(2, 3, 0.1)C";
+        var parsed = PolyhedronRecipeParser.Parse(recipe);
+        var built = PolyhedronRecipeBuilder.Build(parsed);
+
+        Assert.IsTrue(built.Item3.All(ci => ci != 0));
+    }
+
+    [Test]
+    public void Test_Builder_ApplyPartialColorRemap()
+    {
+        // Create a tuple with mixed color indices
+        var baseTuple = Polyhedronisme.Cube;
+        var mixedColors = new int[] { 0, 1, 2, 0, 1, 2 };
+        var tuple = (baseTuple.Item1, baseTuple.Item2, mixedColors);
+
+        // Apply remap: 0->9, 2->7
+        var remap = new Dictionary<int, int> { { 0, 9 }, { 2, 7 } };
+        var remapped = Polyhedronisme.ApplyColorRemap(tuple, remap);
+
+        Assert.AreEqual(9, remapped.Item3[0]);
+        Assert.AreEqual(1, remapped.Item3[1]);
+        Assert.AreEqual(7, remapped.Item3[2]);
+        Assert.AreEqual(9, remapped.Item3[3]);
+        Assert.AreEqual(1, remapped.Item3[4]);
+        Assert.AreEqual(7, remapped.Item3[5]);
     }
 
     private void AssertPolyhedronTuplesEqual((Vector3[], int[][], int[]) a, (Vector3[], int[][], int[]) b)

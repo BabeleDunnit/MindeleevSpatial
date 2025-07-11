@@ -1160,5 +1160,20 @@ public static class Polyhedronisme
             center += v;
         return center / faceVerts.Length;
     }
+
+    public static (Vector3[], int[][], int[]) ApplyColorRemap(
+        (Vector3[], int[][], int[]) input,
+        Dictionary<int, int> colorRemap)
+    {
+        var (vertices, faces, colorIndices) = input;
+        var newColorIndices = new int[colorIndices.Length];
+        for (int i = 0; i < colorIndices.Length; i++)
+        {
+            int oldIdx = colorIndices[i];
+            newColorIndices[i] = colorRemap.TryGetValue(oldIdx, out int newIdx) ? newIdx : oldIdx;
+        }
+        // Geometry is unchanged
+        return (vertices, faces, newColorIndices);
+    }
 }
 
