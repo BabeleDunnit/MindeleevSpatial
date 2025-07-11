@@ -1163,16 +1163,30 @@ public static class Polyhedronisme
 
     public static (Vector3[], int[][], int[]) ApplyColorRemap(
         (Vector3[], int[][], int[]) input,
-        Dictionary<int, int> colorRemap)
+        Dictionary<int, int> colorRemap,
+        int paletteLength = 6 // Default, or pass your actual palette length
+    )
     {
         var (vertices, faces, colorIndices) = input;
         var newColorIndices = new int[colorIndices.Length];
         for (int i = 0; i < colorIndices.Length; i++)
         {
             int oldIdx = colorIndices[i];
-            newColorIndices[i] = colorRemap.TryGetValue(oldIdx, out int newIdx) ? newIdx : oldIdx;
+            bool remapped = false;
+            foreach (var kv in colorRemap)
+            {
+                if ((oldIdx % paletteLength) == (kv.Key % paletteLength))
+                {
+                    // Preserve the offset from the base index
+                    int offset = oldIdx - kv.Key;
+                    newColorIndices[i] = kv.Value + offset;
+                    remapped = true;
+                    break;
+                }
+            }
+            if (!remapped)
+                newColorIndices[i] = oldIdx;
         }
-        // Geometry is unchanged
         return (vertices, faces, newColorIndices);
     }
 }
