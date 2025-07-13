@@ -11,7 +11,8 @@ GameObject:
   - component: {fileID: 8404194606809146214}
   - component: {fileID: 8404194606809146209}
   - component: {fileID: 8404194606809146208}
-  - component: {fileID: 8404194606809146211}
+  - component: {fileID: 5443273955912231361}
+  - component: {fileID: -8432150149311953576}
   m_Layer: 0
   m_Name: Polytron
   m_TagString: Untagged
@@ -84,7 +85,7 @@ MeshRenderer:
   m_SortingLayer: 0
   m_SortingOrder: 0
   m_AdditionalVertexStreams: {fileID: 0}
---- !u!114 &8404194606809146211
+--- !u!114 &5443273955912231361
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -93,11 +94,25 @@ MonoBehaviour:
   m_GameObject: {fileID: 8404194606809146210}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 866d725201e154126b5feaf7d2249013, type: 3}
+  m_Script: {fileID: 11500000, guid: ec8f4dae2b4454f07bce4c45eba5d33a, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  polyhedronRecipe: tI
+  polyhedronRecipe: C
   palette: {fileID: 11400000, guid: 805b5f8cee0194db6b7bf253c04642ca, type: 2}
-  useCongruenceColoring: 0
-  colorSensitivity: 0.001
   polyhedronMaterial: {fileID: 2100000, guid: 7f629499ce79c49db9e376336efd191b, type: 2}
+--- !u!54 &-8432150149311953576
+Rigidbody:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8404194606809146210}
+  serializedVersion: 2
+  m_Mass: 1
+  m_Drag: 0
+  m_AngularDrag: 0.05
+  m_UseGravity: 0
+  m_IsKinematic: 0
+  m_Interpolate: 0
+  m_Constraints: 0
+  m_CollisionDetection: 0

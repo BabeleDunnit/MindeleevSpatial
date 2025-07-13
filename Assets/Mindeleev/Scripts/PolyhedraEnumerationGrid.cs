@@ -33,7 +33,7 @@ public class PolyhedraEnumerationGrid : MonoBehaviour
                     var polyGen = poly.GetComponent<PolyhedronGenerator>();
                     if (polyGen != null)
                     {
-                        polyGen.polyhedronRecipe = recipe;
+                        polyGen.recipeString = recipe;
                     }
 
                     poly.name = $"P_{polytronNumber}_{recipe}";

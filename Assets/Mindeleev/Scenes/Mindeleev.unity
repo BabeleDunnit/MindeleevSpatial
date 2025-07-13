@@ -625,9 +625,7 @@ MonoBehaviour:
   innerOrbitRadius: 4
   offspringCount: 10
   offspringOrbitRadius: 1.5
-  nucleusRecipe: 'c(0:1)lakk(2, 3, 0.1)C
-
-'
+  nucleusRecipe: c(0:1,)lak(2, 3, 0.1)C
 --- !u!1 &1008321069
 GameObject:
   m_ObjectHideFlags: 0

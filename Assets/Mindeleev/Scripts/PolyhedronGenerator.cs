@@ -11,20 +11,22 @@ public class PolyhedronGenerator : MonoBehaviour
     /* ------------------------------------------------------------------
      *  Inspector settings
      * ----------------------------------------------------------------*/
-    public string polyhedronRecipe = "C"; // default Cube
+    public string recipeString = "C"; // default Cube
     public PolyhedronPalette palette;
     private bool showVertexIndices = false;
     public Material polyhedronMaterial; // Add this field
 
+    private PolyhedronRecipe recipe;
+
     /* ------------------------------------------------------------------ */
-    void Start()
+    public virtual void Start()
     {
         MeshFilter filter = GetComponent<MeshFilter>();
         MeshRenderer renderer = GetComponent<MeshRenderer>();
 
         // var polyData = Polyhedronisme.ParsePolyhedronRecipe(polyhedronRecipe);
-        var parsed = PolyhedronRecipeParser.Parse(polyhedronRecipe);
-        var polyData = PolyhedronRecipeBuilder.Build(parsed);
+        recipe = PolyhedronRecipeParser.Parse(recipeString);
+        var polyData = PolyhedronRecipeBuilder.Build(recipe, palette.colors.Count);
         var polyFinalData = Polyhedronisme.ApplyFlatShade(polyData);
         filter.mesh = Polyhedronisme.BuildMesh(polyFinalData, palette);
         ApplyPolyhedronMaterial(renderer);

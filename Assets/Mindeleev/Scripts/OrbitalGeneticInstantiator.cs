@@ -29,7 +29,7 @@ public class OrbitalGeneticInstantiator : MonoBehaviour
         nucleusObject = Instantiate(polytronPrefab, transform.position, Quaternion.identity, transform);
         var gen = nucleusObject.GetComponent<PolyhedronGenerator>();
         if (gen != null)
-            gen.polyhedronRecipe = nucleusRecipe;
+            gen.recipeString = nucleusRecipe;
         nucleusObject.name = "Nucleus";
         CreateLabel(nucleusObject, nucleusRecipe
             + " "
@@ -59,7 +59,7 @@ public class OrbitalGeneticInstantiator : MonoBehaviour
             poly.transform.localScale = transform.localScale * 0.4f;
             var gen = poly.GetComponent<PolyhedronGenerator>();
             if (gen != null)
-                gen.polyhedronRecipe = randomRecipe;
+                gen.recipeString = randomRecipe;
             poly.name = $"Inner_{i}_{randomRecipe}";
             CreateLabel(poly, randomRecipe
                 + " "
@@ -102,7 +102,7 @@ public class OrbitalGeneticInstantiator : MonoBehaviour
             offspring.transform.localScale = collidedPoly.transform.localScale * 0.7f;
             var gen = offspring.GetComponent<PolyhedronGenerator>();
             if (gen != null)
-                gen.polyhedronRecipe = offspringRecipe;
+                gen.recipeString = offspringRecipe;
             offspring.name = $"Offspring_{offspringRecipe}";
             CreateLabel(offspring, offspringRecipe
                 + " "

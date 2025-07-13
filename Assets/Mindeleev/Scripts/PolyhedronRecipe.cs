@@ -283,7 +283,7 @@ public static class PolyhedronRecipeParser
 /// </summary>
 public static class PolyhedronRecipeBuilder
 {
-    public static (Vector3[], int[][], int[]) Build(PolyhedronRecipe recipe)
+    public static (Vector3[], int[][], int[]) Build(PolyhedronRecipe recipe, int paletteColorsCount = 6)
     {
         // Get base polyhedron
         (Vector3[], int[][], int[]) current = recipe.BasePolyhedron switch
@@ -351,7 +351,8 @@ public static class PolyhedronRecipeBuilder
                 case "c":
                     if (token.NamedParameters.TryGetValue("colorRemap", out var remapObj) && remapObj is Dictionary<int, int> remapDict)
                         current = Polyhedronisme.ApplyColorRemap(current,
-                            remapDict
+                            remapDict,
+                            paletteColorsCount
                         );
                     break;
                 default:
