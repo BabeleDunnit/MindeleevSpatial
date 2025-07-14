@@ -72,6 +72,8 @@ public class RecipeToken
         throw new ArgumentException($"Parameter '{name}' not found for operator '{Operator}'.");
     }
 
+    // known bug in c operator:
+    // recipeString: c(colorRemap:System.Collections.Generic.Dictionary`2[System.Int32,System.Int32])l(1)a(1)k(2,3,0.1)C
     public override string ToString()
     {
         var paramList = new List<string>();

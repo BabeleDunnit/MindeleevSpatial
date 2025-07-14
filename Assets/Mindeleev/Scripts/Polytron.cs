@@ -7,19 +7,20 @@ public class Polytron : PolyhedronGenerator
 {
 
     public int Id { get; set; }
+    // public PolytronEngine Engine { get; set; }
 
     // this is a strategy to encapsulate data and type of polytron behaviour (spring/mass, particleLife, etc)
     // the PolytronEngine will switch on this to execute the relative algorithm
-    public PolytronBehaviour behaviour;
+    public PolytronBehaviour Behaviour { get; set; }
 
-    Rigidbody rigidBody;
+    public Rigidbody RigidBody { get; set; }
 
     // Start is called before the first frame update
     public override void Start()
     {
         base.Start();
-        rigidBody = GetComponent<Rigidbody>();
-        if (rigidBody == null)
+        RigidBody = GetComponent<Rigidbody>();
+        if (RigidBody == null)
         {
             throw new NullReferenceException("Polytron must have a RigidBody component, please check");
         }

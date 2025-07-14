@@ -53,17 +53,23 @@ public class OrbitalGeneticInstantiator : MonoBehaviour
             // Generate a random recipe using IntToRecipe
             // int randomInt = Random.Range(0, 2000);
             // string randomRecipe = PolyhedronRecipeEnumerator_obsolete.IntToRecipe(randomInt);
-            string randomRecipe = permutations[i].ToString();
+            string permutedRecipe = permutations[i].ToString();
 
             GameObject poly = Instantiate(polytronPrefab, position, Quaternion.identity, transform);
             poly.transform.localScale = transform.localScale * 0.4f;
-            var gen = poly.GetComponent<PolyhedronGenerator>();
-            if (gen != null)
-                gen.recipeString = randomRecipe;
-            poly.name = $"Inner_{i}_{randomRecipe}";
-            CreateLabel(poly, randomRecipe
+            var polytronComponent = poly.GetComponent<Polytron>();
+            if (polytronComponent != null)
+            {
+                polytronComponent.recipeString = permutedRecipe;
+                polytronComponent.Behaviour = new PolytronParticleLifeBehaviour(polytronComponent);
+                // Debug.Log($"polytron {polytronComponent.Id} is of type {polytronComponent.Behaviour}");
+
+            }
+
+            poly.name = $"Inner_{i}_{permutedRecipe}";
+            CreateLabel(poly, permutedRecipe
                 + " "
-                + PolyhedronRecipeUtils.ComputeComplexity(PolyhedronRecipeParser.Parse(randomRecipe)),
+                + PolyhedronRecipeUtils.ComputeComplexity(PolyhedronRecipeParser.Parse(permutedRecipe)),
                 Vector3.zero);
 
             // Enable collision and add handler
@@ -74,7 +80,7 @@ public class OrbitalGeneticInstantiator : MonoBehaviour
 
             var handler = poly.AddComponent<InnerPolyhedronCollisionHandler>();
             handler.parent = this;
-            handler.myRecipe = randomRecipe;
+            handler.myRecipe = permutedRecipe;
 
             innerPolyhedra.Add(poly);
         }

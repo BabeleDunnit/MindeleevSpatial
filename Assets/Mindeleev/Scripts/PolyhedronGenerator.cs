@@ -25,6 +25,7 @@ public class PolyhedronGenerator : MonoBehaviour
         MeshRenderer renderer = GetComponent<MeshRenderer>();
 
         // var polyData = Polyhedronisme.ParsePolyhedronRecipe(polyhedronRecipe);
+        Debug.Log($"PolyhedronGenerator::Start() recipeString: {recipeString}");
         recipe = PolyhedronRecipeParser.Parse(recipeString);
         var polyData = PolyhedronRecipeBuilder.Build(recipe, palette.colors.Count);
         var polyFinalData = Polyhedronisme.ApplyFlatShade(polyData);
