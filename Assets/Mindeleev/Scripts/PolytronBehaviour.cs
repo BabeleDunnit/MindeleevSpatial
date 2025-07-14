@@ -147,9 +147,9 @@ public override void ComputeForce()
 
         Vector3 fromMeToOtherVector = other.transform.position - me.transform.position;
         float fromMeToOtherDistance = fromMeToOtherVector.magnitude;
-        float distanceFromEquilibrium = fromMeToOtherDistance - 10.0f;
+        float distanceFromEquilibrium = fromMeToOtherDistance - 5.0f;
 
-        Vector3 attraction = fromMeToOtherVector.normalized * distanceFromEquilibrium * 2.0f;
+        Vector3 attraction = fromMeToOtherVector.normalized * distanceFromEquilibrium * 1.0f;
         forceAccumulator += attraction;
 
         float minDistance = 0.5f;
@@ -177,7 +177,7 @@ public override void ComputeForce()
     }
 
     // === Attrito lineare ===
-    float frictionCoefficient = 0.4f;
+    float frictionCoefficient = 0.5f;
     Vector3 friction = -Owner.RigidBody.velocity * frictionCoefficient;
     forceAccumulator += friction;
 

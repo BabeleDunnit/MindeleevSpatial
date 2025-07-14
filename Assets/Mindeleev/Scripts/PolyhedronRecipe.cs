@@ -72,16 +72,23 @@ public class RecipeToken
         throw new ArgumentException($"Parameter '{name}' not found for operator '{Operator}'.");
     }
 
-    // known bug in c operator:
-    // recipeString: c(colorRemap:System.Collections.Generic.Dictionary`2[System.Int32,System.Int32])l(1)a(1)k(2,3,0.1)C
     public override string ToString()
     {
+        // Special case for color remap operator
+        if (Operator == "c" && NamedParameters.TryGetValue("colorRemap", out var remapObj) && remapObj is Dictionary<int, int> remapDict)
+        {
+            var pairs = remapDict.Select(kv => $"{kv.Key}:{kv.Value}");
+            return $"{Operator}({string.Join(",", pairs)})";
+        }
+
         var paramList = new List<string>();
         // Add positional parameters
         paramList.AddRange(PositionalParameters.Select(p => FormatParam(p)));
         // Add named parameters (not already present as positional)
         foreach (var kv in NamedParameters)
         {
+            // Skip colorRemap for c operator, already handled above
+            if (Operator == "c" && kv.Key == "colorRemap") continue;
             paramList.Add($"{kv.Key}:{FormatParam(kv.Value)}");
         }
         if (paramList.Count == 0)
@@ -93,6 +100,8 @@ public class RecipeToken
     {
         if (p is float f)
             return f.ToString("0.###", CultureInfo.InvariantCulture);
+        if (p is Dictionary<int, int> dict)
+            return string.Join(",", dict.Select(kv => $"{kv.Key}:{kv.Value}"));
         return p.ToString();
     }
 }
