@@ -41,16 +41,8 @@ public class PolytronEngine : MonoBehaviour
     }
 
     // Update is called once per frame
-    void Update()
+    void FixedUpdate()
     {
-        /*
-        foreach (Polytron p in GetAll())
-        {
-            Debug.Log($"polytron {p.Id} is of type {p.recipeString}");
-            // p.Behaviour.ComputeForce();
-        }
-        */
-
         foreach (Polytron p in GetAll())
         {
             PolytronBehaviour b = p.Behaviour;
@@ -58,28 +50,7 @@ public class PolytronEngine : MonoBehaviour
             {
                 b.ComputeForce();
             }
-
         }
-
-
-
-        /*
-
-                Debug.Log($"PolytronEngine::Update() entering");
-
-        foreach (Polytron p in GetAll())
-        {
-            Debug.Log($"polytron {p.Id} is of type {p.recipeString}");
-            Debug.Assert(p.Behaviour != null);
-            // Debug.Log($"polytron {p.Id} is of type {p.Behaviour.Type}");
-                    // p.Behaviour.ComputeForce();
-        }
-
-                Debug.Log($"PolytronEngine::Update() exiting");
-*/
-
-
-
     }
     
 

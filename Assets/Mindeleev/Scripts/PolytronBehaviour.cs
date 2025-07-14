@@ -7,7 +7,7 @@ public enum PolytronBehaviourType { ParticleLife }
 
 public abstract class PolytronBehaviour
 {
-    public Polytron Owner { get;  set;}  
+    public Polytron Owner { get; set; }
     public PolytronBehaviourType Type { get; set; }
     public abstract void ComputeForce();
 }
@@ -23,7 +23,7 @@ public class PolytronParticleLifeBehaviour : PolytronBehaviour
 
     public override void ComputeForce()
     {
-        Debug.Log("computing force on polytron " + Owner.Id);
+        // Debug.Log("computing force on polytron " + Owner.Id);
         var allPolytrons = PolytronEngine.GetAll();
 
         Vector3 forceAccumulator = new Vector3();
@@ -33,24 +33,35 @@ public class PolytronParticleLifeBehaviour : PolytronBehaviour
             if (p.Behaviour == null) continue;
             if (p.Behaviour.Owner == Owner) continue;
             if (p.Behaviour.Type != Type) continue;
-            Debug.Log($"computing force between polytrons {p.Behaviour.Owner.Id} and {Owner.Id}");
+            // Debug.Log($"computing force between polytrons {p.Behaviour.Owner.Id} and {Owner.Id}");
 
             GameObject me = Owner.gameObject;
             GameObject other = p.Behaviour.Owner.gameObject;
 
             Vector3 fromMeToOtherVector = other.transform.position - me.transform.position;
             float fromMeToOtherDistance = fromMeToOtherVector.magnitude;
-            float distanceFromEquilibrium = fromMeToOtherDistance - 15.0f;
+            float distanceFromEquilibrium = fromMeToOtherDistance - 1.0f;
 
             Vector3 force = fromMeToOtherVector.normalized * distanceFromEquilibrium;
 
             forceAccumulator += force;
 
+            float minDistance = 0.5f;
+            float contactStiffness = 500.0f;
+
+            if (fromMeToOtherDistance < minDistance)
+            {
+                float penetrationDepth = minDistance - fromMeToOtherDistance;
+                Vector3 repulsion = -fromMeToOtherVector.normalized * penetrationDepth * contactStiffness;
+                forceAccumulator += repulsion;
+            }
+
+
         }
 
-float frictionCoefficient = 0.9f;
-Vector3 friction = -Owner.RigidBody.velocity * frictionCoefficient;
-forceAccumulator += friction;
+        float frictionCoefficient = 0.1f;
+        Vector3 friction = -Owner.RigidBody.velocity * frictionCoefficient;
+        forceAccumulator += friction;
 
         Owner.RigidBody.AddForce(forceAccumulator);
     }

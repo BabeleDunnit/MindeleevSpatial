@@ -45,7 +45,9 @@ public class OrbitalGeneticInstantiator : MonoBehaviour
             float angle = i * Mathf.PI * 2f / permutations.Count;
             Vector3 offset = new Vector3(
                 Mathf.Cos(angle) * innerOrbitRadius,
-                0.0f,
+                // 0.0f,
+                Mathf.Cos(angle) * innerOrbitRadius,
+
                 Mathf.Sin(angle) * innerOrbitRadius
             );
             Vector3 position = transform.position + offset;
