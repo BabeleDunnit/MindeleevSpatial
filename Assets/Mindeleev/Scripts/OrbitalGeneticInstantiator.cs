@@ -44,6 +44,7 @@ public class OrbitalGeneticInstantiator : MonoBehaviour
         {
             float angle = i * Mathf.PI * 2f / permutations.Count;
             Vector3 offset = new Vector3(
+                // Mathf.Cos(angle) * innerOrbitRadius * Random.Range(0,100),
                 Mathf.Cos(angle) * innerOrbitRadius,
                 // 0.0f,
                 Mathf.Cos(angle) * innerOrbitRadius,
@@ -63,7 +64,7 @@ public class OrbitalGeneticInstantiator : MonoBehaviour
             if (polytronComponent != null)
             {
                 polytronComponent.recipeString = permutedRecipe;
-                polytronComponent.Behaviour = new PolytronParticleLifeBehaviour(polytronComponent);
+                polytronComponent.Behaviour = new PolytronSpring01Behaviour(polytronComponent);
                 // Debug.Log($"polytron {polytronComponent.Id} is of type {polytronComponent.Behaviour}");
 
             }
