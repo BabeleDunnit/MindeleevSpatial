@@ -22,6 +22,10 @@ public class OrbitalGeneticInstantiator : MonoBehaviour
     {
         InstantiateNucleus();
         InstantiateInnerOrbit();
+        var recipesMap = PolytronEngine.CollectRecipes();
+        var recipeSet = new HashSet<string>(recipesMap.Keys);
+        PolytronSpringRecipeBasedEquilibriumBehaviour.eqMap = PolytronSpringRecipeBasedEquilibriumBehaviour.CreateEquilibriumDistanceMap(recipeSet);
+        // You can now use eqMap as needed
     }
 
     void InstantiateNucleus()
@@ -58,34 +62,39 @@ public class OrbitalGeneticInstantiator : MonoBehaviour
             // string randomRecipe = PolyhedronRecipeEnumerator_obsolete.IntToRecipe(randomInt);
             string permutedRecipe = permutations[i].ToString();
 
-            GameObject poly = Instantiate(polytronPrefab, position, Quaternion.identity, transform);
-            poly.transform.localScale = transform.localScale * 0.4f;
-            var polytronComponent = poly.GetComponent<Polytron>();
-            if (polytronComponent != null)
+            for (int j = 0; j < 4; j++)
             {
-                polytronComponent.recipeString = permutedRecipe;
-                polytronComponent.Behaviour = new PolytronSpring01Behaviour(polytronComponent);
-                // Debug.Log($"polytron {polytronComponent.Id} is of type {polytronComponent.Behaviour}");
+                position.x += j;
+                GameObject poly = Instantiate(polytronPrefab, position, Quaternion.identity, transform);
+                poly.transform.localScale = transform.localScale * 0.4f;
+                var polytronComponent = poly.GetComponent<Polytron>();
+                if (polytronComponent != null)
+                {
+                    polytronComponent.recipeString = permutedRecipe;
+                    polytronComponent.Behaviour = new PolytronSpringRecipeBasedEquilibriumBehaviour(polytronComponent);
+                    // Debug.Log($"polytron {polytronComponent.Id} is of type {polytronComponent.Behaviour}");
 
+                }
+
+                poly.name = $"Inner_{i}_{permutedRecipe}";
+                CreateLabel(poly, permutedRecipe
+                    + " "
+                    + PolyhedronRecipeUtils.ComputeComplexity(PolyhedronRecipeParser.Parse(permutedRecipe)),
+                    Vector3.zero);
+
+                // Enable collision and add handler
+                var collider = poly.GetComponent<Collider>();
+                //if (collider == null)
+                //    collider = poly.AddComponent<SphereCollider>();
+                Debug.Assert(collider != null);
+                collider.isTrigger = true;
+
+                var handler = poly.AddComponent<InnerPolyhedronCollisionHandler>();
+                handler.parent = this;
+                handler.myRecipe = permutedRecipe;
+
+                innerPolyhedra.Add(poly);
             }
-
-            poly.name = $"Inner_{i}_{permutedRecipe}";
-            CreateLabel(poly, permutedRecipe
-                + " "
-                + PolyhedronRecipeUtils.ComputeComplexity(PolyhedronRecipeParser.Parse(permutedRecipe)),
-                Vector3.zero);
-
-            // Enable collision and add handler
-            var collider = poly.GetComponent<Collider>();
-            if (collider == null)
-                collider = poly.AddComponent<SphereCollider>();
-            collider.isTrigger = true;
-
-            var handler = poly.AddComponent<InnerPolyhedronCollisionHandler>();
-            handler.parent = this;
-            handler.myRecipe = permutedRecipe;
-
-            innerPolyhedra.Add(poly);
         }
     }
 

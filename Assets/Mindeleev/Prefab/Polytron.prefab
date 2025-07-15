@@ -13,6 +13,7 @@ GameObject:
   - component: {fileID: 8404194606809146208}
   - component: {fileID: 5443273955912231361}
   - component: {fileID: -8432150149311953576}
+  - component: {fileID: 8305695020945104654}
   m_Layer: 0
   m_Name: Polytron
   m_TagString: Untagged
@@ -97,7 +98,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: ec8f4dae2b4454f07bce4c45eba5d33a, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  polyhedronRecipe: C
+  recipeString: C
   palette: {fileID: 11400000, guid: 805b5f8cee0194db6b7bf253c04642ca, type: 2}
   polyhedronMaterial: {fileID: 2100000, guid: 7f629499ce79c49db9e376336efd191b, type: 2}
 --- !u!54 &-8432150149311953576
@@ -116,3 +117,16 @@ Rigidbody:
   m_Interpolate: 0
   m_Constraints: 0
   m_CollisionDetection: 0
+--- !u!135 &8305695020945104654
+SphereCollider:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8404194606809146210}
+  m_Material: {fileID: 0}
+  m_IsTrigger: 0
+  m_Enabled: 1
+  serializedVersion: 2
+  m_Radius: 0.5
+  m_Center: {x: 0, y: 0, z: 0}

@@ -15,8 +15,7 @@ public class PolyhedronGenerator : MonoBehaviour
     public PolyhedronPalette palette;
     private bool showVertexIndices = false;
     public Material polyhedronMaterial; // Add this field
-
-    private PolyhedronRecipe recipe;
+    public PolyhedronRecipe Recipe { get; set; }
 
     /* ------------------------------------------------------------------ */
     public virtual void Start()
@@ -25,9 +24,9 @@ public class PolyhedronGenerator : MonoBehaviour
         MeshRenderer renderer = GetComponent<MeshRenderer>();
 
         // var polyData = Polyhedronisme.ParsePolyhedronRecipe(polyhedronRecipe);
-        Debug.Log($"PolyhedronGenerator::Start() recipeString: {recipeString}");
-        recipe = PolyhedronRecipeParser.Parse(recipeString);
-        var polyData = PolyhedronRecipeBuilder.Build(recipe, palette.colors.Count);
+        // Debug.Log($"PolyhedronGenerator::Start() recipeString: {recipeString}");
+        Recipe = PolyhedronRecipeParser.Parse(recipeString);
+        var polyData = PolyhedronRecipeBuilder.Build(Recipe, palette.colors.Count);
         var polyFinalData = Polyhedronisme.ApplyFlatShade(polyData);
         filter.mesh = Polyhedronisme.BuildMesh(polyFinalData, palette);
         ApplyPolyhedronMaterial(renderer);
@@ -48,7 +47,7 @@ public class PolyhedronGenerator : MonoBehaviour
         }
 
         renderer.material = polyhedronMaterial;
-        Debug.Log($"Successfully applied material on {Application.platform}");
+        // Debug.Log($"Successfully applied material on {Application.platform}");
     }
 
     private void ShowVertexIndices(Vector3[] vertices)
