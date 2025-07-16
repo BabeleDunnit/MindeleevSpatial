@@ -23,11 +23,26 @@ public class PolytronSpringRecipeBasedEquilibriumBehaviour : PolytronBehaviour
         Owner = p;
     }
 
+    /*
+        (Vector3 attractionForce, Vector3 from1To2Versor, float from1To2Distance) CalcSpringForce(GameObject obj1, GameObject obj2, float equilibriumDistance)
+        {
+            Vector3 from1to2Vector = obj2.transform.position - obj1.transform.position;
+            float from1To2Distance = from1to2Vector.magnitude;
+
+            float distanceFromEquilibrium = from1To2Distance - equilibriumDistance;
+
+            Vector3 from1To2Versor = from1to2Vector.normalized;
+            Vector3 attractionForce = from1To2Versor * distanceFromEquilibrium * AttractionMultiplier;
+
+            return (attractionForce, from1To2Versor, from1To2Distance);
+        }
+    */
+
     public override void ComputeForce()
     {
         var allPolytrons = PolytronEngine.GetAll();
-        Vector3 forceAccumulator = Vector3.zero;
-        Vector3 torqueAccumulator = Vector3.zero;
+        forceAccumulator = Vector3.zero;
+        torqueAccumulator = Vector3.zero;
 
         foreach (Polytron p in allPolytrons)
         {
@@ -38,16 +53,13 @@ public class PolytronSpringRecipeBasedEquilibriumBehaviour : PolytronBehaviour
             GameObject me = Owner.gameObject;
             GameObject other = p.Behaviour.Owner.gameObject;
 
-            Vector3 fromMeToOtherVector = other.transform.position - me.transform.position;
-            float fromMeToOtherDistance = fromMeToOtherVector.magnitude;
+            (Vector3 attractionForce, Vector3 fromMeToOtherVersor, float fromMeToOtherDistance)
+                = CalcSpringForce(me.transform,
+                other.transform,
+                1.0f,
+                eqMap[Owner.recipeString + "|" + p.recipeString]);
 
-            EquilibriumDistance = eqMap[Owner.recipeString + "|" + p.recipeString];
-
-            float distanceFromEquilibrium = fromMeToOtherDistance - EquilibriumDistance;
-
-            Vector3 fromMeToOtherVersor = fromMeToOtherVector.normalized;
-            Vector3 attraction = fromMeToOtherVersor * distanceFromEquilibrium * AttractionMultiplier;
-            forceAccumulator += attraction;
+            forceAccumulator += attractionForce;
 
             if (fromMeToOtherDistance < CollisionDistance)
             {
@@ -70,13 +82,6 @@ public class PolytronSpringRecipeBasedEquilibriumBehaviour : PolytronBehaviour
             }
         }
 
-        //        if (Owner != null)
-        //        {
-
-        // Debug.Assert(Owner != null);
-        // Debug.Assert(Owner.GetComponent<Rigidbody>() != null);
-        // Debug.Assert(Owner.RigidBody != null);
-
         // known: on first frame Owner.RigidBody can be null, it is set in 
         // Polytron::Start() which can be called after this
         Vector3 friction = -Owner.RigidBody.velocity * LinearFriction;
@@ -84,48 +89,12 @@ public class PolytronSpringRecipeBasedEquilibriumBehaviour : PolytronBehaviour
 
         Owner.RigidBody.AddForce(forceAccumulator);
         Owner.RigidBody.AddTorque(torqueAccumulator);
-        //        }
+
+        AddForceTowardAvatar();
 
         // Debug.DrawLine(me.transform.position, contactPoint, Color.red, 1f);
         // Debug.Log("Torque: " + torqueAccumulator);
     }
-
-    /*
-
-            /// <summary>
-            /// Creates a mapping from a pair of recipes (as "recipeA|recipeB") to a float equilibrium distance.
-            /// The mapping is symmetric: (A,B) == (B,A).
-            /// </summary>
-            public static Dictionary<string, float> CreateEquilibriumDistanceMap(HashSet<string> recipes)
-            {
-                var map = new Dictionary<string, float>();
-                var recipeList = new List<string>(recipes);
-
-                // Example heuristic: base distance + complexity difference + random jitter
-                for (int i = 0; i < recipeList.Count; i++)
-                {
-                    for (int j = i; j < recipeList.Count; j++)
-                    {
-                        string a = recipeList[i];
-                        string b = recipeList[j];
-                        float complexityA = PolyhedronRecipeUtils.ComputeComplexity(PolyhedronRecipeParser.Parse(a));
-                        float complexityB = PolyhedronRecipeUtils.ComputeComplexity(PolyhedronRecipeParser.Parse(b));
-                        float baseDist = 3.0f;
-                        float diff = Mathf.Abs(complexityA - complexityB);
-                        float mean = (complexityA + complexityB) * 0.2f;
-                        float jitter = UnityEngine.Random.Range(-0.2f, 0.2f);
-                        float eqDist = baseDist + diff * 0.5f + mean + jitter;
-
-                        string key = $"{a}|{b}";
-                        string keySym = $"{b}|{a}";
-                        map[key] = eqDist;
-                        map[keySym] = eqDist; // ensure symmetry
-                    }
-                }
-                return map;
-            }
-
-            */
 
     public static Dictionary<string, float> CreateEquilibriumDistanceMap(HashSet<string> recipes)
     {
