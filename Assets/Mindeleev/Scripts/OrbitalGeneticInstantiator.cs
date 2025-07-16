@@ -50,8 +50,8 @@ public class OrbitalGeneticInstantiator : MonoBehaviour
             Vector3 offset = new Vector3(
                 // Mathf.Cos(angle) * innerOrbitRadius * Random.Range(0,100),
                 Mathf.Cos(angle) * innerOrbitRadius,
-                // 0.0f,
-                Mathf.Cos(angle) * innerOrbitRadius,
+                0.0f,
+                // Mathf.Cos(angle) * innerOrbitRadius,
 
                 Mathf.Sin(angle) * innerOrbitRadius
             );
@@ -62,9 +62,9 @@ public class OrbitalGeneticInstantiator : MonoBehaviour
             // string randomRecipe = PolyhedronRecipeEnumerator_obsolete.IntToRecipe(randomInt);
             string permutedRecipe = permutations[i].ToString();
 
-            for (int j = 0; j < 4; j++)
+            for (int j = 0; j < i+1; j++)
             {
-                position.x += j;
+                position.x += j*0.01f;
                 GameObject poly = Instantiate(polytronPrefab, position, Quaternion.identity, transform);
                 poly.transform.localScale = transform.localScale * 0.4f;
                 var polytronComponent = poly.GetComponent<Polytron>();
@@ -87,11 +87,14 @@ public class OrbitalGeneticInstantiator : MonoBehaviour
                 //if (collider == null)
                 //    collider = poly.AddComponent<SphereCollider>();
                 Debug.Assert(collider != null);
+
+                /*
                 collider.isTrigger = true;
 
                 var handler = poly.AddComponent<InnerPolyhedronCollisionHandler>();
                 handler.parent = this;
                 handler.myRecipe = permutedRecipe;
+*/
 
                 innerPolyhedra.Add(poly);
             }

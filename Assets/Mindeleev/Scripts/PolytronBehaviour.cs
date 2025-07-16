@@ -53,7 +53,7 @@ public abstract class PolytronBehaviour
             = CalcSpringForce(myPosition,
             avatarPosition,
             1.0f,
-            3.0f);
+            4.0f);
 
 
         return attractionForce;

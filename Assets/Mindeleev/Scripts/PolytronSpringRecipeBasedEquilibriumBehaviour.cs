@@ -11,7 +11,7 @@ public class PolytronSpringRecipeBasedEquilibriumBehaviour : PolytronBehaviour
     public float AttractionMultiplier { get; set; } = 1.0f;
     public float CollisionDistance { get; set; } = 0.5f;
     public float ContactStiffness { get; set; } = 500f;
-    public float LinearFriction { get; set; } = 0.5f;
+    public float LinearFriction { get; set; } = 0.9f;
 
     public static Dictionary<string, float> eqMap;
 
@@ -83,38 +83,41 @@ public class PolytronSpringRecipeBasedEquilibriumBehaviour : PolytronBehaviour
         // Debug.Log("Torque: " + torqueAccumulator);
     }
 
-    /*
-        public static Dictionary<string, float> CreateEquilibriumDistanceMap(HashSet<string> recipes)
+
+    public static Dictionary<string, float> CreateEquilibriumDistanceMap(HashSet<string> recipes)
+    {
+        var map = new Dictionary<string, float>();
+        var recipeList = new List<string>(recipes);
+
+        for (int i = 0; i < recipeList.Count; i++)
         {
-            var map = new Dictionary<string, float>();
-            var recipeList = new List<string>(recipes);
-
-            for (int i = 0; i < recipeList.Count; i++)
+            for (int j = 0; j < recipeList.Count; j++)
             {
-                for (int j = 0; j < recipeList.Count; j++)
-                {
-                    string a = recipeList[i];
-                    string b = recipeList[j];
+                string a = recipeList[i];
+                string b = recipeList[j];
 
-                    float complexityA = PolyhedronRecipeUtils.ComputeComplexity(PolyhedronRecipeParser.Parse(a));
-                    float complexityB = PolyhedronRecipeUtils.ComputeComplexity(PolyhedronRecipeParser.Parse(b));
-                    float baseDist = 3.0f;
+                float complexityA = PolyhedronRecipeUtils.ComputeComplexity(PolyhedronRecipeParser.Parse(a));
+                float complexityB = PolyhedronRecipeUtils.ComputeComplexity(PolyhedronRecipeParser.Parse(b));
+                float baseDist = 8.0f;
 
-                    // Heuristic depends on order (a to b)
-                    float diff = complexityB - complexityA;  // not absolute
-                    float mean = (complexityA + complexityB) * 0.2f;
-                    float jitter = UnityEngine.Random.Range(-2f, 2f);
+                // Heuristic depends on order (a to b)
+//                 float diff = Mathf.Abs(complexityB - complexityA);  // not absolute
+                float diff = complexityB - complexityA;  // not absolute
+                float mean = (complexityA + complexityB) * 0.2f;
+                float jitter = UnityEngine.Random.Range(-2f, 2f);
 
-                    float eqDist = baseDist + diff * 0.5f + mean + jitter;
+                // float eqDist = baseDist + diff * 0.5f + mean + jitter;
+                float eqDist = baseDist + diff;
+                // float eqDist = baseDist;
 
-                    string key = $"{a}|{b}";
-                    map[key] = eqDist;
-                }
+                string key = $"{a}|{b}";
+                map[key] = eqDist;
             }
-            return map;
         }
+        return map;
+    }
 
-        */
+    /*
     
     /// <summary>
     /// Creates a mapping from a pair of recipes (as "recipeA|recipeB") to a float equilibrium distance.
@@ -148,5 +151,7 @@ public class PolytronSpringRecipeBasedEquilibriumBehaviour : PolytronBehaviour
         }
         return map;
     }
+
+*/
 
 }
