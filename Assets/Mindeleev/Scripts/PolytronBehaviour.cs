@@ -17,9 +17,9 @@ public abstract class PolytronBehaviour
     public Vector3 torqueAccumulator = Vector3.zero;
 
     public (Vector3 attractionForce, Vector3 from1To2Versor, float from1To2Distance)
-        CalcSpringForce(Transform obj1t, Transform obj2t, float attractionMultiplier, float equilibriumDistance)
+        CalcSpringForce(Vector3 obj1pos, Vector3 obj2pos, float attractionMultiplier, float equilibriumDistance)
     {
-        Vector3 from1to2Vector = obj2t.position - obj1t.position;
+        Vector3 from1to2Vector = obj2pos - obj1pos;
         float from1To2Distance = from1to2Vector.magnitude;
 
         float distanceFromEquilibrium = from1To2Distance - equilibriumDistance;
@@ -30,7 +30,7 @@ public abstract class PolytronBehaviour
         return (attractionForce, from1To2Versor, from1To2Distance);
     }
 
-    public void AddForceTowardAvatar()
+    public Vector3 ComputeForceTowardAvatar()
     {
         Vector3 avatarPosition;
 
@@ -47,20 +47,16 @@ public abstract class PolytronBehaviour
             avatarPosition = avatar.transform.position;
         }
 
+        Vector3 myPosition = Owner.gameObject.transform.position;
 
-        if (SpatialBridge.Instance.LocalAvatar is MonoBehaviour avatarMB)
-        {
-            GameObject avatarGO = avatarMB.gameObject;
-        }
-
-
-        GameObject localAvatarGO = SpatialBridge.actorService.localActor.avatar.GetLocalAvatarGameObject();
-
+        (Vector3 attractionForce, Vector3 fromMeToOtherVersor, float fromMeToOtherDistance)
+            = CalcSpringForce(myPosition,
+            avatarPosition,
+            1.0f,
+            3.0f);
 
 
-
-        // Debug.Log(avatarPosition.ToString());
-
+        return attractionForce;
     }
 
 }
