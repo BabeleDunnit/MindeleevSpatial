@@ -1164,7 +1164,7 @@ public static class Polyhedronisme
     public static (Vector3[], int[][], int[]) ApplyColorRemap(
         (Vector3[], int[][], int[]) input,
         Dictionary<int, int> colorRemap,
-        int paletteLength = 6 // Default, or pass your actual palette length
+        int paletteLength
     )
     {
         var (vertices, faces, colorIndices) = input;

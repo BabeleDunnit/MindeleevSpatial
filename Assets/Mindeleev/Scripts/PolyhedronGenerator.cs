@@ -11,20 +11,22 @@ public class PolyhedronGenerator : MonoBehaviour
     /* ------------------------------------------------------------------
      *  Inspector settings
      * ----------------------------------------------------------------*/
-    public string polyhedronRecipe = "C"; // default Cube
+    public string recipeString = "C"; // default Cube
     public PolyhedronPalette palette;
     private bool showVertexIndices = false;
     public Material polyhedronMaterial; // Add this field
+    public PolyhedronRecipe Recipe { get; set; }
 
     /* ------------------------------------------------------------------ */
-    void Start()
+    public virtual void Start()
     {
         MeshFilter filter = GetComponent<MeshFilter>();
         MeshRenderer renderer = GetComponent<MeshRenderer>();
 
         // var polyData = Polyhedronisme.ParsePolyhedronRecipe(polyhedronRecipe);
-        var parsed = PolyhedronRecipeParser.Parse(polyhedronRecipe);
-        var polyData = PolyhedronRecipeBuilder.Build(parsed);
+        // Debug.Log($"PolyhedronGenerator::Start() recipeString: {recipeString}");
+        Recipe = PolyhedronRecipeParser.Parse(recipeString);
+        var polyData = PolyhedronRecipeBuilder.Build(Recipe, palette.colors.Count);
         var polyFinalData = Polyhedronisme.ApplyFlatShade(polyData);
         filter.mesh = Polyhedronisme.BuildMesh(polyFinalData, palette);
         ApplyPolyhedronMaterial(renderer);
@@ -45,7 +47,7 @@ public class PolyhedronGenerator : MonoBehaviour
         }
 
         renderer.material = polyhedronMaterial;
-        Debug.Log($"Successfully applied material on {Application.platform}");
+        // Debug.Log($"Successfully applied material on {Application.platform}");
     }
 
     private void ShowVertexIndices(Vector3[] vertices)

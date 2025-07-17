@@ -279,7 +279,7 @@ public class PolyhedronRecipeTests
 
         // Apply remap: 0->9, 2->7
         var remap = new Dictionary<int, int> { { 0, 9 }, { 2, 7 } };
-        var remapped = Polyhedronisme.ApplyColorRemap(tuple, remap);
+        var remapped = Polyhedronisme.ApplyColorRemap(tuple, remap, 6);
 
         Assert.AreEqual(9, remapped.Item3[0]);
         Assert.AreEqual(1, remapped.Item3[1]);

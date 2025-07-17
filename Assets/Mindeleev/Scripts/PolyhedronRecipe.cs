@@ -74,12 +74,21 @@ public class RecipeToken
 
     public override string ToString()
     {
+        // Special case for color remap operator
+        if (Operator == "c" && NamedParameters.TryGetValue("colorRemap", out var remapObj) && remapObj is Dictionary<int, int> remapDict)
+        {
+            var pairs = remapDict.Select(kv => $"{kv.Key}:{kv.Value}");
+            return $"{Operator}({string.Join(",", pairs)})";
+        }
+
         var paramList = new List<string>();
         // Add positional parameters
         paramList.AddRange(PositionalParameters.Select(p => FormatParam(p)));
         // Add named parameters (not already present as positional)
         foreach (var kv in NamedParameters)
         {
+            // Skip colorRemap for c operator, already handled above
+            if (Operator == "c" && kv.Key == "colorRemap") continue;
             paramList.Add($"{kv.Key}:{FormatParam(kv.Value)}");
         }
         if (paramList.Count == 0)
@@ -91,6 +100,8 @@ public class RecipeToken
     {
         if (p is float f)
             return f.ToString("0.###", CultureInfo.InvariantCulture);
+        if (p is Dictionary<int, int> dict)
+            return string.Join(",", dict.Select(kv => $"{kv.Key}:{kv.Value}"));
         return p.ToString();
     }
 }
@@ -283,7 +294,7 @@ public static class PolyhedronRecipeParser
 /// </summary>
 public static class PolyhedronRecipeBuilder
 {
-    public static (Vector3[], int[][], int[]) Build(PolyhedronRecipe recipe)
+    public static (Vector3[], int[][], int[]) Build(PolyhedronRecipe recipe, int paletteColorsCount = 6)
     {
         // Get base polyhedron
         (Vector3[], int[][], int[]) current = recipe.BasePolyhedron switch
@@ -351,7 +362,8 @@ public static class PolyhedronRecipeBuilder
                 case "c":
                     if (token.NamedParameters.TryGetValue("colorRemap", out var remapObj) && remapObj is Dictionary<int, int> remapDict)
                         current = Polyhedronisme.ApplyColorRemap(current,
-                            remapDict
+                            remapDict,
+                            paletteColorsCount
                         );
                     break;
                 default:
