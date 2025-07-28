@@ -321,7 +321,14 @@ public class PolyhedronRecipeTests
         public int GetHashCode(Vector3 obj) => obj.GetHashCode();
     }
 
-
+    [Test]
+    public void Test_AllPermutationsWithRepetitions()
+    {
+        var chars = new HashSet<char> { 'a', 'b', 'c' };
+        var perms = PolyhedronRecipeUtils.AllPermutationsWithRepetition(chars, 5);
+        Debug.Log($"Permutations with repetitions: {string.Join(", ", perms)}");
+         
+    }
 
     // A UnityTest behaves like a coroutine in Play Mode. In Edit Mode you can use
     // `yield return null;` to skip a frame.
