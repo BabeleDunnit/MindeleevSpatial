@@ -18,9 +18,9 @@ public class PolyhedraEnumerationGrid : MonoBehaviour
 
     void Start()
     {
-        int xMax = doX ? 20 : 1;
-        int yMax = doY ? 20 : 1;
-        int zMax = doZ ? 20 : 1;
+        int xMax = doX ? 10 : 1;
+        int yMax = doY ? 10 : 1;
+        int zMax = doZ ? 10 : 1;
 
         var chars = new HashSet<char> { 't', 'k', 'n', 'a', 'd', 'l' };
         List<string> permutedRecipes = PolyhedronRecipeUtils.AllPermutationsWithRepetition(chars, 4);
@@ -46,6 +46,8 @@ public class PolyhedraEnumerationGrid : MonoBehaviour
                     GameObject poly = Instantiate(polytronPrefab, position, Quaternion.identity, transform);
                     poly.transform.localScale = transform.localScale * scale;
 
+                    // this works because is synchronous. The PolyhedronGenerator.Start() method
+                    // will be called AFTER we get out from here.
                     var polyGen = poly.GetComponent<PolyhedronGenerator>();
                     if (polyGen != null)
                     {
