@@ -1,4 +1,8 @@
 using UnityEngine;
+using System;
+using SpatialSys.UnitySDK;
+// using SpatialSys.UnitySDK.Internal;
+// using SpatialSys.UnitySDK.EditorSimulation;
 
 /// <summary>
 /// Attach this to polyhedron GameObjects to enable mouse grab and drag.
@@ -56,10 +60,21 @@ public class MouseGrab : MonoBehaviour
     // Disable camera controls during drag (customize for your camera system)
     private void DisableCameraControls(bool disable)
     {
+
+
+        Component[] components = mainCamera.GetComponents<Component>();
+
+        foreach (Component comp in components)
+        {
+            Debug.Log($"Componente: {comp.GetType().Name}");
+        }
+/*
         // Example for disabling a SimpleCameraController
-        var controller = mainCamera?.GetComponent<MonoBehaviour>();
+        var controller = mainCamera?.GetComponent<CameraFollow>();
+        Debug.Assert(controller != null);
         if (controller != null && controller.enabled != !disable)
             controller.enabled = !disable;
+*/
 
         // If using Cinemachine or another camera system, disable its input here.
         // If you have a custom camera script, reference and disable it here.
