@@ -12,17 +12,33 @@ public class PolyhedraEnumerationGrid : MonoBehaviour
     public GameObject polytronPrefab; // Assign the Polytron prefab in the inspector
     public float distance = 2.0f;
     public float scale = 0.3f;
+    public bool doX = true;
+    public bool doY = true;
+    public bool doZ = true;
+
     void Start()
     {
+        int xMax = doX ? 20 : 1;
+        int yMax = doY ? 20 : 1;
+        int zMax = doZ ? 20 : 1;
+
+        var chars = new HashSet<char> { 't', 'k', 'n', 'a', 'd', 'l' };
+        List<string> permutedRecipes = PolyhedronRecipeUtils.AllPermutationsWithRepetition(chars, 4);
 
         int polytronNumber = 0;
-        for (int x = 0; x < 10; x++)
+        for (int x = 0; x < xMax; x++)
         {
-            for (int y = 0; y < 10; y++)
+            for (int y = 0; y < yMax; y++)
             {
-                for (int z = 0; z < 10; z++)
+                for (int z = 0; z < zMax; z++)
                 {
-                    string recipe = PolyhedronRecipeEnumerator_obsolete.IntToRecipe(polytronNumber);
+
+
+                    // string recipe = PolyhedronRecipeEnumerator_obsolete.IntToRecipe(polytronNumber);
+                    string recipe = permutedRecipes[polytronNumber] + "C";
+
+
+
                     Debug.Log($"{polytronNumber} {recipe}");
                     Vector3 offset = new Vector3(x * distance, y * distance, z * distance);
                     Vector3 position = transform.position + offset;

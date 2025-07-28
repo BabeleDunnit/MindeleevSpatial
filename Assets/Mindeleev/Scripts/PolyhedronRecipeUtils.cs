@@ -118,4 +118,56 @@ public static class PolyhedronRecipeUtils
         float total = opComplexity + lengthComplexity + paramComplexity + visualComplexity;
         return total;
     }
+
+    /*
+        public static HashSet<string> AllPermutationsWithRepetition(HashSet<char> chars, int maxLength)
+        {
+            var result = new HashSet<string> { "" }; // include the empty string for length 0
+
+            if (maxLength <= 0 || chars == null || chars.Count == 0)
+                return result;
+
+            var charArray = chars.ToArray();
+
+            for (int length = 1; length <= maxLength; length++)
+            {
+                var prev = result.Where(s => s.Length == length - 1).ToList();
+                foreach (var s in prev)
+                {
+                    foreach (var c in charArray)
+                    {
+                        result.Add(s + c);
+                    }
+                }
+            }
+
+            return result;
+        }
+
+        */
+    
+    public static List<string> AllPermutationsWithRepetition(HashSet<char> chars, int maxLength)
+    {
+        var result = new List<string> { "" }; // include the empty string for length 0
+
+        if (maxLength <= 0 || chars == null || chars.Count == 0)
+            return result;
+
+        var charArray = chars.ToArray();
+
+        for (int length = 1; length <= maxLength; length++)
+        {
+            var prev = result.Where(s => s.Length == length - 1).ToList();
+            foreach (var s in prev)
+            {
+                foreach (var c in charArray)
+                {
+                    result.Add(s + c);
+                }
+            }
+        }
+
+        return result;
+    }
+
 }
