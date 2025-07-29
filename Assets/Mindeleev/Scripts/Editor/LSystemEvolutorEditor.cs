@@ -98,6 +98,12 @@ public class LSystemEvolutorEditor : Editor
         // Add new rule
         if (GUILayout.Button("Add New Rule"))
         {
+            // Commit any pending edit before adding
+            if (editingRuleIndex >= 0)
+            {
+                CommitEdit(evolutor, editingRuleIndex, editingKey, editingValue);
+            }
+            GUI.FocusControl(null); // Force focus loss
             evolutor.rules.Add(new LSystemRule { key = "newKey", value = "newValue" });
             editingRuleIndex = evolutor.rules.Count - 1;
             editingKey = "newKey";
