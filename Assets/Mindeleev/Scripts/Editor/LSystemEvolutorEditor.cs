@@ -11,6 +11,24 @@ public class LSystemEvolutorEditor : Editor
     private bool keyFieldFocusedLastFrame = false;
     private bool valueFieldFocusedLastFrame = false;
 
+    // Default rules for reset
+    private static readonly LSystemRule[] defaultRules = new LSystemRule[]
+    {
+        new LSystemRule { key = "tkO", value = "lC" },
+        new LSystemRule { key = "tk", value = "n" },
+        new LSystemRule { key = "t", value = "tk" },
+        new LSystemRule { key = "k", value = "n" },
+        new LSystemRule { key = "n", value = "a" },
+        new LSystemRule { key = "a", value = "d" },
+        new LSystemRule { key = "d", value = "" },
+        new LSystemRule { key = "l", value = "tl" },
+        new LSystemRule { key = "T", value = "T" },
+        new LSystemRule { key = "C", value = "O" },
+        new LSystemRule { key = "O", value = "tO" },
+        new LSystemRule { key = "I", value = "I" },
+        new LSystemRule { key = "D", value = "D" },
+    };
+
     public override void OnInspectorGUI()
     {
         DrawDefaultInspector();
@@ -108,6 +126,17 @@ public class LSystemEvolutorEditor : Editor
             editingRuleIndex = evolutor.rules.Count - 1;
             editingKey = "newKey";
             editingValue = "newValue";
+            EditorUtility.SetDirty(evolutor);
+        }
+
+        // Reset to default rules
+        if (GUILayout.Button("Reset"))
+        {
+            evolutor.rules.Clear();
+            evolutor.rules.AddRange(defaultRules.Select(r => new LSystemRule { key = r.key, value = r.value }));
+            editingRuleIndex = -1;
+            editingKey = null;
+            editingValue = null;
             EditorUtility.SetDirty(evolutor);
         }
 
