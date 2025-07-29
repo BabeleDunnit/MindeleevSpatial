@@ -88,13 +88,12 @@ public class OrbitalGeneticInstantiator : MonoBehaviour
                 //    collider = poly.AddComponent<SphereCollider>();
                 Debug.Assert(collider != null);
 
-                /*
+                
                 collider.isTrigger = true;
 
                 var handler = poly.AddComponent<InnerPolyhedronCollisionHandler>();
                 handler.parent = this;
                 handler.myRecipe = permutedRecipe;
-*/
 
                 innerPolyhedra.Add(poly);
             }
@@ -165,10 +164,35 @@ public class InnerPolyhedronCollisionHandler : MonoBehaviour
     // Keep track of spawned offspring
     private List<GameObject> spawnedOffspring = new List<GameObject>();
 
-    private void OnTriggerEnter(Collider other)
+    private void OnCollisionEnter(Collision other)
     {
-        if ((other.CompareTag("Player") || other.GetComponent<CharacterController>() != null) && spawnedOffspring.Count == 0)
+        if ((other.gameObject.CompareTag("Player") || other.gameObject.GetComponent<CharacterController>() != null) && spawnedOffspring.Count == 0)
         {
+            Debug.Log("Collision Enter");
+            // Spawn offspring and keep references
+            spawnedOffspring = parent.SpawnOffspring(gameObject, myRecipe);
+        }
+    }
+
+    private void OnCollisionExit(Collision other)
+    {
+        if (other.gameObject.CompareTag("Player") || other.gameObject.GetComponent<CharacterController>() != null)
+        {
+            // Destroy all spawned offspring
+            foreach (var child in spawnedOffspring)
+            {
+                if (child != null)
+                    Destroy(child);
+            }   
+            spawnedOffspring.Clear();
+        }
+    }
+
+        private void OnTriggerEnter(Collider other)
+    {
+        if ((other.gameObject.CompareTag("Player") || other.gameObject.GetComponent<CharacterController>() != null) && spawnedOffspring.Count == 0)
+        {
+            Debug.Log("Trigger Enter");
             // Spawn offspring and keep references
             spawnedOffspring = parent.SpawnOffspring(gameObject, myRecipe);
         }
@@ -176,7 +200,7 @@ public class InnerPolyhedronCollisionHandler : MonoBehaviour
 
     private void OnTriggerExit(Collider other)
     {
-        if (other.CompareTag("Player") || other.GetComponent<CharacterController>() != null)
+        if (other.gameObject.CompareTag("Player") || other.gameObject.GetComponent<CharacterController>() != null)
         {
             // Destroy all spawned offspring
             foreach (var child in spawnedOffspring)
@@ -187,4 +211,5 @@ public class InnerPolyhedronCollisionHandler : MonoBehaviour
             spawnedOffspring.Clear();
         }
     }
+
 }
