@@ -490,6 +490,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   rules:
+  - key: tkO
+    value: lC
   - key: tk
     value: n
   - key: t
@@ -514,9 +516,7 @@ MonoBehaviour:
     value: I
   - key: D
     value: D
-  - key: dlC
-    value: C
-  evolveOnStart: 1
+  evolveOnStart: 0
 --- !u!1 &852085106
 GameObject:
   m_ObjectHideFlags: 0

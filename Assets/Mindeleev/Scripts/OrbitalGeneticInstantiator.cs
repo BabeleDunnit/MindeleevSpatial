@@ -43,7 +43,7 @@ public class OrbitalGeneticInstantiator : MonoBehaviour
 
     void InstantiateInnerOrbit()
     {
-        List<PolyhedronRecipe> permutations = PolyhedronRecipeUtils.AllTokenPermutations(nucleusRecipe);
+        List<PolyhedronRecipe> permutations = PolyhedronRecipeUtils.RecipePermutations(nucleusRecipe);
         for (int i = 0; i < permutations.Count; i++)
         {
             float angle = i * Mathf.PI * 2f / permutations.Count;

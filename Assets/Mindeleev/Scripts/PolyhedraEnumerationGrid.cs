@@ -22,8 +22,8 @@ public class PolyhedraEnumerationGrid : MonoBehaviour
         int yMax = doY ? 10 : 1;
         int zMax = doZ ? 10 : 1;
 
-        var chars = new HashSet<char> { 't', 'k', 'n', 'a', 'd', 'l' };
-        List<string> permutedRecipes = PolyhedronRecipeUtils.AllPermutationsWithRepetition(chars, 4);
+        string chars = "tknadl";
+        List<string> permutedRecipes = PolyhedronRecipeUtils.CombinationsWithRepetition(chars, 4);
 
         int polytronNumber = 0;
         for (int x = 0; x < xMax; x++)

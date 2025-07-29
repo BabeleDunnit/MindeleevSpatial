@@ -12,12 +12,12 @@ public static class PolyhedronRecipeUtils
     /// Given a string recipe, parses and tokenizes it, and returns a list of PolyhedronRecipe
     /// with all possible permutations of the operator tokens (base polyhedron is kept fixed).
     /// </summary>
-    public static List<PolyhedronRecipe> AllTokenPermutations(string recipe)
+    public static List<PolyhedronRecipe> RecipePermutations(string recipe)
     {
         var parsed = PolyhedronRecipeParser.Parse(recipe);
         var tokens = parsed.Tokens;
 
-        var permutations = GetPermutations(tokens, tokens.Count);
+        var permutations = Permutations(tokens, tokens.Count);
 
         var result = new List<PolyhedronRecipe>();
         foreach (var perm in permutations)
@@ -34,13 +34,13 @@ public static class PolyhedronRecipeUtils
     /// <summary>
     /// Helper: Get all permutations of a list.
     /// </summary>
-    private static IEnumerable<IEnumerable<T>> GetPermutations<T>(IEnumerable<T> list, int length)
+    private static IEnumerable<IEnumerable<T>> Permutations<T>(IEnumerable<T> list, int length)
     {
         if (length == 1)
             return list.Select(t => new T[] { t });
 
         return list.SelectMany((t, i) =>
-            GetPermutations(list.Take(i).Concat(list.Skip(i + 1)), length - 1)
+            Permutations(list.Take(i).Concat(list.Skip(i + 1)), length - 1)
             .Select(p => (new T[] { t }).Concat(p)));
     }
 
@@ -118,42 +118,15 @@ public static class PolyhedronRecipeUtils
         float total = opComplexity + lengthComplexity + paramComplexity + visualComplexity;
         return total;
     }
-
-    /*
-        public static HashSet<string> AllPermutationsWithRepetition(HashSet<char> chars, int maxLength)
-        {
-            var result = new HashSet<string> { "" }; // include the empty string for length 0
-
-            if (maxLength <= 0 || chars == null || chars.Count == 0)
-                return result;
-
-            var charArray = chars.ToArray();
-
-            for (int length = 1; length <= maxLength; length++)
-            {
-                var prev = result.Where(s => s.Length == length - 1).ToList();
-                foreach (var s in prev)
-                {
-                    foreach (var c in charArray)
-                    {
-                        result.Add(s + c);
-                    }
-                }
-            }
-
-            return result;
-        }
-
-        */
     
-    public static List<string> AllPermutationsWithRepetition(HashSet<char> chars, int maxLength)
+    public static List<string> CombinationsWithRepetition(string chars, int maxLength)
     {
         var result = new List<string> { "" }; // include the empty string for length 0
 
-        if (maxLength <= 0 || chars == null || chars.Count == 0)
+        if (maxLength <= 0 || string.IsNullOrEmpty(chars))
             return result;
 
-        var charArray = chars.ToArray();
+        var charArray = chars.ToCharArray();
 
         for (int length = 1; length <= maxLength; length++)
         {

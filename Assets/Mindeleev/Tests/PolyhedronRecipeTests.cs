@@ -322,13 +322,39 @@ public class PolyhedronRecipeTests
     }
 
     [Test]
-    public void Test_AllPermutationsWithRepetitions()
+    public void Test_CombinationsWithRepetition()
     {
-        var chars = new HashSet<char> { 'a', 'b', 'c' };
-        var perms = PolyhedronRecipeUtils.AllPermutationsWithRepetition(chars, 5);
-        Debug.Log($"Permutations with repetitions: {string.Join(", ", perms)}");
+        string chars = "abc";
+        var perms = PolyhedronRecipeUtils.CombinationsWithRepetition(chars, 5);
+        Debug.Log($"Combinations with repetitions: {string.Join(", ", perms)}");
          
     }
+
+    [Test]
+    public void Test_YetAnotherAufbau()
+    {
+        // operators are in "complexity" order - totally subjective
+        string operators = "daktnl";
+
+        // try to mimick the Pauli exclusion in some way
+        for (int i = 1; i < 7; i++)
+        {
+            int recipeLen = i;
+            for (int j = 2; j < i; j++)
+            {
+                int operatorsSubstringLen = j;
+                List<string> combinationsWithRepetition = PolyhedronRecipeUtils.CombinationsWithRepetition(operators.Substring(0, operatorsSubstringLen), recipeLen);
+                Debug.Log($"recipeLen: {recipeLen}, operatorsSubstringLen: {operatorsSubstringLen}");
+                Debug.Log($"combinationsWithRepetition: {string.Join(", ", combinationsWithRepetition)}");
+                List<PolyhedronRecipe> permutations = PolyhedronRecipeUtils.RecipePermutations(operators.Substring(0, operatorsSubstringLen)+"C");
+                Debug.Log($"permutations: {string.Join(", ", permutations)}");
+
+            }
+        }        
+
+        
+    }
+
 
     // A UnityTest behaves like a coroutine in Play Mode. In Edit Mode you can use
     // `yield return null;` to skip a frame.
