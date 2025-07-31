@@ -46,7 +46,7 @@ public class PolytronEngine : MonoBehaviour
         foreach (Polytron p in GetAll())
         {
             // Debug.Log("Call ComputeForce for " + p.Id);
-            PolytronBehaviour b = p.Behaviour;
+            PolytronPhysics b = p.Behaviour;
             if (b != null)
             {
                 b.ComputeForce();

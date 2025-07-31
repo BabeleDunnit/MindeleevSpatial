@@ -24,7 +24,7 @@ public class OrbitalGeneticInstantiator : MonoBehaviour
         InstantiateInnerOrbit();
         var recipesMap = PolytronEngine.CollectRecipes();
         var recipeSet = new HashSet<string>(recipesMap.Keys);
-        PolytronSpringRecipeBasedEquilibriumBehaviour.eqMap = PolytronSpringRecipeBasedEquilibriumBehaviour.CreateEquilibriumDistanceMap(recipeSet);
+        PolytronSpringRecipeBasedEquilibriumPhysics.eqMap = PolytronSpringRecipeBasedEquilibriumPhysics.CreateEquilibriumDistanceMap(recipeSet);
         // You can now use eqMap as needed
     }
 
@@ -71,7 +71,7 @@ public class OrbitalGeneticInstantiator : MonoBehaviour
                 if (polytronComponent != null)
                 {
                     polytronComponent.recipeString = permutedRecipe;
-                    polytronComponent.Behaviour = new PolytronSpringRecipeBasedEquilibriumBehaviour(polytronComponent);
+                    polytronComponent.Behaviour = new PolytronSpringRecipeBasedEquilibriumPhysics(polytronComponent);
                     // Debug.Log($"polytron {polytronComponent.Id} is of type {polytronComponent.Behaviour}");
 
                 }

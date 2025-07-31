@@ -11,7 +11,7 @@ public class Polytron : PolyhedronGenerator
 
     // this is a strategy to encapsulate data and type of polytron behaviour (spring/mass, particleLife, etc)
     // the PolytronEngine will switch on this to execute the relative algorithm
-    public PolytronBehaviour Behaviour { get; set; }
+    public PolytronPhysics Behaviour { get; set; }
 
     public Rigidbody RigidBody { get; set; }
 
