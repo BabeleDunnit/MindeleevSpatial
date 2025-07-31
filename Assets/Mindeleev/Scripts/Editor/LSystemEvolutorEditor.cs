@@ -1,3 +1,5 @@
+#if UNITY_EDITOR
+
 using UnityEditor;
 using UnityEngine;
 using System.Linq;
@@ -165,3 +167,5 @@ public class LSystemEvolutorEditor : Editor
         valueFieldFocusedLastFrame = false;
     }
 }
+
+#endif

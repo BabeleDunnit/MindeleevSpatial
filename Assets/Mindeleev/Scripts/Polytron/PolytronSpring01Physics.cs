@@ -23,7 +23,7 @@ public class PolytronSpring01Physics : PolytronPhysics
 
     public override void ComputeForce()
     {
-        var allPolytrons = PolytronEngine.GetAll();
+        var allPolytrons = Owner.Engine.GetAllPolytrons();
         Vector3 forceAccumulator = Vector3.zero;
         Vector3 torqueAccumulator = Vector3.zero;
 

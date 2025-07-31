@@ -5,32 +5,35 @@ using UnityEngine;
 public class PolytronEngine : MonoBehaviour
 {
 
-    private static List<Polytron> polytrons = new();
+    public GameObject polytronPrefab; // Assign the Polytron prefab in the inspector
 
-    public static void Register(Polytron instance)
+    private  List<Polytron> polytrons = new List<Polytron>();
+
+    public void Register(Polytron instance)
     {
         instance.Id = polytrons.Count;
         polytrons.Add(instance);
         // Debug.Log("Polytron registered: " + instance.Id);
     }
 
-    public static void Unregister(Polytron instance)
+    public void Unregister(Polytron instance)
     {
         polytrons.Remove(instance);
         // Debug.Log("Prefab deregistered: " + instance.Id);
     }
 
-    //     public static IEnumerable<GameObject> GetAll() => polytrons;
-    public static IEnumerable<Polytron> GetAll() => polytrons;
+    public IEnumerable<Polytron> GetAllPolytrons() => polytrons;
 
     // Start is called before the first frame update
     void Start()
     {
 
+        PolytronsFactory.Create(this, 10, "pippo");
+
 
         Debug.Log($"PolytronEngine::Start() entering");
         // all empty here
-        foreach (Polytron p in GetAll())
+        foreach (Polytron p in GetAllPolytrons())
         {
             Debug.Log($"polytron {p.Id} is of type {p.recipeString}");
             // p.Behaviour.ComputeForce();
@@ -43,7 +46,7 @@ public class PolytronEngine : MonoBehaviour
     // Update is called once per frame
     void FixedUpdate()
     {
-        foreach (Polytron p in GetAll())
+        foreach (Polytron p in GetAllPolytrons())
         {
             // Debug.Log("Call ComputeForce for " + p.Id);
             PolytronPhysics b = p.Behaviour;
@@ -54,10 +57,10 @@ public class PolytronEngine : MonoBehaviour
         }
     }
 
-    public static Dictionary<string, int> CollectRecipes()
+    public Dictionary<string, int> CollectRecipes()
     {
         Dictionary<string, int> recipeCounts = new();
-        foreach (Polytron p in GetAll())
+        foreach (Polytron p in GetAllPolytrons())
         {
             // Debug.Log("recipe: " + p.recipeString);
             if (!string.IsNullOrEmpty(p.recipeString))

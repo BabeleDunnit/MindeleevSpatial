@@ -25,7 +25,7 @@ public class PolytronSpringRecipeBasedEquilibriumPhysics : PolytronPhysics
 
     public override void ComputeForce()
     {
-        var allPolytrons = PolytronEngine.GetAll();
+        var allPolytrons = Owner.Engine.GetAllPolytrons();
         forceAccumulator = Vector3.zero;
         torqueAccumulator = Vector3.zero;
 

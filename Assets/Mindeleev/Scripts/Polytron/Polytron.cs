@@ -6,6 +6,8 @@ using System;
 public class Polytron : PolyhedronGenerator
 {
 
+    public PolytronEngine Engine { get; set; }
+
     public int Id { get; set; }
     // public PolytronEngine Engine { get; set; }
 
@@ -34,19 +36,21 @@ public class Polytron : PolyhedronGenerator
 
     }
 
-    void OnEnable()
-    {
-        PolytronEngine.Register(this);
-    }
+    /*
+        void OnEnable()
+        {
+            Engine.Register(this);
+        }
+    */
 
     void OnDisable()
     {
-        PolytronEngine.Unregister(this);
+        Engine.Unregister(this);
     }
 
     void OnDestroy()
     {
-        PolytronEngine.Unregister(this);
+        Engine.Unregister(this);
     }
 
 

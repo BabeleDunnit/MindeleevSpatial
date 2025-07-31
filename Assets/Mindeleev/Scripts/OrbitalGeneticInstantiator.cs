@@ -1,6 +1,7 @@
 using UnityEngine;
 using System.Collections.Generic;
 using TMPro;
+using UnityEngine.TextCore.LowLevel;
 
 public class OrbitalGeneticInstantiator : MonoBehaviour
 {
@@ -18,11 +19,13 @@ public class OrbitalGeneticInstantiator : MonoBehaviour
     private GameObject nucleusObject;
     private List<GameObject> innerPolyhedra = new List<GameObject>();
 
+    PolytronEngine polytronEngine = new();
+
     void Start()
     {
         InstantiateNucleus();
         InstantiateInnerOrbit();
-        var recipesMap = PolytronEngine.CollectRecipes();
+        var recipesMap = polytronEngine.CollectRecipes();
         var recipeSet = new HashSet<string>(recipesMap.Keys);
         PolytronSpringRecipeBasedEquilibriumPhysics.eqMap = PolytronSpringRecipeBasedEquilibriumPhysics.CreateEquilibriumDistanceMap(recipeSet);
         // You can now use eqMap as needed
@@ -31,9 +34,13 @@ public class OrbitalGeneticInstantiator : MonoBehaviour
     void InstantiateNucleus()
     {
         nucleusObject = Instantiate(polytronPrefab, transform.position, Quaternion.identity, transform);
-        var gen = nucleusObject.GetComponent<PolyhedronGenerator>();
-        if (gen != null)
-            gen.recipeString = nucleusRecipe;
+        var polytron = nucleusObject.GetComponent<Polytron>();
+        if (polytron != null)
+        {
+            polytron.recipeString = nucleusRecipe;
+            polytron.Engine = polytronEngine;
+            
+        }
         nucleusObject.name = "Nucleus";
         CreateLabel(nucleusObject, nucleusRecipe
             + " "
