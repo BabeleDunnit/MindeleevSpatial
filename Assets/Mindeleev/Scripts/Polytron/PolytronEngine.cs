@@ -6,8 +6,9 @@ public class PolytronEngine : MonoBehaviour
 {
 
     public GameObject polytronPrefab; // Assign the Polytron prefab in the inspector
+    public bool callFactory = false;
 
-    private  List<Polytron> polytrons = new List<Polytron>();
+    private List<Polytron> polytrons = new List<Polytron>();
 
     public void Register(Polytron instance)
     {
@@ -28,8 +29,10 @@ public class PolytronEngine : MonoBehaviour
     void Start()
     {
 
-        PolytronsFactory.Create(this, 10, "pippo");
-
+        if (callFactory)
+        {
+            PolytronsFactory.Create(this, 10, "pippo");
+        }
 
         Debug.Log($"PolytronEngine::Start() entering");
         // all empty here

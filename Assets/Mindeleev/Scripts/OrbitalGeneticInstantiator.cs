@@ -19,10 +19,13 @@ public class OrbitalGeneticInstantiator : MonoBehaviour
     private GameObject nucleusObject;
     private List<GameObject> innerPolyhedra = new List<GameObject>();
 
-    PolytronEngine polytronEngine = new();
+    PolytronEngine polytronEngine;
 
     void Start()
     {
+        polytronEngine = GetComponent<PolytronEngine>();
+        Debug.Assert(polytronEngine != null, "A sibling PolytronEngine component is needed");
+
         InstantiateNucleus();
         InstantiateInnerOrbit();
         var recipesMap = polytronEngine.CollectRecipes();
@@ -77,6 +80,8 @@ public class OrbitalGeneticInstantiator : MonoBehaviour
                 var polytronComponent = poly.GetComponent<Polytron>();
                 if (polytronComponent != null)
                 {
+                    polytronComponent.Engine = polytronEngine;
+                    polytronEngine.Register(polytronComponent);
                     polytronComponent.recipeString = permutedRecipe;
                     polytronComponent.Behaviour = new PolytronSpringRecipeBasedEquilibriumPhysics(polytronComponent);
                     // Debug.Log($"polytron {polytronComponent.Id} is of type {polytronComponent.Behaviour}");
@@ -89,12 +94,19 @@ public class OrbitalGeneticInstantiator : MonoBehaviour
                     + PolyhedronRecipeUtils.ComputeComplexity(PolyhedronRecipeParser.Parse(permutedRecipe)),
                     Vector3.zero);
 
+                var rigidBody = poly.GetComponent<Rigidbody>();
+
+                // no freeze, gravity true, collider.isTrigger false -> polytrons rolling on the ground
+                // freeze, no gravity, trigger true -> polytrons sliding with permutations on collision
+
+                rigidBody.constraints = RigidbodyConstraints.FreezePositionY;
+                // rigidBody.useGravity = true;
+
                 // Enable collision and add handler
                 var collider = poly.GetComponent<Collider>();
                 //if (collider == null)
                 //    collider = poly.AddComponent<SphereCollider>();
                 Debug.Assert(collider != null);
-
                 
                 collider.isTrigger = true;
 
