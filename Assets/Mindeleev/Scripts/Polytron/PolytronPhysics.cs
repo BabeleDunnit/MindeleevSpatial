@@ -59,4 +59,21 @@ public abstract class PolytronPhysics
         return attractionForce;
     }
 
+    public Vector3 ComputeForceTowardOriginGameObject()
+    {
+        Vector3 gameObjectPosition = Owner.Engine.transform.position;
+        Vector3 myPosition = Owner.gameObject.transform.position;
+
+        (Vector3 attractionForce, Vector3 fromMeToOtherVersor, float fromMeToOtherDistance)
+            = CalcSpringForce(myPosition,
+            gameObjectPosition,
+            1.0f,
+            4.0f);
+
+
+        return attractionForce;
+    }
+
+
+
 }

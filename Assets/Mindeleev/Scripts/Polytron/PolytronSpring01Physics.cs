@@ -7,7 +7,7 @@ using UnityEngine;
 public class PolytronSpring01Physics : PolytronPhysics
 {
 
-    public float EquilibriumDistance { get; set; } = 5.0f;
+    public float EquilibriumDistance { get; set; } = 6.0f;
     public float AttractionMultiplier { get; set; } = 1.0f;
     public float CollisionDistance { get; set; } = 0.5f;
     public float ContactStiffness { get; set; } = 500f;
@@ -77,9 +77,11 @@ public class PolytronSpring01Physics : PolytronPhysics
         Vector3 friction = -Owner.RigidBody.velocity * LinearFriction;
         forceAccumulator += friction;
 
+        // add a force toward the owner GameObject
+        forceAccumulator += ComputeForceTowardOriginGameObject();
+
         Owner.RigidBody.AddForce(forceAccumulator);
         Owner.RigidBody.AddTorque(torqueAccumulator);
-        //        }
 
         // Debug.DrawLine(me.transform.position, contactPoint, Color.red, 1f);
         // Debug.Log("Torque: " + torqueAccumulator);
