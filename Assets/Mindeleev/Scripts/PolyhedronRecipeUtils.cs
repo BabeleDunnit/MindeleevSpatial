@@ -53,18 +53,29 @@ public static class PolyhedronRecipeUtils
         // Operator weights (tweak as desired)
         var opWeights = new Dictionary<string, float>
         {
+            { "d", 1.0f }, // dual
+            { "a", 1.1f }, // ambo
             { "k", 1.2f }, // kis
             { "t", 1.5f }, // truncate
-            { "a", 1.1f }, // ambo
-            { "d", 1.0f }, // dual
             { "n", 1.7f }, // insetN
             { "l", 2.0f }, // stellation
-            { "f", 2.5f }, // "fucked" stellation
+            // { "f", 2.5f }, // "fucked" stellation
         };
+
+        var basePolyComplexityMap = new Dictionary<char, float>
+        {
+            { 'T', 1.0f },
+            { 'C', 1.1f },
+            { 'O', 1.2f },
+            { 'D', 1.3f },
+            { 'I', 1.4f },
+        };
+
+        float basePolyComplexity = basePolyComplexityMap.TryGetValue(recipe.BasePolyhedron, out var bpc) ? bpc : 1.0f;
 
         // 1. Trivial recipe: only base polyhedron
         if (recipe.Tokens.Count == 0)
-            return 0f;
+            return basePolyComplexity;
 
         // 2. Operator complexity
         float opComplexity = 0f;
@@ -115,7 +126,7 @@ public static class PolyhedronRecipeUtils
         }
 
         // Final weighted sum (tweak as desired)
-        float total = opComplexity + lengthComplexity + paramComplexity + visualComplexity;
+        float total = basePolyComplexity + opComplexity + lengthComplexity + paramComplexity + visualComplexity;
         return total;
     }
 

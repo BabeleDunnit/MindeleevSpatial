@@ -339,4 +339,20 @@ public class PolyhedronRecipeTests
         // Use yield to skip a frame.
         yield return null;
     }
+
+    [Test]
+    public void SumRecipes_PadsShorterRecipesCorrectly()
+    {
+        var recipes = new List<string> { "daC", "kI" }; // "daC" (2 ops), "kI" (1 op)
+        var result = PolyhedronRecipeAlgebra.SumRecipes(recipes);
+        Assert.AreEqual("dkI", result);
+    }
+
+    [Test]
+    public void SumRecipes_DifferentLengthRecipes()
+    {
+        var recipes = new List<string> { "tkO", "dC", "aaaI" };
+        var result = PolyhedronRecipeAlgebra.SumRecipes(recipes);
+        Assert.AreEqual("atkI", result);
+    }
 }
