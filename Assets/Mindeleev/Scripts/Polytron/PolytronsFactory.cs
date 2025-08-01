@@ -91,7 +91,7 @@ public class PolytronsFactory : MonoBehaviour
             transform.position.x, transform.position.y, transform.position.z
         );
 
-        string recipe = "takC";
+        string recipe = "aC";
 
         GameObject poly = Instantiate(polytronPrefab, polytronPosition, Quaternion.identity, transform);
         // poly.transform.localScale = transform.localScale * 0.4f;

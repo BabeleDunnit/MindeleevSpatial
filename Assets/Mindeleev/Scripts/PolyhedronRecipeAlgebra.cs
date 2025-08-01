@@ -11,25 +11,25 @@ public static class PolyhedronRecipeAlgebra
     // Base polyhedra in order of increasing complexity
     private static readonly char[] BasePolyhedra = { 'T', 'C', 'O', 'D', 'I' };
 
-    // Explicit operator sum table (36 rules)
+    // Explicit operator sum table (36 rules) - always changes result, increases complexity, rolls over if needed
     public static readonly Dictionary<(char, char), char> OperatorSumTable = new Dictionary<(char, char), char>
     {
-        { ('d','d'), 'd' }, { ('d','a'), 'a' }, { ('d','k'), 'k' }, { ('d','t'), 't' }, { ('d','n'), 'n' }, { ('d','l'), 'l' },
-        { ('a','d'), 'a' }, { ('a','a'), 'a' }, { ('a','k'), 'k' }, { ('a','t'), 't' }, { ('a','n'), 'n' }, { ('a','l'), 'l' },
-        { ('k','d'), 'k' }, { ('k','a'), 'k' }, { ('k','k'), 'k' }, { ('k','t'), 't' }, { ('k','n'), 'n' }, { ('k','l'), 'l' },
-        { ('t','d'), 't' }, { ('t','a'), 'k' }, { ('t','k'), 't' }, { ('t','t'), 'n' }, { ('t','n'), 'n' }, { ('t','l'), 'l' },
-        { ('n','d'), 'n' }, { ('n','a'), 'n' }, { ('n','k'), 'n' }, { ('n','t'), 'n' }, { ('n','n'), 'n' }, { ('n','l'), 'l' },
-        { ('l','d'), 'l' }, { ('l','a'), 'l' }, { ('l','k'), 'l' }, { ('l','t'), 'l' }, { ('l','n'), 'l' }, { ('l','l'), 'l' },
+        { ('d','d'), 'a' }, { ('d','a'), 'k' }, { ('d','k'), 't' }, { ('d','t'), 'n' }, { ('d','n'), 'l' }, { ('d','l'), 'd' },
+        { ('a','d'), 'k' }, { ('a','a'), 'k' }, { ('a','k'), 't' }, { ('a','t'), 'n' }, { ('a','n'), 'l' }, { ('a','l'), 'd' },
+        { ('k','d'), 't' }, { ('k','a'), 't' }, { ('k','k'), 'n' }, { ('k','t'), 'l' }, { ('k','n'), 'd' }, { ('k','l'), 'a' },
+        { ('t','d'), 'n' }, { ('t','a'), 'n' }, { ('t','k'), 'l' }, { ('t','t'), 'd' }, { ('t','n'), 'a' }, { ('t','l'), 'k' },
+        { ('n','d'), 'l' }, { ('n','a'), 'l' }, { ('n','k'), 'd' }, { ('n','t'), 'a' }, { ('n','n'), 'k' }, { ('n','l'), 't' },
+        { ('l','d'), 'd' }, { ('l','a'), 'd' }, { ('l','k'), 'a' }, { ('l','t'), 'k' }, { ('l','n'), 't' }, { ('l','l'), 'n' },
     };
 
-    // Explicit base polyhedron sum table (25 rules)
+    // Explicit base polyhedron sum table (25 rules) - always changes result, increases complexity, rolls over if needed
     public static readonly Dictionary<(char, char), char> BasePolySumTable = new Dictionary<(char, char), char>
     {
-        { ('T','T'), 'T' }, { ('T','C'), 'C' }, { ('T','O'), 'O' }, { ('T','D'), 'D' }, { ('T','I'), 'I' },
-        { ('C','T'), 'C' }, { ('C','C'), 'C' }, { ('C','O'), 'O' }, { ('C','D'), 'D' }, { ('C','I'), 'I' },
-        { ('O','T'), 'O' }, { ('O','C'), 'O' }, { ('O','O'), 'O' }, { ('O','D'), 'D' }, { ('O','I'), 'I' },
-        { ('D','T'), 'D' }, { ('D','C'), 'D' }, { ('D','O'), 'D' }, { ('D','D'), 'D' }, { ('D','I'), 'I' },
-        { ('I','T'), 'I' }, { ('I','C'), 'I' }, { ('I','O'), 'I' }, { ('I','D'), 'I' }, { ('I','I'), 'I' },
+        { ('T','T'), 'C' }, { ('T','C'), 'O' }, { ('T','O'), 'D' }, { ('T','D'), 'I' }, { ('T','I'), 'T' },
+        { ('C','T'), 'O' }, { ('C','C'), 'D' }, { ('C','O'), 'I' }, { ('C','D'), 'T' }, { ('C','I'), 'C' },
+        { ('O','T'), 'D' }, { ('O','C'), 'I' }, { ('O','O'), 'T' }, { ('O','D'), 'C' }, { ('O','I'), 'O' },
+        { ('D','T'), 'I' }, { ('D','C'), 'T' }, { ('D','O'), 'C' }, { ('D','D'), 'O' }, { ('D','I'), 'D' },
+        { ('I','T'), 'T' }, { ('I','C'), 'C' }, { ('I','O'), 'O' }, { ('I','D'), 'D' }, { ('I','I'), 'C' },
     };
 
     // Explicit base polyhedron subtraction table (25 rules)
