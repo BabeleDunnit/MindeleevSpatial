@@ -355,4 +355,69 @@ public class PolyhedronRecipeTests
         var result = PolyhedronRecipeAlgebra.SumRecipes(recipes);
         Assert.AreEqual("atkI", result);
     }
+
+    [Test]
+    public void SplitRecipe_BasePolyhedron_T()
+    {
+        var result = PolyhedronRecipeAlgebra.SplitRecipe("dT");
+        Assert.AreEqual(3, result.Count);
+        Assert.AreEqual("dT", result[0]);
+        Assert.AreEqual("dT", result[1]);
+        Assert.AreEqual("dT", result[2]);
+    }
+
+    [Test]
+    public void SplitRecipe_OperatorsAndBase()
+    {
+        var result = PolyhedronRecipeAlgebra.SplitRecipe("tdT");
+        Assert.AreEqual(3, result.Count);
+        Assert.AreEqual("kdT", result[0]);
+        Assert.AreEqual("kdT", result[1]);
+        Assert.AreEqual("dT", result[2]);
+    }
+
+    [Test]
+    public void SplitRecipe_MultipleOperators()
+    {
+        var result = PolyhedronRecipeAlgebra.SplitRecipe("ntdT");
+        Assert.AreEqual(3, result.Count);
+        Assert.AreEqual("tkdT", result[0]);
+        Assert.AreEqual("tkdT", result[1]);
+        Assert.AreEqual("dT", result[2]);
+    }
+
+    [Test]
+    public void SplitRecipe_MoreOperatorsThanSplits()
+    {
+        var result = PolyhedronRecipeAlgebra.SplitRecipe("dtdT");
+        Assert.AreEqual(3, result.Count);
+        Assert.AreEqual("dkdT", result[0]);
+        Assert.AreEqual("dkdT", result[1]);
+        Assert.AreEqual("ddT", result[2]);
+    }
+
+    [Test]
+    public void SplitRecipe_BasePolyhedron_C()
+    {
+        var result = PolyhedronRecipeAlgebra.SplitRecipe("aC");
+        Assert.AreEqual(2, result.Count);
+        Assert.AreEqual("dT", result[0]);
+        Assert.AreEqual("dT", result[1]);
+    }
+
+    [Test]
+    public void SplitRecipe_BasePolyhedron_D()
+    {
+        var result = PolyhedronRecipeAlgebra.SplitRecipe("lD");
+        Assert.AreEqual(2, result.Count);
+        Assert.AreEqual("nO", result[0]);
+        Assert.AreEqual("nO", result[1]);
+    }
+
+    [Test]
+    public void SplitRecipe_EmptyRecipe()
+    {
+        var result = PolyhedronRecipeAlgebra.SplitRecipe("");
+        Assert.AreEqual(0, result.Count);
+    }
 }

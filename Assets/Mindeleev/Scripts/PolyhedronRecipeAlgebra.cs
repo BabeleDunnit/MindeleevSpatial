@@ -105,4 +105,84 @@ public static class PolyhedronRecipeAlgebra
             return result;
         return baseA; // fallback
     }
+
+
+    // Explicit 1-to-many split rules for base polyhedra
+    public static readonly Dictionary<char, List<char>> BasePolySplitTable = new Dictionary<char, List<char>>
+    {
+        { 'T', new List<char> { 'T', 'T', 'T' } },
+        { 'C', new List<char> { 'T', 'T' } },
+        { 'O', new List<char> { 'C', 'C' } },
+        { 'D', new List<char> { 'O','O' } },
+        { 'I', new List<char> { 'D','D' } },
+    };
+
+    // Explicit 1-to-many split rules for operators
+    public static readonly Dictionary<char, List<char>> OperatorSplitTable = new Dictionary<char, List<char>>
+    {
+        { 'd', new List<char> { 'd', 'd', 'd' } },
+        { 'a', new List<char> { 'd', 'd' } },
+        { 'k', new List<char> { 'a', 'a' } },
+        { 't', new List<char> { 'k', 'k' } },
+        { 'n', new List<char> { 't', 't' } },
+        { 'l', new List<char> { 'n','n' } },
+    };
+
+    /// <summary>
+    /// Splits a recipe string into several recipes according to explicit 1-to-many rules.
+    /// </summary>
+    public static List<string> SplitRecipe(string recipe)
+    {
+        if (string.IsNullOrEmpty(recipe))
+            return new List<string>();
+
+        // Find base polyhedron (last uppercase letter)
+        int baseIdx = recipe.Length - 1;
+        while (baseIdx >= 0 && !char.IsUpper(recipe[baseIdx]))
+            baseIdx--;
+        if (baseIdx < 0)
+            return new List<string>();
+
+        string ops = recipe.Substring(0, baseIdx);
+        char basePoly = recipe[baseIdx];
+
+        // Get base polyhedron split
+        var baseSplits = BasePolySplitTable.ContainsKey(basePoly)
+            ? BasePolySplitTable[basePoly]
+            : new List<char> { basePoly };
+
+        int splitCount = baseSplits.Count;
+
+        // Prepare output recipes
+        var output = Enumerable.Repeat("", splitCount).ToList();
+
+        // Process operators from right to left
+        for (int opIdx = ops.Length - 1; opIdx >= 0; opIdx--)
+        {
+            char op = ops[opIdx];
+            var opSplits = OperatorSplitTable.ContainsKey(op)
+                ? OperatorSplitTable[op]
+                : new List<char> { op };
+
+            // Pad opSplits to splitCount with '\0'
+            var paddedOpSplits = new List<char>(opSplits);
+            while (paddedOpSplits.Count < splitCount)
+                paddedOpSplits.Add('\0');
+
+            // Prepend operator to each recipe
+            for (int i = 0; i < splitCount; i++)
+            {
+                if (paddedOpSplits[i] != '\0')
+                    output[i] = paddedOpSplits[i] + output[i];
+            }
+        }
+
+        // Add base polyhedron to each recipe
+        for (int i = 0; i < splitCount; i++)
+        {
+            output[i] += baseSplits[i];
+        }
+
+        return output;
+    }
 }
