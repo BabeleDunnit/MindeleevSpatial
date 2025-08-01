@@ -32,6 +32,17 @@ public static class PolyhedronRecipeAlgebra
         { ('I','T'), 'I' }, { ('I','C'), 'I' }, { ('I','O'), 'I' }, { ('I','D'), 'I' }, { ('I','I'), 'I' },
     };
 
+    // Explicit base polyhedron subtraction table (25 rules)
+    public static readonly Dictionary<(char, char), char> BasePolySubTable = new Dictionary<(char, char), char>
+    {
+        // T=1, C=2, O=3, D=4, I=5
+        { ('T','T'), 'T' }, { ('T','C'), 'T' }, { ('T','O'), 'T' }, { ('T','D'), 'T' }, { ('T','I'), 'T' },
+        { ('C','T'), 'T' }, { ('C','C'), 'T' }, { ('C','O'), 'T' }, { ('C','D'), 'T' }, { ('C','I'), 'T' },
+        { ('O','T'), 'C' }, { ('O','C'), 'T' }, { ('O','O'), 'T' }, { ('O','D'), 'T' }, { ('O','I'), 'T' },
+        { ('D','T'), 'O' }, { ('D','C'), 'C' }, { ('D','O'), 'T' }, { ('D','D'), 'T' }, { ('D','I'), 'T' },
+        { ('I','T'), 'D' }, { ('I','C'), 'O' }, { ('I','O'), 'C' }, { ('I','D'), 'T' }, { ('I','I'), 'T' },
+    };
+
     /// <summary>
     /// Sums a list of polyhedron recipes (strings).
     /// Operators and base polyhedra are summed column-wise using explicit tables.
@@ -184,5 +195,60 @@ public static class PolyhedronRecipeAlgebra
         }
 
         return output;
+    }
+
+    /// <summary>
+    /// Mastermind-style subtraction by annihilation of operators and explicit base polyhedron subtraction.
+    /// </summary>
+    public static string MastermindSubtraction(string r1, string r2, bool exact)
+    {
+        if (string.IsNullOrEmpty(r1)) return "";
+        if (string.IsNullOrEmpty(r2)) return r1;
+
+        // Find base polyhedra
+        int baseIdx1 = r1.Length - 1;
+        while (baseIdx1 >= 0 && !char.IsUpper(r1[baseIdx1]))
+            baseIdx1--;
+        int baseIdx2 = r2.Length - 1;
+        while (baseIdx2 >= 0 && !char.IsUpper(r2[baseIdx2]))
+            baseIdx2--;
+        if (baseIdx1 < 0) return "";
+        if (baseIdx2 < 0) return r1;
+
+        char base1 = r1[baseIdx1];
+        char base2 = r2[baseIdx2];
+
+        // Subtract base polyhedra
+        char baseResult = BasePolySubTable.TryGetValue((base1, base2), out var res) ? res : base1;
+
+        // Get operator sequences (left to right)
+        var ops1 = r1.Substring(0, baseIdx1).ToList();
+        var ops2 = r2.Substring(0, baseIdx2).ToList();
+
+        if (!exact)
+        {
+            // Non-exact: remove each matching operator from ops1, one at a time, from right to left
+            for (int i = ops2.Count - 1; i >= 0; i--)
+            {
+                char op = ops2[i];
+                int idx = ops1.LastIndexOf(op);
+                if (idx != -1)
+                    ops1.RemoveAt(idx);
+            }
+        }
+        else
+        {
+            // Exact: remove matching operators only if in the same position from right to left
+            int len = System.Math.Min(ops1.Count, ops2.Count);
+            for (int i = ops1.Count - 1, j = ops2.Count - 1; len > 0; i--, j--, len--)
+            {
+                if (ops1[i] == ops2[j])
+                {
+                    ops1.RemoveAt(i);
+                }
+            }
+        }
+
+        return new string(ops1.ToArray()) + baseResult;
     }
 }

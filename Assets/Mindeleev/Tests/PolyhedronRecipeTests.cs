@@ -420,4 +420,92 @@ public class PolyhedronRecipeTests
         var result = PolyhedronRecipeAlgebra.SplitRecipe("");
         Assert.AreEqual(0, result.Count);
     }
+
+    [Test]
+    public void MastermindSubtraction_NonExact_Basic()
+    {
+        var r1 = "aakaI";
+        var r2 = "aaO";
+        var result = PolyhedronRecipeAlgebra.MastermindSubtraction(r1, r2, false);
+        // I - O = C, aaka - aa = ak
+        Assert.AreEqual("akC", result);
+    }
+
+    [Test]
+    public void MastermindSubtraction_Exact_Basic()
+    {
+        var r1 = "aakaI";
+        var r2 = "aaO";
+        var result = PolyhedronRecipeAlgebra.MastermindSubtraction(r1, r2, true);
+        // I - O = C, only rightmost a matches, so aak
+        Assert.AreEqual("aakC", result);
+    }
+
+    [Test]
+    public void MastermindSubtraction_NonExact_DifferentLengths()
+    {
+        var r1 = "tkaO";
+        var r2 = "kaC";
+        var result = PolyhedronRecipeAlgebra.MastermindSubtraction(r1, r2, false);
+        // O - C = T, tka - k = ta, ta - a = t
+        Assert.AreEqual("tT", result);
+    }
+
+    [Test]
+    public void MastermindSubtraction_Exact_DifferentLengths()
+    {
+        var r1 = "tkaO";
+        var r2 =  "kaC";
+        var result = PolyhedronRecipeAlgebra.MastermindSubtraction(r1, r2, true);
+        // O - C = T, ka matches
+        Assert.AreEqual("tT", result);
+    }
+
+    [Test]
+    public void MastermindSubtraction_NonExact_AllMatch()
+    {
+        var r1 = "aaaI";
+        var r2 = "aaaO";
+        var result = PolyhedronRecipeAlgebra.MastermindSubtraction(r1, r2, false);
+        // I - O = C, aaa - a = aa, aa - a = a, a - a = ""
+        Assert.AreEqual("C", result);
+    }
+
+    [Test]
+    public void MastermindSubtraction_Exact_AllMatch()
+    {
+        var r1 = "aaaI";
+        var r2 = "aaaO";
+        var result = PolyhedronRecipeAlgebra.MastermindSubtraction(r1, r2, true);
+        // I - O = C, all match by position, so ""
+        Assert.AreEqual("C", result);
+    }
+
+    [Test]
+    public void MastermindSubtraction_BasePolyhedron_Subtraction()
+    {
+        var r1 = "dI";
+        var r2 = "aO";
+        var result = PolyhedronRecipeAlgebra.MastermindSubtraction(r1, r2, false);
+        // I - O = C, a does not match
+        Assert.AreEqual("dC", result);
+    }
+
+    [Test]
+    public void MastermindSubtraction_EmptyR2()
+    {
+        var r1 = "tkaO";
+        var r2 = "";
+        var result = PolyhedronRecipeAlgebra.MastermindSubtraction(r1, r2, false);
+        Assert.AreEqual("tkaO", result);
+    }
+
+    [Test]
+    public void MastermindSubtraction_EmptyR1()
+    {
+        var r1 = "";
+        var r2 = "kaC";
+        var result = PolyhedronRecipeAlgebra.MastermindSubtraction(r1, r2, false);
+        Assert.AreEqual("", result);
+    }
 }
