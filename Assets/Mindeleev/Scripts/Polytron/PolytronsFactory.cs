@@ -2,12 +2,13 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using TMPro;
+using Unity.VisualScripting.YamlDotNet.Serialization;
 
 
 public class PolytronsFactory : MonoBehaviour
 {
 
-    // public GameObject polytronPrefab; // Assign the Polytron prefab in the inspector
+    public GameObject polytronPrefab; // Assign the Polytron prefab in the inspector
 
     /*
     // Start is called before the first frame update
@@ -53,18 +54,16 @@ public class PolytronsFactory : MonoBehaviour
 
             }
 
-            poly.name = $"Inner_{i}_{recipe}";
+            poly.name = $"Factory_{i}_{recipe}";
             CreateLabel(poly, recipe
                 + " "
                 + PolyhedronRecipeUtils.ComputeComplexity(PolyhedronRecipeParser.Parse(recipe)),
                 Vector3.zero);
 
-
-
         }
     }
 
-        private static void CreateLabel(GameObject parent, string recipe, Vector3 position)
+    private static void CreateLabel(GameObject parent, string recipe, Vector3 position)
     {
         GameObject label = new GameObject($"Label_{recipe}");
         label.transform.parent = parent.transform;
@@ -85,5 +84,35 @@ public class PolytronsFactory : MonoBehaviour
     }
 
 
+    public GameObject Create(string kind)
+    {
 
+        Vector3 polytronPosition = new Vector3(
+            transform.position.x, transform.position.y, transform.position.z
+        );
+
+        string recipe = "aC";
+
+        GameObject poly = Instantiate(polytronPrefab, polytronPosition, Quaternion.identity, transform);
+        // poly.transform.localScale = transform.localScale * 0.4f;
+        var polytronComponent = poly.GetComponent<Polytron>();
+        if (polytronComponent != null)
+        {
+            // polytronComponent.Engine = engine;
+            // engine.Register(polytronComponent);
+            polytronComponent.recipeString = recipe;
+            // polytronComponent.Behaviour = new PolytronSpring01Physics(polytronComponent);
+            // Debug.Log($"polytron {polytronComponent.Id} is of type {polytronComponent.Behaviour}");
+        }
+
+        poly.name = $"Alone_{recipe}";
+
+        CreateLabel(poly, recipe
+            + " "
+            + PolyhedronRecipeUtils.ComputeComplexity(PolyhedronRecipeParser.Parse(recipe)),
+            Vector3.zero);
+
+        return poly;
+
+    }
 }
