@@ -345,7 +345,7 @@ public class PolyhedronRecipeTests
     {
         var recipes = new List<string> { "daC", "kI" }; // "daC" (2 ops), "kI" (1 op)
         var result = PolyhedronRecipeAlgebra.SumRecipes(recipes);
-        Assert.AreEqual("dkI", result);
+        Assert.AreEqual("dtC", result);
     }
 
     [Test]
@@ -353,7 +353,7 @@ public class PolyhedronRecipeTests
     {
         var recipes = new List<string> { "tkO", "dC", "aaaI" };
         var result = PolyhedronRecipeAlgebra.SumRecipes(recipes);
-        Assert.AreEqual("atkI", result);
+        Assert.AreEqual("annC", result);
     }
 
     [Test]
@@ -507,5 +507,44 @@ public class PolyhedronRecipeTests
         var r2 = "kaC";
         var result = PolyhedronRecipeAlgebra.MastermindSubtraction(r1, r2, false);
         Assert.AreEqual("", result);
+    }
+
+    [Test]
+    public void KabbalahFusion_BasePoly_Mean()
+    {
+        Assert.AreEqual("T", PolyhedronRecipeKabbalah.RecipeFusion(new List<string> { "T", "T" }));
+        Assert.AreEqual("T", PolyhedronRecipeKabbalah.RecipeFusion(new List<string> { "T", "C" }));
+        Assert.AreEqual("C", PolyhedronRecipeKabbalah.RecipeFusion(new List<string> { "T", "O" }));
+        Assert.AreEqual("D", PolyhedronRecipeKabbalah.RecipeFusion(new List<string> { "I", "D" }));
+        Assert.AreEqual("I", PolyhedronRecipeKabbalah.RecipeFusion(new List<string> { "I", "I" }));
+    }
+
+    [Test]
+    public void KabbalahFusion_Operators_NoCarry()
+    {
+        Assert.AreEqual("kdT", PolyhedronRecipeKabbalah.RecipeFusion(new List<string> { "adT", "adT" }));
+        Assert.AreEqual("tdT", PolyhedronRecipeKabbalah.RecipeFusion(new List<string> { "atT", "atT" }));
+    }
+
+    [Test]
+    public void KabbalahFusion_Operators_WithCarry()
+    {
+        Assert.AreEqual("alnT", PolyhedronRecipeKabbalah.RecipeFusion(new List<string> { "llT", "llT" }));
+        Assert.AreEqual("alnT", PolyhedronRecipeKabbalah.RecipeFusion(new List<string> { "llT", "llC" }));
+    }
+
+    [Test]
+    public void KabbalahFusion_MixedLength()
+    {
+        Assert.AreEqual("adT", PolyhedronRecipeKabbalah.RecipeFusion(new List<string> { "adT", "dT" }));
+        Assert.AreEqual("kdT", PolyhedronRecipeKabbalah.RecipeFusion(new List<string> { "atT", "tT" }));
+    }
+
+    [Test]
+    public void KabbalahFusion_DegenerateRecipes()
+    {
+        Assert.AreEqual("T", PolyhedronRecipeKabbalah.RecipeFusion(new List<string> { "T" }));
+        Assert.AreEqual("T", PolyhedronRecipeKabbalah.RecipeFusion(new List<string> { "T", "T" }));
+        Assert.AreEqual("C", PolyhedronRecipeKabbalah.RecipeFusion(new List<string> { "C" }));
     }
 }
