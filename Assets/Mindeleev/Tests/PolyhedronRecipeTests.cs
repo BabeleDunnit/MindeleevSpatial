@@ -547,4 +547,24 @@ public class PolyhedronRecipeTests
         Assert.AreEqual("T", PolyhedronRecipeKabbalah.RecipeFusion(new List<string> { "T", "T" }));
         Assert.AreEqual("C", PolyhedronRecipeKabbalah.RecipeFusion(new List<string> { "C" }));
     }
+
+    [Test]
+    public void Kabbalah_IntToRecipe_RecipeToInt_Roundtrip()
+    {
+
+        Assert.AreEqual("d", PolyhedronRecipeKabbalah.IntToRecipe(0));
+        Assert.AreEqual("a", PolyhedronRecipeKabbalah.IntToRecipe(1));
+
+        Assert.AreEqual(0, PolyhedronRecipeKabbalah.RecipeToInt("dC", false));
+        Assert.AreEqual(0, PolyhedronRecipeKabbalah.RecipeToInt("d", false));
+
+        Assert.AreEqual(2, PolyhedronRecipeKabbalah.RecipeToInt("dC", true));
+
+        for (int i = 0; i < 10000; i++)
+        {
+            string recipe = PolyhedronRecipeKabbalah.IntToRecipe(i);
+            int back = PolyhedronRecipeKabbalah.RecipeToInt(recipe, false);
+            Assert.AreEqual(i, back, $"Failed at i={i}, recipe={recipe}, back={back}");
+        }
+    }
 }

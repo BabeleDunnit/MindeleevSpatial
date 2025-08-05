@@ -21,10 +21,17 @@ public class PolytronCollisionHandler : MonoBehaviour
             string originalRecipe = polytron.recipeString;
             string otherOriginalRecipe = otherPolytron.recipeString;
 
-            // Example: sum recipes on collision
-            string newRecipe = PolyhedronRecipeAlgebra.SumRecipes(
-                new System.Collections.Generic.List<string> { originalRecipe, otherOriginalRecipe }
-            );
+            /*
+                        // Example: sum recipes on collision
+                        string newRecipe = PolyhedronRecipeAlgebra.SumRecipes(
+                            new System.Collections.Generic.List<string> { originalRecipe, otherOriginalRecipe }
+                        );
+                        */
+
+            string newRecipe = PolyhedronRecipeKabbalah.RecipeFusion(
+                new System.Collections.Generic.List<string> { originalRecipe, otherOriginalRecipe });
+
+
             polytron.recipeString = newRecipe;
             Debug.Log($"r1: {originalRecipe}, r2: {otherOriginalRecipe}, new this recipe: {newRecipe}");
             polytron.RebuildMesh();

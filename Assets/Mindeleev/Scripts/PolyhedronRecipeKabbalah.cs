@@ -91,4 +91,74 @@ public static class PolyhedronRecipeKabbalah
 
         return fusedOps + fusedBase;
     }
+
+    public static int RecipeToInt(string recipe, bool keepBasePolyhedron)
+    {
+        if (string.IsNullOrEmpty(recipe)) return -1;
+
+        if (!keepBasePolyhedron)
+        {
+            // Treat the whole string as operators
+            int value = 0;
+            int pow = 1;
+            for (int i = recipe.Length - 1; i >= 0; i--)
+            {
+                char op = recipe[i];
+                if (OperatorToValue.TryGetValue(op, out int v))
+                {
+                    value += v * pow;
+                    pow *= 6;
+                }
+            }
+            return value;
+        }
+        else
+        {
+            // Find base polyhedron (last uppercase letter)
+            int baseIdx = recipe.Length - 1;
+            while (baseIdx >= 0 && !char.IsUpper(recipe[baseIdx]))
+                baseIdx--;
+            if (baseIdx < 0) return 0;
+
+            int value = 0;
+            int pow = 1;
+            // Operators: right to left (least significant digit)
+            for (int i = baseIdx - 1; i >= 0; i--)
+            {
+                char op = recipe[i];
+                if (OperatorToValue.TryGetValue(op, out int v))
+                {
+                    value += v * pow;
+                    pow *= 6;
+                }
+            }
+
+            // Add base polyhedron
+            char basePoly = recipe[baseIdx];
+            if (BasePolyToValue.TryGetValue(basePoly, out int baseVal))
+            {
+                value += baseVal /* pow */;
+            }
+            return value;
+        }
+    }
+
+    public static string IntToRecipe(int value)
+    {
+        if (value < 0) return "";
+
+        // Convert to base-6, right to left, using operator symbols
+        List<char> ops = new List<char>();
+        int v = value;
+        do
+        {
+            int digit = v % 6;
+            ops.Add(ValueToOperator[digit]);
+            v /= 6;
+        } while (v > 0);
+
+        // Build recipe string (operators left to right, no base polyhedron)
+        ops.Reverse();
+        return new string(ops.ToArray());
+    }
 }
