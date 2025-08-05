@@ -327,7 +327,7 @@ public class PolyhedronRecipeTests
         var chars = new HashSet<char> { 'a', 'b', 'c' };
         var perms = PolyhedronRecipeUtils.AllPermutationsWithRepetition(chars, 5);
         Debug.Log($"Permutations with repetitions: {string.Join(", ", perms)}");
-         
+
     }
 
     // A UnityTest behaves like a coroutine in Play Mode. In Edit Mode you can use
@@ -455,7 +455,7 @@ public class PolyhedronRecipeTests
     public void MastermindSubtraction_Exact_DifferentLengths()
     {
         var r1 = "tkaO";
-        var r2 =  "kaC";
+        var r2 = "kaC";
         var result = PolyhedronRecipeAlgebra.MastermindSubtraction(r1, r2, true);
         // O - C = T, ka matches
         Assert.AreEqual("tT", result);
@@ -572,5 +572,37 @@ public class PolyhedronRecipeTests
             int back = PolyhedronRecipeKabbalah.RecipeToInt(recipe, false);
             Assert.AreEqual(i, back, $"Failed at i={i}, recipe={recipe}, back={back}");
         }
+    }
+
+    [Test]
+    public void Kabbalah_ComputeComplexity()
+    {
+        // store the complexity of the same recipe applied to different base polyhedra
+        var complexities = new Dictionary<char, Dictionary<int, float>>();
+        for (int i = 0; i < 100; i++)
+        {
+            string recipe = PolyhedronRecipeKabbalah.IntToRecipe(i);
+            foreach (char c in new[] { 'T', 'C', 'O', 'D', 'I' })
+            {
+                if (!complexities.ContainsKey(c))
+                    complexities[c] = new Dictionary<int, float>();
+
+                string r = recipe + c;
+                float complexity = PolyhedronRecipeUtils.ComputeComplexity(PolyhedronRecipeParser.Parse(r));
+                complexities[c][i] = complexity;
+            }
+        }
+
+        foreach (char c in new[] { 'T', 'C', 'O', 'D', 'I' })
+        {
+            var sorted = complexities[c]
+                .OrderBy(kv => kv.Value)
+                .Select(kv => kv.Key)
+                .ToList();
+            //Debug.Log($"Base {c} (complexity): {string.Join(", ", complexities[c].OrderBy(kv => kv.Value).Select(kv => $"{kv.Key}:{kv.Value:F2}").Chunk(10).Select(chunk => string.Join(" | ", chunk)))}");
+            Debug.Log($"Base {c}, {string.Join(", ", sorted)}");
+        }
+
+
     }
 }
