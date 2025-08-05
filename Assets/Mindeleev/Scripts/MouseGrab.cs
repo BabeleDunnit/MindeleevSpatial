@@ -56,15 +56,6 @@ public class MouseGrab : MonoBehaviour
     private Camera FindSpatialCamera()
     {
 
-        var ccc = GameObject.FindGameObjectWithTag("MainCamera");
-        Component[] components = ccc.GetComponents<Component>();
-
-        foreach (Component comp in components)
-        {
-            Debug.Log($"Componente MainCamera: {comp.GetType().Name}");
-        }
-
-
         var cam = GameObject.FindGameObjectWithTag("MainCamera")?.GetComponent<Camera>();
         if (cam != null) return cam;
         return null;
@@ -80,7 +71,7 @@ public class MouseGrab : MonoBehaviour
 
         foreach (Component comp in components)
         {
-            Debug.Log($"Componente: {comp.GetType().Name}");
+            // Debug.Log($"Componente: {comp.GetType().Name}");
         }
 
         // this works but CameraFollow is not available in Spatial
