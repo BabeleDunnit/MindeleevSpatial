@@ -560,6 +560,12 @@ public class PolyhedronRecipeTests
 
         Assert.AreEqual(2, PolyhedronRecipeKabbalah.RecipeToInt("dC", true));
 
+        Assert.AreEqual(-1, PolyhedronRecipeKabbalah.RecipeToInt("", false));
+        Assert.AreEqual(-1, PolyhedronRecipeKabbalah.RecipeToInt(null, false));
+        Assert.AreEqual(-1, PolyhedronRecipeKabbalah.RecipeToInt("", true));
+        Assert.AreEqual(-1, PolyhedronRecipeKabbalah.RecipeToInt(null, true));
+
+
         for (int i = 0; i < 10000; i++)
         {
             string recipe = PolyhedronRecipeKabbalah.IntToRecipe(i);

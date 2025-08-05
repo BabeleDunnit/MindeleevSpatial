@@ -96,51 +96,41 @@ public static class PolyhedronRecipeKabbalah
     {
         if (string.IsNullOrEmpty(recipe)) return -1;
 
-        if (!keepBasePolyhedron)
+        int baseIdx = recipe.Length - 1;
+        if (keepBasePolyhedron)
         {
-            // Treat the whole string as operators
-            int value = 0;
-            int pow = 1;
-            for (int i = recipe.Length - 1; i >= 0; i--)
-            {
-                char op = recipe[i];
-                if (OperatorToValue.TryGetValue(op, out int v))
-                {
-                    value += v * pow;
-                    pow *= 6;
-                }
-            }
-            return value;
-        }
-        else
-        {
-            // Find base polyhedron (last uppercase letter)
-            int baseIdx = recipe.Length - 1;
             while (baseIdx >= 0 && !char.IsUpper(recipe[baseIdx]))
                 baseIdx--;
             if (baseIdx < 0) return 0;
+        }
+        else
+        {
+            baseIdx = recipe.Length; // treat whole string as operators
+        }
 
-            int value = 0;
-            int pow = 1;
-            // Operators: right to left (least significant digit)
-            for (int i = baseIdx - 1; i >= 0; i--)
+        int value = 0;
+        int pow = 1;
+        // Operators: right to left (least significant digit)
+        for (int i = baseIdx - 1; i >= 0; i--)
+        {
+            char op = recipe[i];
+            if (OperatorToValue.TryGetValue(op, out int v))
             {
-                char op = recipe[i];
-                if (OperatorToValue.TryGetValue(op, out int v))
-                {
-                    value += v * pow;
-                    pow *= 6;
-                }
+                value += v * pow;
+                pow *= 6;
             }
+        }
 
-            // Add base polyhedron
+        if (keepBasePolyhedron && baseIdx < recipe.Length)
+        {
             char basePoly = recipe[baseIdx];
             if (BasePolyToValue.TryGetValue(basePoly, out int baseVal))
             {
-                value += baseVal /* pow */;
+                value += baseVal;
             }
-            return value;
         }
+
+        return value;
     }
 
     public static string IntToRecipe(int value)
