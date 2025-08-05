@@ -552,8 +552,8 @@ public class PolyhedronRecipeTests
     public void Kabbalah_IntToRecipe_RecipeToInt_Roundtrip()
     {
 
-        Assert.AreEqual("d", PolyhedronRecipeKabbalah.IntToRecipe(0));
-        Assert.AreEqual("a", PolyhedronRecipeKabbalah.IntToRecipe(1));
+        Assert.AreEqual("d", PolyhedronRecipeKabbalah.IntToOperatorsSequence(0));
+        Assert.AreEqual("a", PolyhedronRecipeKabbalah.IntToOperatorsSequence(1));
 
         Assert.AreEqual(0, PolyhedronRecipeKabbalah.RecipeToInt("dC", false));
         Assert.AreEqual(0, PolyhedronRecipeKabbalah.RecipeToInt("d", false));
@@ -568,7 +568,7 @@ public class PolyhedronRecipeTests
 
         for (int i = 0; i < 10000; i++)
         {
-            string recipe = PolyhedronRecipeKabbalah.IntToRecipe(i);
+            string recipe = PolyhedronRecipeKabbalah.IntToOperatorsSequence(i);
             int back = PolyhedronRecipeKabbalah.RecipeToInt(recipe, false);
             Assert.AreEqual(i, back, $"Failed at i={i}, recipe={recipe}, back={back}");
         }
@@ -581,7 +581,7 @@ public class PolyhedronRecipeTests
         var complexities = new Dictionary<char, Dictionary<int, float>>();
         for (int i = 0; i < 100; i++)
         {
-            string recipe = PolyhedronRecipeKabbalah.IntToRecipe(i);
+            string recipe = PolyhedronRecipeKabbalah.IntToOperatorsSequence(i);
             foreach (char c in new[] { 'T', 'C', 'O', 'D', 'I' })
             {
                 if (!complexities.ContainsKey(c))
@@ -599,10 +599,85 @@ public class PolyhedronRecipeTests
                 .OrderBy(kv => kv.Value)
                 .Select(kv => kv.Key)
                 .ToList();
-            //Debug.Log($"Base {c} (complexity): {string.Join(", ", complexities[c].OrderBy(kv => kv.Value).Select(kv => $"{kv.Key}:{kv.Value:F2}").Chunk(10).Select(chunk => string.Join(" | ", chunk)))}");
-            Debug.Log($"Base {c}, {string.Join(", ", sorted)}");
+            // Debug.Log($"Base {c}, {string.Join(", ", sorted)}");
         }
 
 
+        // After filling 'complexities'...
+
+        // Build a list of sorted index arrays for each base polyhedron
+        var sortedIndexes = new Dictionary<char, List<int>>();
+        foreach (char c in new[] { 'T', 'C', 'O', 'D', 'I' })
+        {
+            sortedIndexes[c] = complexities[c]
+                .OrderBy(kv => kv.Value)
+                .Select(kv => kv.Key)
+                .ToList();
+        }
+
+        // For each position, check if all base polys have the same index at that position
+        int count = sortedIndexes['T'].Count;
+        for (int pos = 0; pos < count; pos++)
+        {
+            int idxT = sortedIndexes['T'][pos];
+            bool allMatch = true;
+            foreach (char c in new[] { 'C', 'O', 'D', 'I' })
+            {
+                if (sortedIndexes[c][pos] != idxT)
+                {
+                    allMatch = false;
+                    break;
+                }
+            }
+            if (allMatch)
+            {
+                string recipe = PolyhedronRecipeKabbalah.IntToOperatorsSequence(idxT);
+                Debug.Log($"Index {idxT} appears at position {pos} for all bases: recipe = {recipe}");
+            }
+        }
+
+    }
+
+    [Test]
+    public void Kabbalah_RecipeFission_Basic()
+    {
+        // "adk" = a=1, d=0, k=2 => 1*36 + 0*6 + 2 = 38
+        var result = PolyhedronRecipeKabbalah.RecipeFission("adk", 3);
+        // 38/3 = 12, remainder 2, so [13, 13, 12]
+        Assert.AreEqual(3, result.Count);
+        Assert.AreEqual(PolyhedronRecipeKabbalah.IntToOperatorsSequence(13), result[0]);
+        Assert.AreEqual(PolyhedronRecipeKabbalah.IntToOperatorsSequence(13), result[1]);
+        Assert.AreEqual(PolyhedronRecipeKabbalah.IntToOperatorsSequence(12), result[2]);
+    }
+
+    [Test]
+    public void Kabbalah_RecipeFission_Single()
+    {
+        var result = PolyhedronRecipeKabbalah.RecipeFission("adk", 1);
+        Assert.AreEqual(1, result.Count);
+        Assert.AreEqual("adk", result[0]);
+    }
+
+    [Test]
+    public void Kabbalah_RecipeFission_MorePartsThanValue()
+    {
+        var result = PolyhedronRecipeKabbalah.RecipeFission("a", 5); // "a" = 1
+        // Should be: [1,0,0,0,0] => ["a","d","d","d","d"]
+        Assert.AreEqual(5, result.Count);
+        Assert.AreEqual("a", result[0]);
+        Assert.AreEqual("d", result[1]);
+        Assert.AreEqual("d", result[2]);
+        Assert.AreEqual("d", result[3]);
+        Assert.AreEqual("d", result[4]);
+    }
+
+    [Test]
+    public void Kabbalah_RecipeFission_Zero()
+    {
+        var result = PolyhedronRecipeKabbalah.RecipeFission("", 3);
+        Assert.AreEqual(0, result.Count);
+
+        result = PolyhedronRecipeKabbalah.RecipeFission("d", 0);
+        Assert.AreEqual(0, result.Count);
     }
 }

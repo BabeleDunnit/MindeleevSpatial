@@ -92,6 +92,8 @@ public static class PolyhedronRecipeKabbalah
         return fusedOps + fusedBase;
     }
 
+    // if the base polyhedron is not kept, this is an OperatorsSequenceToInt() symmetrical to 
+    // IntToOperatorsSequence
     public static int RecipeToInt(string recipe, bool keepBasePolyhedron)
     {
         if (string.IsNullOrEmpty(recipe)) return -1;
@@ -133,7 +135,7 @@ public static class PolyhedronRecipeKabbalah
         return value;
     }
 
-    public static string IntToRecipe(int value)
+    public static string IntToOperatorsSequence(int value)
     {
         if (value < 0) return "";
 
@@ -150,5 +152,23 @@ public static class PolyhedronRecipeKabbalah
         // Build recipe string (operators left to right, no base polyhedron)
         ops.Reverse();
         return new string(ops.ToArray());
+    }
+
+    public static List<string> RecipeFission(string recipe, int outRecipesCount)
+    {
+        var result = new List<string>();
+        if (string.IsNullOrEmpty(recipe) || outRecipesCount <= 0)
+            return result;
+
+        int value = RecipeToInt(recipe, false);
+        int baseValue = value / outRecipesCount;
+        int remainder = value % outRecipesCount;
+
+        for (int i = 0; i < outRecipesCount; i++)
+        {
+            int thisVal = baseValue + (i < remainder ? 1 : 0);
+            result.Add(IntToOperatorsSequence(thisVal));
+        }
+        return result;
     }
 }
