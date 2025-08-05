@@ -327,7 +327,7 @@ public class PolyhedronRecipeTests
         var chars = new HashSet<char> { 'a', 'b', 'c' };
         var perms = PolyhedronRecipeUtils.AllPermutationsWithRepetition(chars, 5);
         Debug.Log($"Permutations with repetitions: {string.Join(", ", perms)}");
-         
+
     }
 
     // A UnityTest behaves like a coroutine in Play Mode. In Edit Mode you can use
@@ -338,5 +338,346 @@ public class PolyhedronRecipeTests
         // Use the Assert class to test conditions.
         // Use yield to skip a frame.
         yield return null;
+    }
+
+    [Test]
+    public void SumRecipes_PadsShorterRecipesCorrectly()
+    {
+        var recipes = new List<string> { "daC", "kI" }; // "daC" (2 ops), "kI" (1 op)
+        var result = PolyhedronRecipeAlgebra.SumRecipes(recipes);
+        Assert.AreEqual("dtC", result);
+    }
+
+    [Test]
+    public void SumRecipes_DifferentLengthRecipes()
+    {
+        var recipes = new List<string> { "tkO", "dC", "aaaI" };
+        var result = PolyhedronRecipeAlgebra.SumRecipes(recipes);
+        Assert.AreEqual("annC", result);
+    }
+
+    [Test]
+    public void SplitRecipe_BasePolyhedron_T()
+    {
+        var result = PolyhedronRecipeAlgebra.SplitRecipe("dT");
+        Assert.AreEqual(3, result.Count);
+        Assert.AreEqual("dT", result[0]);
+        Assert.AreEqual("dT", result[1]);
+        Assert.AreEqual("dT", result[2]);
+    }
+
+    [Test]
+    public void SplitRecipe_OperatorsAndBase()
+    {
+        var result = PolyhedronRecipeAlgebra.SplitRecipe("tdT");
+        Assert.AreEqual(3, result.Count);
+        Assert.AreEqual("kdT", result[0]);
+        Assert.AreEqual("kdT", result[1]);
+        Assert.AreEqual("dT", result[2]);
+    }
+
+    [Test]
+    public void SplitRecipe_MultipleOperators()
+    {
+        var result = PolyhedronRecipeAlgebra.SplitRecipe("ntdT");
+        Assert.AreEqual(3, result.Count);
+        Assert.AreEqual("tkdT", result[0]);
+        Assert.AreEqual("tkdT", result[1]);
+        Assert.AreEqual("dT", result[2]);
+    }
+
+    [Test]
+    public void SplitRecipe_MoreOperatorsThanSplits()
+    {
+        var result = PolyhedronRecipeAlgebra.SplitRecipe("dtdT");
+        Assert.AreEqual(3, result.Count);
+        Assert.AreEqual("dkdT", result[0]);
+        Assert.AreEqual("dkdT", result[1]);
+        Assert.AreEqual("ddT", result[2]);
+    }
+
+    [Test]
+    public void SplitRecipe_BasePolyhedron_C()
+    {
+        var result = PolyhedronRecipeAlgebra.SplitRecipe("aC");
+        Assert.AreEqual(2, result.Count);
+        Assert.AreEqual("dT", result[0]);
+        Assert.AreEqual("dT", result[1]);
+    }
+
+    [Test]
+    public void SplitRecipe_BasePolyhedron_D()
+    {
+        var result = PolyhedronRecipeAlgebra.SplitRecipe("lD");
+        Assert.AreEqual(2, result.Count);
+        Assert.AreEqual("nO", result[0]);
+        Assert.AreEqual("nO", result[1]);
+    }
+
+    [Test]
+    public void SplitRecipe_EmptyRecipe()
+    {
+        var result = PolyhedronRecipeAlgebra.SplitRecipe("");
+        Assert.AreEqual(0, result.Count);
+    }
+
+    [Test]
+    public void MastermindSubtraction_NonExact_Basic()
+    {
+        var r1 = "aakaI";
+        var r2 = "aaO";
+        var result = PolyhedronRecipeAlgebra.MastermindSubtraction(r1, r2, false);
+        // I - O = C, aaka - aa = ak
+        Assert.AreEqual("akC", result);
+    }
+
+    [Test]
+    public void MastermindSubtraction_Exact_Basic()
+    {
+        var r1 = "aakaI";
+        var r2 = "aaO";
+        var result = PolyhedronRecipeAlgebra.MastermindSubtraction(r1, r2, true);
+        // I - O = C, only rightmost a matches, so aak
+        Assert.AreEqual("aakC", result);
+    }
+
+    [Test]
+    public void MastermindSubtraction_NonExact_DifferentLengths()
+    {
+        var r1 = "tkaO";
+        var r2 = "kaC";
+        var result = PolyhedronRecipeAlgebra.MastermindSubtraction(r1, r2, false);
+        // O - C = T, tka - k = ta, ta - a = t
+        Assert.AreEqual("tT", result);
+    }
+
+    [Test]
+    public void MastermindSubtraction_Exact_DifferentLengths()
+    {
+        var r1 = "tkaO";
+        var r2 = "kaC";
+        var result = PolyhedronRecipeAlgebra.MastermindSubtraction(r1, r2, true);
+        // O - C = T, ka matches
+        Assert.AreEqual("tT", result);
+    }
+
+    [Test]
+    public void MastermindSubtraction_NonExact_AllMatch()
+    {
+        var r1 = "aaaI";
+        var r2 = "aaaO";
+        var result = PolyhedronRecipeAlgebra.MastermindSubtraction(r1, r2, false);
+        // I - O = C, aaa - a = aa, aa - a = a, a - a = ""
+        Assert.AreEqual("C", result);
+    }
+
+    [Test]
+    public void MastermindSubtraction_Exact_AllMatch()
+    {
+        var r1 = "aaaI";
+        var r2 = "aaaO";
+        var result = PolyhedronRecipeAlgebra.MastermindSubtraction(r1, r2, true);
+        // I - O = C, all match by position, so ""
+        Assert.AreEqual("C", result);
+    }
+
+    [Test]
+    public void MastermindSubtraction_BasePolyhedron_Subtraction()
+    {
+        var r1 = "dI";
+        var r2 = "aO";
+        var result = PolyhedronRecipeAlgebra.MastermindSubtraction(r1, r2, false);
+        // I - O = C, a does not match
+        Assert.AreEqual("dC", result);
+    }
+
+    [Test]
+    public void MastermindSubtraction_EmptyR2()
+    {
+        var r1 = "tkaO";
+        var r2 = "";
+        var result = PolyhedronRecipeAlgebra.MastermindSubtraction(r1, r2, false);
+        Assert.AreEqual("tkaO", result);
+    }
+
+    [Test]
+    public void MastermindSubtraction_EmptyR1()
+    {
+        var r1 = "";
+        var r2 = "kaC";
+        var result = PolyhedronRecipeAlgebra.MastermindSubtraction(r1, r2, false);
+        Assert.AreEqual("", result);
+    }
+
+    [Test]
+    public void KabbalahFusion_BasePoly_Mean()
+    {
+        Assert.AreEqual("T", PolyhedronRecipeKabbalah.RecipeFusion(new List<string> { "T", "T" }));
+        Assert.AreEqual("T", PolyhedronRecipeKabbalah.RecipeFusion(new List<string> { "T", "C" }));
+        Assert.AreEqual("C", PolyhedronRecipeKabbalah.RecipeFusion(new List<string> { "T", "O" }));
+        Assert.AreEqual("D", PolyhedronRecipeKabbalah.RecipeFusion(new List<string> { "I", "D" }));
+        Assert.AreEqual("I", PolyhedronRecipeKabbalah.RecipeFusion(new List<string> { "I", "I" }));
+    }
+
+    [Test]
+    public void KabbalahFusion_Operators_NoCarry()
+    {
+        Assert.AreEqual("kdT", PolyhedronRecipeKabbalah.RecipeFusion(new List<string> { "adT", "adT" }));
+        Assert.AreEqual("tdT", PolyhedronRecipeKabbalah.RecipeFusion(new List<string> { "atT", "atT" }));
+    }
+
+    [Test]
+    public void KabbalahFusion_Operators_WithCarry()
+    {
+        Assert.AreEqual("alnT", PolyhedronRecipeKabbalah.RecipeFusion(new List<string> { "llT", "llT" }));
+        Assert.AreEqual("alnT", PolyhedronRecipeKabbalah.RecipeFusion(new List<string> { "llT", "llC" }));
+    }
+
+    [Test]
+    public void KabbalahFusion_MixedLength()
+    {
+        Assert.AreEqual("adT", PolyhedronRecipeKabbalah.RecipeFusion(new List<string> { "adT", "dT" }));
+        Assert.AreEqual("kdT", PolyhedronRecipeKabbalah.RecipeFusion(new List<string> { "atT", "tT" }));
+    }
+
+    [Test]
+    public void KabbalahFusion_DegenerateRecipes()
+    {
+        Assert.AreEqual("T", PolyhedronRecipeKabbalah.RecipeFusion(new List<string> { "T" }));
+        Assert.AreEqual("T", PolyhedronRecipeKabbalah.RecipeFusion(new List<string> { "T", "T" }));
+        Assert.AreEqual("C", PolyhedronRecipeKabbalah.RecipeFusion(new List<string> { "C" }));
+    }
+
+    [Test]
+    public void Kabbalah_IntToRecipe_RecipeToInt_Roundtrip()
+    {
+
+        Assert.AreEqual("d", PolyhedronRecipeKabbalah.IntToOperatorsSequence(0));
+        Assert.AreEqual("a", PolyhedronRecipeKabbalah.IntToOperatorsSequence(1));
+
+        Assert.AreEqual(0, PolyhedronRecipeKabbalah.RecipeToInt("dC", false));
+        Assert.AreEqual(0, PolyhedronRecipeKabbalah.RecipeToInt("d", false));
+
+        Assert.AreEqual(2, PolyhedronRecipeKabbalah.RecipeToInt("dC", true));
+
+        Assert.AreEqual(-1, PolyhedronRecipeKabbalah.RecipeToInt("", false));
+        Assert.AreEqual(-1, PolyhedronRecipeKabbalah.RecipeToInt(null, false));
+        Assert.AreEqual(-1, PolyhedronRecipeKabbalah.RecipeToInt("", true));
+        Assert.AreEqual(-1, PolyhedronRecipeKabbalah.RecipeToInt(null, true));
+
+
+        for (int i = 0; i < 10000; i++)
+        {
+            string recipe = PolyhedronRecipeKabbalah.IntToOperatorsSequence(i);
+            int back = PolyhedronRecipeKabbalah.RecipeToInt(recipe, false);
+            Assert.AreEqual(i, back, $"Failed at i={i}, recipe={recipe}, back={back}");
+        }
+    }
+
+    [Test]
+    public void Kabbalah_ComputeComplexity()
+    {
+        // store the complexity of the same recipe applied to different base polyhedra
+        var complexities = new Dictionary<char, Dictionary<int, float>>();
+        for (int i = 0; i < 100; i++)
+        {
+            string recipe = PolyhedronRecipeKabbalah.IntToOperatorsSequence(i);
+            foreach (char c in new[] { 'T', 'C', 'O', 'D', 'I' })
+            {
+                if (!complexities.ContainsKey(c))
+                    complexities[c] = new Dictionary<int, float>();
+
+                string r = recipe + c;
+                float complexity = PolyhedronRecipeUtils.ComputeComplexity(PolyhedronRecipeParser.Parse(r));
+                complexities[c][i] = complexity;
+            }
+        }
+
+        foreach (char c in new[] { 'T', 'C', 'O', 'D', 'I' })
+        {
+            var sorted = complexities[c]
+                .OrderBy(kv => kv.Value)
+                .Select(kv => kv.Key)
+                .ToList();
+            // Debug.Log($"Base {c}, {string.Join(", ", sorted)}");
+        }
+
+
+        // After filling 'complexities'...
+
+        // Build a list of sorted index arrays for each base polyhedron
+        var sortedIndexes = new Dictionary<char, List<int>>();
+        foreach (char c in new[] { 'T', 'C', 'O', 'D', 'I' })
+        {
+            sortedIndexes[c] = complexities[c]
+                .OrderBy(kv => kv.Value)
+                .Select(kv => kv.Key)
+                .ToList();
+        }
+
+        // For each position, check if all base polys have the same index at that position
+        int count = sortedIndexes['T'].Count;
+        for (int pos = 0; pos < count; pos++)
+        {
+            int idxT = sortedIndexes['T'][pos];
+            bool allMatch = true;
+            foreach (char c in new[] { 'C', 'O', 'D', 'I' })
+            {
+                if (sortedIndexes[c][pos] != idxT)
+                {
+                    allMatch = false;
+                    break;
+                }
+            }
+            if (allMatch)
+            {
+                string recipe = PolyhedronRecipeKabbalah.IntToOperatorsSequence(idxT);
+                Debug.Log($"Index {idxT} appears at position {pos} for all bases: recipe = {recipe}");
+            }
+        }
+
+    }
+
+    [Test]
+    public void Kabbalah_RecipeFission_Basic()
+    {
+        // "adk" = a=1, d=0, k=2 => 1*36 + 0*6 + 2 = 38
+        var result = PolyhedronRecipeKabbalah.RecipeFission("adk", 3);
+        // 38/3 = 12, remainder 2, so [13, 13, 12]
+        Assert.AreEqual(3, result.Count);
+        Assert.AreEqual(PolyhedronRecipeKabbalah.IntToOperatorsSequence(13), result[0]);
+        Assert.AreEqual(PolyhedronRecipeKabbalah.IntToOperatorsSequence(13), result[1]);
+        Assert.AreEqual(PolyhedronRecipeKabbalah.IntToOperatorsSequence(12), result[2]);
+    }
+
+    [Test]
+    public void Kabbalah_RecipeFission_Single()
+    {
+        var result = PolyhedronRecipeKabbalah.RecipeFission("adk", 1);
+        Assert.AreEqual(1, result.Count);
+        Assert.AreEqual("adk", result[0]);
+    }
+
+    [Test]
+    public void Kabbalah_RecipeFission_MorePartsThanValue()
+    {
+        var result = PolyhedronRecipeKabbalah.RecipeFission("a", 5); // "a" = 1
+        // Should be: [1,0,0,0,0] => ["a","d","d","d","d"]
+        Assert.AreEqual(5, result.Count);
+        Assert.AreEqual("a", result[0]);
+        Assert.AreEqual("d", result[1]);
+        Assert.AreEqual("d", result[2]);
+        Assert.AreEqual("d", result[3]);
+        Assert.AreEqual("d", result[4]);
+    }
+
+    [Test]
+    public void Kabbalah_RecipeFission_Zero()
+    {
+        var result = PolyhedronRecipeKabbalah.RecipeFission("", 3);
+        Assert.AreEqual(0, result.Count);
+
+        result = PolyhedronRecipeKabbalah.RecipeFission("d", 0);
+        Assert.AreEqual(0, result.Count);
     }
 }

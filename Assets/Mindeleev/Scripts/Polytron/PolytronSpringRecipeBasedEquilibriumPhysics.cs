@@ -4,7 +4,7 @@ using UnityEngine;
 
 
 // spring behaviour with dynamic, recipe-based point of equilibrium
-public class PolytronSpringRecipeBasedEquilibriumBehaviour : PolytronBehaviour
+public class PolytronSpringRecipeBasedEquilibriumPhysics : PolytronPhysics
 {
 
     // public float EquilibriumDistance { get; set; } = 5.0f;
@@ -16,16 +16,16 @@ public class PolytronSpringRecipeBasedEquilibriumBehaviour : PolytronBehaviour
     public static Dictionary<string, float> eqMap;
 
 
-    public PolytronSpringRecipeBasedEquilibriumBehaviour(Polytron p)
+    public PolytronSpringRecipeBasedEquilibriumPhysics(Polytron p)
     {
         // Debug.Log($"creating a PolytronSpringRecipeBasedEquilibriumBehaviour with owner id {p.Id}");
-        Type = PolytronBehaviourType.RecipeBasedEquilibrium;
+        Type = PolytronPhysicsType.RecipeBasedEquilibrium;
         Owner = p;
     }
 
     public override void ComputeForce()
     {
-        var allPolytrons = PolytronEngine.GetAll();
+        var allPolytrons = Owner.Engine.GetAllPolytrons();
         forceAccumulator = Vector3.zero;
         torqueAccumulator = Vector3.zero;
 

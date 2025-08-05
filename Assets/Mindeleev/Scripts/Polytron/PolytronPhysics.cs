@@ -5,13 +5,13 @@ using SpatialSys.UnitySDK;
 
 
 
-public enum PolytronBehaviourType { Spring01, RecipeBasedEquilibrium, ParticleLife }
+public enum PolytronPhysicsType { Spring01, RecipeBasedEquilibrium, ParticleLife }
 
 // a Polytron has a PolytronBehaviour which controls how it behave in respect to other polytrons, etc
-public abstract class PolytronBehaviour
+public abstract class PolytronPhysics
 {
     public Polytron Owner { get; set; }
-    public PolytronBehaviourType Type { get; set; }
+    public PolytronPhysicsType Type { get; set; }
     public abstract void ComputeForce();
     public Vector3 forceAccumulator = Vector3.zero;
     public Vector3 torqueAccumulator = Vector3.zero;
@@ -58,5 +58,22 @@ public abstract class PolytronBehaviour
 
         return attractionForce;
     }
+
+    public Vector3 ComputeForceTowardOriginGameObject()
+    {
+        Vector3 gameObjectPosition = Owner.Engine.transform.position;
+        Vector3 myPosition = Owner.gameObject.transform.position;
+
+        (Vector3 attractionForce, Vector3 fromMeToOtherVersor, float fromMeToOtherDistance)
+            = CalcSpringForce(myPosition,
+            gameObjectPosition,
+            1.0f,
+            4.0f);
+
+
+        return attractionForce;
+    }
+
+
 
 }

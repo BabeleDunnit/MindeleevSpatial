@@ -1,6 +1,7 @@
 using UnityEngine;
 using System.Collections.Generic;
 using TMPro;
+using UnityEngine.TextCore.LowLevel;
 
 public class OrbitalGeneticInstantiator : MonoBehaviour
 {
@@ -18,22 +19,31 @@ public class OrbitalGeneticInstantiator : MonoBehaviour
     private GameObject nucleusObject;
     private List<GameObject> innerPolyhedra = new List<GameObject>();
 
+    PolytronEngine polytronEngine;
+
     void Start()
     {
+        polytronEngine = GetComponent<PolytronEngine>();
+        Debug.Assert(polytronEngine != null, "A sibling PolytronEngine component is needed");
+
         InstantiateNucleus();
         InstantiateInnerOrbit();
-        var recipesMap = PolytronEngine.CollectRecipes();
+        var recipesMap = polytronEngine.CollectRecipes();
         var recipeSet = new HashSet<string>(recipesMap.Keys);
-        PolytronSpringRecipeBasedEquilibriumBehaviour.eqMap = PolytronSpringRecipeBasedEquilibriumBehaviour.CreateEquilibriumDistanceMap(recipeSet);
+        PolytronSpringRecipeBasedEquilibriumPhysics.eqMap = PolytronSpringRecipeBasedEquilibriumPhysics.CreateEquilibriumDistanceMap(recipeSet);
         // You can now use eqMap as needed
     }
 
     void InstantiateNucleus()
     {
         nucleusObject = Instantiate(polytronPrefab, transform.position, Quaternion.identity, transform);
-        var gen = nucleusObject.GetComponent<PolyhedronGenerator>();
-        if (gen != null)
-            gen.recipeString = nucleusRecipe;
+        var polytron = nucleusObject.GetComponent<Polytron>();
+        if (polytron != null)
+        {
+            polytron.recipeString = nucleusRecipe;
+            polytron.Engine = polytronEngine;
+            
+        }
         nucleusObject.name = "Nucleus";
         CreateLabel(nucleusObject, nucleusRecipe
             + " "
@@ -70,8 +80,10 @@ public class OrbitalGeneticInstantiator : MonoBehaviour
                 var polytronComponent = poly.GetComponent<Polytron>();
                 if (polytronComponent != null)
                 {
+                    polytronComponent.Engine = polytronEngine;
+                    polytronEngine.Register(polytronComponent);
                     polytronComponent.recipeString = permutedRecipe;
-                    polytronComponent.Behaviour = new PolytronSpringRecipeBasedEquilibriumBehaviour(polytronComponent);
+                    polytronComponent.Behaviour = new PolytronSpringRecipeBasedEquilibriumPhysics(polytronComponent);
                     // Debug.Log($"polytron {polytronComponent.Id} is of type {polytronComponent.Behaviour}");
 
                 }
@@ -82,12 +94,19 @@ public class OrbitalGeneticInstantiator : MonoBehaviour
                     + PolyhedronRecipeUtils.ComputeComplexity(PolyhedronRecipeParser.Parse(permutedRecipe)),
                     Vector3.zero);
 
+                var rigidBody = poly.GetComponent<Rigidbody>();
+
+                // no freeze, gravity true, collider.isTrigger false -> polytrons rolling on the ground
+                // freeze, no gravity, trigger true -> polytrons sliding with permutations on collision
+
+                rigidBody.constraints = RigidbodyConstraints.FreezePositionY;
+                // rigidBody.useGravity = true;
+
                 // Enable collision and add handler
                 var collider = poly.GetComponent<Collider>();
                 //if (collider == null)
                 //    collider = poly.AddComponent<SphereCollider>();
                 Debug.Assert(collider != null);
-
                 
                 collider.isTrigger = true;
 

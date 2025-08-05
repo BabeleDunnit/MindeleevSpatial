@@ -4,26 +4,26 @@ using UnityEngine;
 
 
 // spring behaviour with single point of equilibrium
-public class PolytronSpring01Behaviour : PolytronBehaviour
+public class PolytronSpring01Physics : PolytronPhysics
 {
 
-    public float EquilibriumDistance { get; set; } = 5.0f;
+    public float EquilibriumDistance { get; set; } = 6.0f;
     public float AttractionMultiplier { get; set; } = 1.0f;
     public float CollisionDistance { get; set; } = 0.5f;
     public float ContactStiffness { get; set; } = 500f;
     public float LinearFriction { get; set; } = 0.5f;
 
 
-    public PolytronSpring01Behaviour(Polytron p)
+    public PolytronSpring01Physics(Polytron p)
     {
         // Debug.Log($"creating a PolytronSpring01Behaviour with owner id {p.Id}");
-        Type = PolytronBehaviourType.Spring01;
+        Type = PolytronPhysicsType.Spring01;
         Owner = p;
     }
 
     public override void ComputeForce()
     {
-        var allPolytrons = PolytronEngine.GetAll();
+        var allPolytrons = Owner.Engine.GetAllPolytrons();
         Vector3 forceAccumulator = Vector3.zero;
         Vector3 torqueAccumulator = Vector3.zero;
 
@@ -77,9 +77,11 @@ public class PolytronSpring01Behaviour : PolytronBehaviour
         Vector3 friction = -Owner.RigidBody.velocity * LinearFriction;
         forceAccumulator += friction;
 
+        // add a force toward the owner GameObject
+        forceAccumulator += ComputeForceTowardOriginGameObject();
+
         Owner.RigidBody.AddForce(forceAccumulator);
         Owner.RigidBody.AddTorque(torqueAccumulator);
-        //        }
 
         // Debug.DrawLine(me.transform.position, contactPoint, Color.red, 1f);
         // Debug.Log("Torque: " + torqueAccumulator);

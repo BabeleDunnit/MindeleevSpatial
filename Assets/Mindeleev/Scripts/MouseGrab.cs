@@ -1,7 +1,10 @@
 using UnityEngine;
 using System;
 using SpatialSys.UnitySDK;
-// using SpatialSys.UnitySDK.Internal;
+
+// to use the CameraFollow component we need these packages which are not available in Spatial
+using SpatialSys.UnitySDK.Internal;
+using System.Runtime.CompilerServices;
 // using SpatialSys.UnitySDK.EditorSimulation;
 
 /// <summary>
@@ -52,6 +55,7 @@ public class MouseGrab : MonoBehaviour
     // Find the camera in a Spatial scene (customize as needed)
     private Camera FindSpatialCamera()
     {
+
         var cam = GameObject.FindGameObjectWithTag("MainCamera")?.GetComponent<Camera>();
         if (cam != null) return cam;
         return null;
@@ -61,22 +65,57 @@ public class MouseGrab : MonoBehaviour
     private void DisableCameraControls(bool disable)
     {
 
+        // Grabbing(disable);
 
         Component[] components = mainCamera.GetComponents<Component>();
 
         foreach (Component comp in components)
         {
-            Debug.Log($"Componente: {comp.GetType().Name}");
+            // Debug.Log($"Componente: {comp.GetType().Name}");
         }
-/*
-        // Example for disabling a SimpleCameraController
-        var controller = mainCamera?.GetComponent<CameraFollow>();
-        Debug.Assert(controller != null);
-        if (controller != null && controller.enabled != !disable)
-            controller.enabled = !disable;
-*/
+
+        // this works but CameraFollow is not available in Spatial
+        /* 
+                // Example for disabling a SimpleCameraController
+                var controller = mainCamera?.GetComponent<CameraFollow>();
+                Debug.Assert(controller != null);
+                if (controller != null && controller.enabled != !disable)
+                    controller.enabled = !disable;
+        */
+
+        /*
+                var controller = mainCamera?.GetComponent<Camera>();
+                Debug.Assert(controller != null);
+                    if (controller != null && controller.enabled != !disable)
+                        controller.enabled = !disable;
+
+        */
+
 
         // If using Cinemachine or another camera system, disable its input here.
         // If you have a custom camera script, reference and disable it here.
     }
+
+
+    /*
+        // Nel tuo script di grab:
+        void Grabbing( bool grabbing)
+    {
+        // non funziona
+        if (grabbing)
+            {
+                // Evita la rotazione della camera consumando l'input
+                Cursor.lockState = CursorLockMode.None;
+                // Cursor.visible = true;
+            }
+            else
+            {
+                // Ripristina il controllo normale
+                Cursor.lockState = CursorLockMode.Locked;
+                // Cursor.visible = false;
+            }
+    }
+    */
+
+
 }
