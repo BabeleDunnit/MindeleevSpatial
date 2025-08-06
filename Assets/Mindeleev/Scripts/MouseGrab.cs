@@ -16,7 +16,7 @@ public class MouseGrab : MonoBehaviour
     private Vector3 offset;
     private Camera mainCamera;
     private float dragDepth;
-    private bool cameraWasEnabled = true;
+    // private bool cameraWasEnabled = true;
 
     void Start()
     {

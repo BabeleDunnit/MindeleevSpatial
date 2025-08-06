@@ -8,8 +8,8 @@ public class Polytron : PolyhedronGenerator /*, IPointerClickHandler */
 {
 
 
-  private float clickDelay = 0.3f;
-    private bool singleClickPending = false;
+  // private float clickDelay = 0.3f;
+    // private bool singleClickPending = false;
 
     private float lastClickTime = 0f;
     private const float doubleClickThreshold = 0.3f;
