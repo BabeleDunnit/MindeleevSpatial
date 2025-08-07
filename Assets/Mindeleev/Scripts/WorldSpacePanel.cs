@@ -2,11 +2,15 @@ using UnityEngine;
 using TMPro;
 using UnityEngine.UI;
 using Unity.VisualScripting;
+using SpatialSys.UnitySDK;
 
 public class WorldSpacePanel : MonoBehaviour
 {
     public TextMeshProUGUI titleText;
     public TextMeshProUGUI descriptionText;
+
+    // where are we running? mobile, web, hmd?
+    SpatialPlatform platform;
 
     public Button button;
 
@@ -14,7 +18,7 @@ public class WorldSpacePanel : MonoBehaviour
     Camera cameraMain;
 
     private Transform cameraMainTransform;
-    public Vector3 offset = new Vector3(0, 0, 10f);
+    public Vector3 offset = new Vector3(0.5f, 0, 1f);
 
     void Start()
     {
@@ -26,19 +30,13 @@ public class WorldSpacePanel : MonoBehaviour
 
         Debug.Log($"camera FOV: {cameraMain.fieldOfView}");
 
-        var cameraService = SpatialSys.UnitySDK.SpatialBridge.cameraService;
+        var cameraService = SpatialBridge.cameraService;
         if (cameraService != null)
         {
             Debug.Log($"First Person Camera FoV: {cameraService.firstPersonFov}");
             Debug.Log($"Third Person Camera FoV: {cameraService.thirdPersonFov}");
             cameraService.thirdPersonFov = cameraService.firstPersonFov;
         }
-
-        /*
-                transform.SetParent(targetCamera, worldPositionStays: false);
-                transform.localPosition = offset;
-                transform.localRotation = Quaternion.identity;
-        */
 
         if (button != null)
         {
@@ -50,6 +48,26 @@ public class WorldSpacePanel : MonoBehaviour
             titleText = GetComponentInChildren<TextMeshProUGUI>();
         }
 
+        // detect platform
+        platform = SpatialBridge.actorService.localActor.platform;
+        switch (platform)
+        {
+            case SpatialPlatform.MetaQuest:
+                Debug.Log("Running on HMD");
+                offset = new Vector3(0.6f, 0, 1);
+                break;
+            case SpatialPlatform.Mobile:
+                Debug.Log("Running on Mobile");
+                break;
+            case SpatialPlatform.Web:
+                Debug.Log("Running on Web");
+                offset = new Vector3(0.9f, 0, 0.9f);
+                break;
+            default:
+                Debug.LogWarning("Unknown platform type");
+                break;
+        }
+        
     }
     private void OnButtonClick()
     {
@@ -59,6 +77,16 @@ public class WorldSpacePanel : MonoBehaviour
         titleText.text = "Button Clicked!";
 
     }
+
+
+    /*
+    bool IsVRDeviceConnected()
+    {
+        return SpatialBridge.deviceService.isHeadsetPresent
+            || SpatialBridge.deviceService.isController1Present
+            || SpatialBridge.deviceService.isController2Present;
+    }
+    */
 
     private Camera FindCamera()
     {

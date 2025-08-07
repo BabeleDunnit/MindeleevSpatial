@@ -3,9 +3,21 @@ using System;
 using SpatialSys.UnitySDK;
 
 // to use the CameraFollow component we need these packages which are not available in Spatial
-using SpatialSys.UnitySDK.Internal;
-using System.Runtime.CompilerServices;
-// using SpatialSys.UnitySDK.EditorSimulation;
+#if UNITY_EDITOR
+using SpatialSys.UnitySDK.EditorSimulation;
+#endif
+
+/*
+
+il problema maggiore per avere interazioni utente è con il Meta Quest 
+perché è limitato rispetto alle altre device, per avere un ambiente virtuale 
+che viene usato con tutte le 3 device è necessario, tramite Unity, usare: 
+Trigger, Interactable, UI Button, UI Input.
+Rimane impossibile in VR accedere a pagine Web.
+
+*/
+
+
 
 /// <summary>
 /// Attach this to polyhedron GameObjects to enable mouse grab and drag.
@@ -16,7 +28,6 @@ public class MouseGrab : MonoBehaviour
     private Vector3 offset;
     private Camera mainCamera;
     private float dragDepth;
-    // private bool cameraWasEnabled = true;
 
     void Start()
     {
@@ -32,15 +43,32 @@ public class MouseGrab : MonoBehaviour
             Vector3 mouseWorld = mainCamera.ScreenToWorldPoint(new Vector3(Input.mousePosition.x, Input.mousePosition.y, dragDepth));
             offset = transform.position - mouseWorld;
 
-            // Disable camera controls if you have a component for it (example: SimpleCameraController, Cinemachine, etc.)
-            DisableCameraControls(true);
+            // avoid camera rotation when dragging
+            DisableCameraRotation(true);
+
+            /*
+                        var camService = SpatialBridge.cameraService;
+                        if (camService != null)
+                        {
+                            camService.lockCameraRotation = true;
+                        }
+            */
+
         }
     }
 
     void OnMouseUp()
     {
         isDragging = false;
-        DisableCameraControls(false);
+        DisableCameraRotation(false);
+        /*
+        var camService = SpatialBridge.cameraService;
+        if (camService != null)
+        {
+            camService.lockCameraRotation = false;
+        }
+*/
+
     }
 
     void Update()
@@ -62,34 +90,47 @@ public class MouseGrab : MonoBehaviour
     }
 
     // Disable camera controls during drag (customize for your camera system)
-    private void DisableCameraControls(bool disable)
+    private void DisableCameraRotation(bool isDisabled)
     {
+
+        // mainCamera.velocity = Vector3.zero;
+        // mainCamera.transform.rotation;
 
         // Grabbing(disable);
 
-        Component[] components = mainCamera.GetComponents<Component>();
+        /*
+                Component[] components = mainCamera.GetComponents<Component>();
 
-        foreach (Component comp in components)
-        {
-            // Debug.Log($"Componente: {comp.GetType().Name}");
-        }
-
-        // this works but CameraFollow is not available in Spatial
-        /* 
-                // Example for disabling a SimpleCameraController
-                var controller = mainCamera?.GetComponent<CameraFollow>();
-                Debug.Assert(controller != null);
-                if (controller != null && controller.enabled != !disable)
-                    controller.enabled = !disable;
+                foreach (Component comp in components)
+                {
+                    // Debug.Log($"Componente: {comp.GetType().Name}");
+                }
         */
 
+#if UNITY_EDITOR
+        // this works but CameraFollow is not available in Spatial
+        // Example for disabling a SimpleCameraController
+        var controller = mainCamera?.GetComponent<CameraFollow>();
+        Debug.Assert(controller != null);
+        if (controller != null && controller.enabled != !isDisabled)
+        {
+            controller.enabled = !isDisabled;
+        }
+#endif
+
+        // this disables rendering
         /*
                 var controller = mainCamera?.GetComponent<Camera>();
                 Debug.Assert(controller != null);
                     if (controller != null && controller.enabled != !disable)
                         controller.enabled = !disable;
+*/
 
-        */
+        var camService = SpatialBridge.cameraService;
+        if (camService != null)
+        {
+            camService.lockCameraRotation = isDisabled;
+        }
 
 
         // If using Cinemachine or another camera system, disable its input here.
