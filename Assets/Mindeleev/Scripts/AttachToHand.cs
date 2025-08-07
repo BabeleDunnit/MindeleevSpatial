@@ -64,7 +64,7 @@ public class AttachToHand : MonoBehaviour
     {
         if (targetHand == null) return;
 
-        Debug.Log($"targetHand pos: {targetHand.position}");
+        // Debug.Log($"targetHand pos: {targetHand.position}");
 
         // Posiziona il pannello rispetto alla mano
         transform.position = targetHand.position + targetHand.TransformVector(offset) ;
