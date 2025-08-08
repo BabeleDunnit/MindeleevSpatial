@@ -6,7 +6,7 @@ using UnityEngine;
 [RequireComponent(typeof(Renderer))]
 public class PolytronOutline : MonoBehaviour
 {
-    private Color outlineColor = Color.yellow;
+    public Color outlineColor = Color.yellow;
     private float outlineWidth = 0.05f;
 
     GameObject outlineGameObject;
@@ -48,7 +48,7 @@ public class PolytronOutline : MonoBehaviour
         
         //outlineMaterial.SetColor("_OutlineColor", outlineColor);
         // outlineMaterial.SetFloat("_Outline", outlineWidth);
-        //outlineMaterial.SetColor("_Color", Color.green);
+        // outlineMaterial.SetColor("_Color", Color.green);
         //outlineMaterial.SetFloat("_OutlineWidth", 0.01f);
         // outlineMaterial.SetFloat("_LineIntensity", 100f);
 
@@ -90,7 +90,8 @@ public class PolytronOutline : MonoBehaviour
             var mrCopy = outlineGameObject.AddComponent<MeshRenderer>();
 
             mfCopy.sharedMesh = mf.sharedMesh;
-            mrCopy.material = outlineMaterial;
+            mrCopy.material = new Material(outlineMaterial);
+            mrCopy.material.SetColor("_OutlineColor", outlineColor);
         }
 
         /*
