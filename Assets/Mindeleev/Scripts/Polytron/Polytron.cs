@@ -55,13 +55,13 @@ public class Polytron : PolyhedronGenerator /*, IPointerClickHandler */
         private void HandleClick()
         {
             // ShootPolytron();
-            Debug.Log("click");
+            Debug.Log("[Polytron] click");
         }
 
         private void HandleDoubleClick()
         {
             // ShootPolytron();
-            Debug.Log("double click");
+            Debug.Log("[Polytron] double click");
         }
 
     /*

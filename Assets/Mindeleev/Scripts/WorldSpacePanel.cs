@@ -54,7 +54,7 @@ public class WorldSpacePanel : MonoBehaviour
         {
             case SpatialPlatform.MetaQuest:
                 Debug.Log("Running on HMD");
-                offset = new Vector3(0.6f, 0, 1);
+                offset = new Vector3(0.6f, 0, 0.5f);
                 break;
             case SpatialPlatform.Mobile:
                 Debug.Log("Running on Mobile");

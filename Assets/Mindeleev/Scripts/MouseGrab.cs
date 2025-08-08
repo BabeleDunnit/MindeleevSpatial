@@ -32,9 +32,23 @@ public class MouseGrab : MonoBehaviour
     void Start()
     {
         mainCamera = FindSpatialCamera();
+
+        /*
+                // Assicurati che ci sia un Interactable
+                var interactable = GetComponent<SpatialInteractable>();
+                if (interactable == null)
+                {
+                    interactable = gameObject.AddComponent<SpatialInteractable>();
+                }
+
+                // Registra gli handler
+                interactable.onEnterEvent += OnGrabStarted;
+                interactable.onExitEvent += OnGrabEnded;
+        */
+
     }
 
-    void OnMouseDown()
+    private void BeginDrag()
     {
         if (!isDragging)
         {
@@ -45,34 +59,63 @@ public class MouseGrab : MonoBehaviour
 
             // avoid camera rotation when dragging
             DisableCameraRotation(true);
-
-            /*
-                        var camService = SpatialBridge.cameraService;
-                        if (camService != null)
-                        {
-                            camService.lockCameraRotation = true;
-                        }
-            */
-
         }
     }
 
-    void OnMouseUp()
+
+    private void EndDrag()
     {
         isDragging = false;
         DisableCameraRotation(false);
-        /*
-        var camService = SpatialBridge.cameraService;
-        if (camService != null)
-        {
-            camService.lockCameraRotation = false;
-        }
-*/
 
     }
 
+        void OnMouseDown()
+        {
+            BeginDrag();
+        }
+
+        void OnMouseUp()
+        {
+            EndDrag();
+        }
+
     void Update()
     {
+
+        // funge
+        /*
+                if (Input.GetMouseButtonDown(0))
+                {
+                    Ray ray = mainCamera.ScreenPointToRay(Input.mousePosition);
+                    RaycastHit hit;
+
+                    if (Physics.Raycast(ray, out hit))
+                    {
+                        Debug.Log("Hai cliccato su " + hit.collider.gameObject.name);
+                    }
+                }
+        */
+
+
+        //         Ray ray = new Ray(transform.position, transform.forward);
+
+        /*
+                Ray ray = mainCamera.ScreenPointToRay(Input.mousePosition);
+            RaycastHit hit;
+            if (Physics.Raycast(ray, out hit))
+            {
+                Debug.DrawRay(ray.origin, ray.direction * hit.distance, Color.red);
+                Debug.Log("Oggetto colpito: " + hit.collider.name);
+            }
+            else
+            {
+                Debug.DrawRay(ray.origin, ray.direction * 10f, Color.green);
+            }
+        */
+
+
+
         if (isDragging)
         {
             Vector3 mouseWorld = mainCamera.ScreenToWorldPoint(new Vector3(Input.mousePosition.x, Input.mousePosition.y, dragDepth));
@@ -83,7 +126,6 @@ public class MouseGrab : MonoBehaviour
     // Find the camera in a Spatial scene (customize as needed)
     private Camera FindSpatialCamera()
     {
-
         var cam = GameObject.FindGameObjectWithTag("MainCamera")?.GetComponent<Camera>();
         if (cam != null) return cam;
         return null;
@@ -92,20 +134,6 @@ public class MouseGrab : MonoBehaviour
     // Disable camera controls during drag (customize for your camera system)
     private void DisableCameraRotation(bool isDisabled)
     {
-
-        // mainCamera.velocity = Vector3.zero;
-        // mainCamera.transform.rotation;
-
-        // Grabbing(disable);
-
-        /*
-                Component[] components = mainCamera.GetComponents<Component>();
-
-                foreach (Component comp in components)
-                {
-                    // Debug.Log($"Componente: {comp.GetType().Name}");
-                }
-        */
 
 #if UNITY_EDITOR
         // this works but CameraFollow is not available in Spatial
@@ -118,45 +146,141 @@ public class MouseGrab : MonoBehaviour
         }
 #endif
 
-        // this disables rendering
-        /*
-                var controller = mainCamera?.GetComponent<Camera>();
-                Debug.Assert(controller != null);
-                    if (controller != null && controller.enabled != !disable)
-                        controller.enabled = !disable;
-*/
-
         var camService = SpatialBridge.cameraService;
         if (camService != null)
         {
             camService.lockCameraRotation = isDisabled;
         }
-
-
-        // If using Cinemachine or another camera system, disable its input here.
-        // If you have a custom camera script, reference and disable it here.
     }
 
-
     /*
-        // Nel tuo script di grab:
-        void Grabbing( bool grabbing)
-    {
-        // non funziona
-        if (grabbing)
+        public void OnRayHoverEnter()
+        {
+            Debug.Log("Hover enter");
+        }
+
+        public void OnRayHoverExit()
+        {
+            Debug.Log("Hover exit");
+        }
+
+        public void OnRayClick()
+        {
+            isDragging = !isDragging;
+            if (isDragging)
             {
-                // Evita la rotazione della camera consumando l'input
-                Cursor.lockState = CursorLockMode.None;
-                // Cursor.visible = true;
+                Debug.Log("Grabbed");
             }
             else
             {
-                // Ripristina il controllo normale
-                Cursor.lockState = CursorLockMode.Locked;
-                // Cursor.visible = false;
+                Debug.Log("Released");
             }
-    }
+        }
+    */
+
+    /*
+        private void Awake()
+        {
+
+            // Assicurati che ci sia un Interactable
+            var interactable = GetComponent<SpatialInteractable>();
+            if (interactable == null)
+            {
+                interactable = gameObject.AddComponent<SpatialInteractable>();
+            }
+
+            // Registra gli handler
+            interactable.onEnterEvent += OnGrabStarted;
+            interactable.onExitEvent += OnGrabEnded;
+        }
+
+        */
+
+    /*
+            private void OnGrabStarted()
+        {
+            Debug.Log("Grab iniziato!");
+            // Qui puoi iniziare il drag o la trasformazione
+        }
+
+        private void OnGrabEnded()
+        {
+            Debug.Log("Grab finito!");
+            // Qui puoi rilasciare o fermare il movimento
+        }
     */
 
 
+
 }
+
+
+/*
+using UnityEngine;
+using SpatialSys.UnitySDK;
+
+public class PolytronGrabHandler : MonoBehaviour
+{
+    private void Awake()
+    {
+        // Assicurati che ci sia un Interactable
+        var interactable = GetComponent<Interactable>();
+        if (interactable == null)
+        {
+            interactable = gameObject.AddComponent<Interactable>();
+        }
+
+        // Registra gli handler
+        interactable.onInteractionStarted += OnGrabStarted;
+        interactable.onInteractionEnded += OnGrabEnded;
+    }
+
+    private void OnGrabStarted()
+    {
+        Debug.Log("Grab iniziato!");
+        // Qui puoi iniziare il drag o la trasformazione
+    }
+
+    private void OnGrabEnded()
+    {
+        Debug.Log("Grab finito!");
+        // Qui puoi rilasciare o fermare il movimento
+    }
+}
+*/
+
+
+/*
+using UnityEngine;
+using UnityEngine.InputSystem; // se usi il nuovo sistema di Input
+
+public class VRGrabTarget : MonoBehaviour
+{
+    private bool isGrabbed = false;
+
+    public void OnRayHoverEnter()
+    {
+        Debug.Log("Hover enter");
+    }
+
+    public void OnRayHoverExit()
+    {
+        Debug.Log("Hover exit");
+    }
+
+    public void OnRayClick()
+    {
+        isGrabbed = !isGrabbed;
+        if (isGrabbed)
+        {
+            Debug.Log("Grabbed");
+        }
+        else
+        {
+            Debug.Log("Released");
+        }
+    }
+}
+
+*/
+
