@@ -15,6 +15,7 @@ GameObject:
   - component: {fileID: -8432150149311953576}
   - component: {fileID: 8305695020945104654}
   - component: {fileID: 9123422768328477699}
+  - component: {fileID: 4698291763764020160}
   m_Layer: 0
   m_Name: Polytron
   m_TagString: Untagged
@@ -65,7 +66,7 @@ MeshRenderer:
   m_RenderingLayerMask: 1
   m_RendererPriority: 0
   m_Materials:
-  - {fileID: 0}
+  - {fileID: 2100000, guid: 7f629499ce79c49db9e376336efd191b, type: 2}
   m_StaticBatchInfo:
     firstSubMesh: 0
     subMeshCount: 0
@@ -143,3 +144,17 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: ee2ae2bce396747238d3890358df730f, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+--- !u!114 &4698291763764020160
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8404194606809146210}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f78acc467308f46e3b0f03db2376d174, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  outlineColor: {r: 1, g: 0.92156863, b: 0.015686275, a: 1}
+  outlineWidth: 0.05

@@ -20,25 +20,6 @@ public class PolyhedronGenerator : MonoBehaviour
     /* ------------------------------------------------------------------ */
     public virtual void Start()
     {
-        /*
-        MeshFilter filter = GetComponent<MeshFilter>();
-        MeshRenderer renderer = GetComponent<MeshRenderer>();
-
-        // var polyData = Polyhedronisme.ParsePolyhedronRecipe(polyhedronRecipe);
-        // Debug.Log($"PolyhedronGenerator::Start() recipeString: {recipeString}");
-        Recipe = PolyhedronRecipeParser.Parse(recipeString);
-        var polyData = PolyhedronRecipeBuilder.Build(Recipe, palette.colors.Count);
-        var polyFinalData = Polyhedronisme.ApplyFlatShade(polyData);
-        filter.mesh = Polyhedronisme.BuildMesh(polyFinalData, palette);
-        ApplyPolyhedronMaterial(renderer);
-
-        if (showVertexIndices)
-        {
-            ShowVertexIndices(polyData.Item1); // Use logical vertices
-        }
-        */
-
-
         RebuildMesh();
     }
 

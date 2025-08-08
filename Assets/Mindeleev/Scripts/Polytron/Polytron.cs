@@ -8,7 +8,7 @@ public class Polytron : PolyhedronGenerator /*, IPointerClickHandler */
 {
 
 
-  // private float clickDelay = 0.3f;
+    // private float clickDelay = 0.3f;
     // private bool singleClickPending = false;
 
     private float lastClickTime = 0f;
@@ -36,33 +36,51 @@ public class Polytron : PolyhedronGenerator /*, IPointerClickHandler */
         }
     }
 
+
+    void OnMouseDown()
+    {
+        float timeSinceLastClick = Time.time - lastClickTime;
+        lastClickTime = Time.time;
+
+        if (timeSinceLastClick <= doubleClickThreshold)
+        {
+            HandleDoubleClick();
+        }
+        else
+        {
+            HandleClick();
+        }
+    }
+
+    private void HandleClick()
+    {
+        // ShootPolytron();
+        Debug.Log("[Polytron] click");
+
+        PolytronOutline o = GetComponent<PolytronOutline>();
+        o.EnableOutline();
+        Invoke(nameof(DisableOutlineLater), 5f);
     
-            void OnMouseDown()
-        {
-            float timeSinceLastClick = Time.time - lastClickTime;
-            lastClickTime = Time.time;
+    }
 
-            if (timeSinceLastClick <= doubleClickThreshold)
-            {
-                HandleDoubleClick();
-            }
-            else
-            {
-                HandleClick();
-            }
-        }
+    private void DisableOutlineLater()
+    {
 
-        private void HandleClick()
-        {
-            // ShootPolytron();
-            Debug.Log("[Polytron] click");
-        }
+        Debug.Log("[Polytron] call DisableOutline()");
+        PolytronOutline o = GetComponent<PolytronOutline>();
+        o.DisableOutline();
 
-        private void HandleDoubleClick()
-        {
-            // ShootPolytron();
-            Debug.Log("[Polytron] double click");
-        }
+    }
+
+    private void HandleDoubleClick()
+    {
+        // ShootPolytron();
+        Debug.Log("[Polytron] double click");
+
+        PolytronOutline o = GetComponent<PolytronOutline>();
+        o.DisableOutline();
+
+    }
 
     /*
 
