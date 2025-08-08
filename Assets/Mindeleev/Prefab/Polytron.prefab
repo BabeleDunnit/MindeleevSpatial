@@ -156,5 +156,4 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: f78acc467308f46e3b0f03db2376d174, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  outlineColor: {r: 1, g: 0.92156863, b: 0.015686275, a: 1}
-  outlineWidth: 0.05
+  outlineMaterial: {fileID: 2100000, guid: 419381cca00494e41a6f6d101ffd636b, type: 2}
