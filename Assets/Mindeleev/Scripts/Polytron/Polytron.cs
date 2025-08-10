@@ -3,10 +3,13 @@ using System.Collections.Generic;
 using UnityEngine;
 using System;
 using UnityEngine.EventSystems;
+using SpatialSys.UnitySDK;
 
-public class Polytron : PolyhedronGenerator /*, IPointerClickHandler */
+
+
+[RequireComponent(typeof(Collider))]
+public class Polytron : PolyhedronGenerator, IPointerEnterHandler, IPointerExitHandler, IPointerClickHandler
 {
-
 
     // private float clickDelay = 0.3f;
     // private bool singleClickPending = false;
@@ -25,6 +28,31 @@ public class Polytron : PolyhedronGenerator /*, IPointerClickHandler */
 
     public Rigidbody RigidBody { get; set; }
 
+
+    public void OnPointerEnter(PointerEventData eventData)
+    {
+        Debug.Log("Pointer over object");
+            PolytronOutline o = GetComponent<PolytronOutline>();
+        o.outlineColor = Color.yellow;
+            o.EnableOutline();
+    }
+
+    public void OnPointerExit(PointerEventData eventData)
+    {
+        Debug.Log("Pointer left object");
+            PolytronOutline o = GetComponent<PolytronOutline>();
+            o.DisableOutline();
+    }
+
+    public void OnPointerClick(PointerEventData eventData)
+    {
+        PolytronOutline o = GetComponent<PolytronOutline>();
+        o.outlineColor = Color.green;
+            o.DisableOutline();
+            o.EnableOutline();
+        Debug.Log("[Polytron.OnPointerClick()] Object clicked!");
+    }
+
     // Start is called before the first frame update
     public override void Start()
     {
@@ -37,50 +65,52 @@ public class Polytron : PolyhedronGenerator /*, IPointerClickHandler */
     }
 
 
-    void OnMouseDown()
-    {
-        float timeSinceLastClick = Time.time - lastClickTime;
-        lastClickTime = Time.time;
-
-        if (timeSinceLastClick <= doubleClickThreshold)
+    /*
+        void OnMouseDown()
         {
-            HandleDoubleClick();
+            float timeSinceLastClick = Time.time - lastClickTime;
+            lastClickTime = Time.time;
+
+            if (timeSinceLastClick <= doubleClickThreshold)
+            {
+                HandleDoubleClick();
+            }
+            else
+            {
+                HandleClick();
+            }
         }
-        else
+
+        private void HandleClick()
         {
-            HandleClick();
+            // ShootPolytron();
+            Debug.Log("[Polytron] click");
+
+            PolytronOutline o = GetComponent<PolytronOutline>();
+            o.EnableOutline();
+            // Invoke(nameof(DisableOutlineLater), 5f);
+
         }
-    }
 
-    private void HandleClick()
-    {
-        // ShootPolytron();
-        Debug.Log("[Polytron] click");
+        private void DisableOutlineLater()
+        {
 
-        PolytronOutline o = GetComponent<PolytronOutline>();
-        o.EnableOutline();
-        Invoke(nameof(DisableOutlineLater), 5f);
-    
-    }
+            Debug.Log("[Polytron] call DisableOutline()");
+            PolytronOutline o = GetComponent<PolytronOutline>();
+            o.DisableOutline();
 
-    private void DisableOutlineLater()
-    {
+        }
 
-        Debug.Log("[Polytron] call DisableOutline()");
-        PolytronOutline o = GetComponent<PolytronOutline>();
-        o.DisableOutline();
+        private void HandleDoubleClick()
+        {
+            // ShootPolytron();
+            Debug.Log("[Polytron] double click");
 
-    }
+            PolytronOutline o = GetComponent<PolytronOutline>();
+            o.DisableOutline();
 
-    private void HandleDoubleClick()
-    {
-        // ShootPolytron();
-        Debug.Log("[Polytron] double click");
-
-        PolytronOutline o = GetComponent<PolytronOutline>();
-        o.DisableOutline();
-
-    }
+        }
+    */
 
     /*
 

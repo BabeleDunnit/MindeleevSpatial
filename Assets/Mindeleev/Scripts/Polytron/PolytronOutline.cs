@@ -59,16 +59,12 @@ public class PolytronOutline : MonoBehaviour
     /// </summary>
     public void EnableOutline()
     {
-            Debug.Log("before guard");
         if (isOutlined) return;
 
-            Debug.Log("after guard");
 
         
              var mf = GetComponent<MeshFilter>();
                 var mr = GetComponent<MeshRenderer>();
-
-        Debug.Assert(false);
 
         Debug.Assert(mf != null);
         Debug.Assert(mr != null);
@@ -76,10 +72,7 @@ public class PolytronOutline : MonoBehaviour
 
                 if (mf != null && mr != null && outlineMaterial != null)
         {
-            Debug.Log("creating clone");
             outlineGameObject = new GameObject("Outline");
-
-            // outlineGameObject = Instantiate(this.gameObject, transform.position, transform.rotation, transform);
 
             outlineGameObject.transform.SetParent(transform);
             outlineGameObject.transform.localPosition = Vector3.zero;
@@ -118,15 +111,8 @@ public class PolytronOutline : MonoBehaviour
     public void DisableOutline()
     {
         if (!isOutlined) return;
-
-        /*
-                rend.materials = originalMaterials;
-                */
-
         Destroy(outlineGameObject);
                 isOutlined = false;
-
-
     }
 }
 

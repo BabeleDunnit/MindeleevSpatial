@@ -16,6 +16,7 @@ GameObject:
   - component: {fileID: 8305695020945104654}
   - component: {fileID: 9123422768328477699}
   - component: {fileID: 4698291763764020160}
+  - component: {fileID: -2762113096234932433}
   m_Layer: 0
   m_Name: Polytron
   m_TagString: Untagged
@@ -156,4 +157,20 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: f78acc467308f46e3b0f03db2376d174, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  outlineColor: {r: 1, g: 0.92156863, b: 0.015686275, a: 1}
   outlineMaterial: {fileID: 2100000, guid: 419381cca00494e41a6f6d101ffd636b, type: 2}
+--- !u!114 &-2762113096234932433
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8404194606809146210}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: b87f3230eeac340d8a1f9c828722e4ec, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  button: {fileID: 0}
+  uiScale: 0.002
+  hitAreaSize: {x: 220, y: 220}

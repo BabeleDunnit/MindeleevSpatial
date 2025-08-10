@@ -110,43 +110,45 @@ public class PolytronEngine : MonoBehaviour
 
     private GameObject lastHovered;
 
-    void Update()
-    {
-        // Lancia il ray dal centro dello schermo
-//         Ray ray = spatialCamera.ViewportPointToRay(new Vector3(0.5f, 0.5f));
-        Ray ray = spatialCamera.ScreenPointToRay(Input.mousePosition);
-        RaycastHit hit;
-
-//         if (Physics.Raycast(ray, out hit, rayDistance, interactableLayer))
-        if (Physics.Raycast(ray, out hit))
+    /*
+        void Update()
         {
-            GameObject hitObj = hit.collider.gameObject;
+            // Lancia il ray dal centro dello schermo
+    //         Ray ray = spatialCamera.ViewportPointToRay(new Vector3(0.5f, 0.5f));
+            Ray ray = spatialCamera.ScreenPointToRay(Input.mousePosition);
+            RaycastHit hit;
 
-            // Se l'oggetto colpito è diverso dal precedente
-            if (hitObj != lastHovered)
+    //         if (Physics.Raycast(ray, out hit, rayDistance, interactableLayer))
+            if (Physics.Raycast(ray, out hit))
             {
-                // Disattiva outline del precedente
+                GameObject hitObj = hit.collider.gameObject;
+
+                // Se l'oggetto colpito è diverso dal precedente
+                if (hitObj != lastHovered)
+                {
+                    // Disattiva outline del precedente
+                    if (lastHovered != null)
+                        lastHovered.GetComponent<PolytronOutline>()?.DisableOutline();
+
+                    // Attiva outline sul nuovo
+                    hitObj.GetComponent<PolytronOutline>()?.EnableOutline();
+
+                    // Aggiorna riferimento
+                    lastHovered = hitObj;
+                }
+            }
+            else
+            {
+                // Nessun oggetto colpito → togli outline dal precedente
                 if (lastHovered != null)
+                {
                     lastHovered.GetComponent<PolytronOutline>()?.DisableOutline();
-
-                // Attiva outline sul nuovo
-                hitObj.GetComponent<PolytronOutline>()?.EnableOutline();
-
-                // Aggiorna riferimento
-                lastHovered = hitObj;
+                    lastHovered = null;
+                }
             }
         }
-        else
-        {
-            // Nessun oggetto colpito → togli outline dal precedente
-            if (lastHovered != null)
-            {
-                lastHovered.GetComponent<PolytronOutline>()?.DisableOutline();
-                lastHovered = null;
-            }
-        }
-    }
-//}
+    //}
+    */
 
 
 
