@@ -38,10 +38,10 @@ public class PolytronsFactory : MonoBehaviour
                 Random.Range(-10f, 10f)
             );
 
-            string recipe = "aC";
+            string recipe = "C";
 
             GameObject poly = Instantiate(engine.polytronPrefab, polytronPosition, Quaternion.identity, engine.transform);
-            // poly.transform.localScale = transform.localScale * 0.4f;
+            // poly.transform.localScale = engine.polytronPrefab.transform.localScale * 0.04f;
             var polytronComponent = poly.GetComponent<Polytron>();
             if (polytronComponent != null)
             {
@@ -90,7 +90,7 @@ public class PolytronsFactory : MonoBehaviour
             transform.position.x, transform.position.y, transform.position.z
         );
 
-        string recipe = "aC";
+        string recipe = "taC";
 
         GameObject poly = Instantiate(polytronPrefab, polytronPosition, Quaternion.identity, transform);
         // poly.transform.localScale = transform.localScale * 0.4f;

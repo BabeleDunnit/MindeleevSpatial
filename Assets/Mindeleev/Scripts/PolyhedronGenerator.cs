@@ -75,5 +75,18 @@ public class PolyhedronGenerator : MonoBehaviour
             text.color = Color.black;
         }
     }
+
+    /*
+        void LateUpdate()
+        {
+            if (cam != null)
+            {
+                // billboard “piatto” verso la camera
+                var canvas = button.transform.parent;
+                canvas.rotation = Quaternion.LookRotation(canvas.position - cam.position, Vector3.up);
+            }
+
+      */
+    
 }
 

@@ -25,7 +25,7 @@ public class PolytronEngine : MonoBehaviour
         // Debug.Log("Prefab deregistered: " + instance.Id);
     }
 
-    public IEnumerable<Polytron> GetAllPolytrons() => polytrons;
+    public List<Polytron> GetAllPolytrons() => polytrons;
 
     // Start is called before the first frame update
     void Start()

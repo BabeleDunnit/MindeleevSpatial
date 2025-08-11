@@ -28,28 +28,37 @@ public class Polytron : PolyhedronGenerator, IPointerEnterHandler, IPointerExitH
 
     public Rigidbody RigidBody { get; set; }
 
-
     public void OnPointerEnter(PointerEventData eventData)
     {
         Debug.Log("Pointer over object");
-            PolytronOutline o = GetComponent<PolytronOutline>();
+        PolytronOutline o = GetComponent<PolytronOutline>();
         o.outlineColor = Color.yellow;
-            o.EnableOutline();
+        o.EnableOutline();
+               
+
+        WorldSpacePanel wsp = GameObject.Find("InspectorCanvas").GetComponent<WorldSpacePanel>();
+        wsp.titleText.text = "enter " + name;
+ 
     }
 
     public void OnPointerExit(PointerEventData eventData)
     {
         Debug.Log("Pointer left object");
-            PolytronOutline o = GetComponent<PolytronOutline>();
-            o.DisableOutline();
+        PolytronOutline o = GetComponent<PolytronOutline>();
+        o.DisableOutline();
+
+        WorldSpacePanel wsp = GameObject.Find("InspectorCanvas").GetComponent<WorldSpacePanel>();
+        wsp.titleText.text = "exit " + name;
+
+
     }
 
     public void OnPointerClick(PointerEventData eventData)
     {
         PolytronOutline o = GetComponent<PolytronOutline>();
         o.outlineColor = Color.green;
-            o.DisableOutline();
-            o.EnableOutline();
+        o.DisableOutline();
+        o.EnableOutline();
         Debug.Log("[Polytron.OnPointerClick()] Object clicked!");
     }
 
@@ -64,6 +73,11 @@ public class Polytron : PolyhedronGenerator, IPointerEnterHandler, IPointerExitH
         }
     }
 
+    void Awake()
+    {
+        //PolytronOutline o = GetComponent<PolytronOutline>();
+        //o.EnableOutline();
+    }
 
     /*
         void OnMouseDown()
@@ -147,9 +161,29 @@ public class Polytron : PolyhedronGenerator, IPointerEnterHandler, IPointerExitH
 
     */
 
+    int frameCount = 0;
+    bool outlined = false;
     // Update is called once per frame
     void Update()
     {
+        /*
+        if (frameCount++ % 100 == 0)
+        {
+            outlined = !outlined;
+            if (outlined)
+            {
+                PolytronOutline o = GetComponent<PolytronOutline>();
+                o.EnableOutline();
+
+            }
+            else
+            {
+                PolytronOutline o = GetComponent<PolytronOutline>();
+                o.DisableOutline();
+
+            }
+        }
+        */
 
     }
 

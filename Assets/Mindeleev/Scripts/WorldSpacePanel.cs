@@ -48,13 +48,16 @@ public class WorldSpacePanel : MonoBehaviour
             titleText = GetComponentInChildren<TextMeshProUGUI>();
         }
 
+
+
         // detect platform
         platform = SpatialBridge.actorService.localActor.platform;
         switch (platform)
         {
             case SpatialPlatform.MetaQuest:
                 Debug.Log("Running on HMD");
-                offset = new Vector3(0.6f, 0, 0.5f);
+                // should keep it at z = 0.5 and scale 
+                offset = new Vector3(0.6f, 0, 2.5f);
                 break;
             case SpatialPlatform.Mobile:
                 Debug.Log("Running on Mobile");
@@ -74,7 +77,29 @@ public class WorldSpacePanel : MonoBehaviour
         Debug.Log("Button clicked!");
         // Implement your button click logic here
 
-        titleText.text = "Button Clicked!";
+        // titleText.text = "Button Clicked!";
+
+        // find PolytronEngine02 and call EnableOutline() on all children polytrons
+        PolytronEngine polytronEngine = GameObject.Find("PolytronEngine02").GetComponent<PolytronEngine>();
+        foreach (var polytron in polytronEngine.GetAllPolytrons())
+        {
+            var polytronOutline = polytron.GetComponentInChildren<PolytronOutline>();
+            if (polytronOutline != null)
+            {
+                polytronOutline.EnableOutline();
+            }
+        }
+
+        Polytron p = polytronEngine.GetAllPolytrons()[0];
+        Canvas canvas = p.GetComponentInChildren<Canvas>();
+
+        string s = $"polytron name: {p.name}\n"
+            + $"canvas name: {canvas.name}\n";
+
+
+
+        titleText.text = s;
+
 
     }
 
