@@ -8,8 +8,10 @@ public class SpatialClickable3D : MonoBehaviour
 {
     [Header("UI hit area (auto se nullo)")]
     public Button button;
-    public float uiScale = 20.2f;
-    public Vector2 hitAreaSize = new Vector2(18000, 18000);
+    // private float uiScale = 1.0f;
+
+    // canvas scale is 1 so these are meters
+    private Vector2 hitAreaSize = new Vector2(2.2f, 2.2f);
 
     Transform cam;
 
@@ -73,7 +75,10 @@ public class SpatialClickable3D : MonoBehaviour
             canvas.transform.SetParent(transform, false);
             canvas.transform.localPosition = Vector3.zero;
             canvas.transform.localRotation = Quaternion.identity;
-            canvas.transform.localScale = Vector3.one * uiScale;
+
+            canvas.transform.localScale = Vector3.one /* * uiScale */;
+            // canvas.transform.localScale = Vector3.one * uiScale;
+            // canvas.transform.localScale = Vector3.one * 1.0f;
 
             // canvas.sortingOrder = 100; // Ensure it's on top
 
@@ -114,12 +119,14 @@ public class SpatialClickable3D : MonoBehaviour
             // Billboard “piatto” verso la camera
             var canvas = button.transform.parent;
             canvas.rotation = Quaternion.LookRotation(canvas.position - cam.position, Vector3.up);
-
-            // Move canvas slightly toward the camera to avoid being inside the 3D object
-            float offset = 1.8f; // 1 cm in front, adjust as needed
-            Vector3 dirToCam = (canvas.position - cam.position).normalized;
-            // Set position relative to the object, not accumulating
-            canvas.position = transform.position - dirToCam * offset;
+            
+            
+                        // Move canvas slightly toward the camera to avoid being inside the 3D object
+            float offset = 1f; 
+                        Vector3 dirToCam = (canvas.position - cam.position).normalized;
+                        // Set position relative to the object, not accumulating
+                        canvas.position = transform.position - dirToCam * offset;
+            
         }
     }
 

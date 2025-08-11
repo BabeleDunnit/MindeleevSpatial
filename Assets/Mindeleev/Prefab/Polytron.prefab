@@ -172,5 +172,3 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   button: {fileID: 0}
-  uiScale: 0.002
-  hitAreaSize: {x: 220, y: 220}

@@ -71,6 +71,8 @@ public class Polytron : PolyhedronGenerator, IPointerEnterHandler, IPointerExitH
         {
             throw new NullReferenceException("Polytron must have a RigidBody component, please check");
         }
+
+        gameObject.layer = LayerMask.NameToLayer("Ignore Raycast");
     }
 
     void Awake()
