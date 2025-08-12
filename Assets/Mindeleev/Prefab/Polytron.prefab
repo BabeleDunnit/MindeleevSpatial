@@ -17,7 +17,7 @@ GameObject:
   - component: {fileID: 9123422768328477699}
   - component: {fileID: 4698291763764020160}
   - component: {fileID: -2762113096234932433}
-  m_Layer: 0
+  m_Layer: 13
   m_Name: Polytron
   m_TagString: Untagged
   m_Icon: {fileID: 0}

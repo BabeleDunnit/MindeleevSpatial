@@ -8,50 +8,11 @@ public class SpatialClickable3D : MonoBehaviour
 {
     [Header("UI hit area (auto se nullo)")]
     public Button button;
-    // private float uiScale = 1.0f;
 
     // canvas scale is 1 so these are meters
-    private Vector2 hitAreaSize = new Vector2(2.2f, 2.2f);
+    private Vector2 hitAreaSize = new Vector2(0.8f, 0.8f);
 
     Transform cam;
-
-    /*
-    // Attach this script to your Polytron prefab
-    void Start()
-    {
-        // Create a world space canvas if not already present
-        if (GetComponentInChildren<Canvas>() == null)
-        {
-            GameObject canvasGO = new GameObject("PolytronCanvas");
-            canvasGO.transform.SetParent(transform, false);
-            Canvas canvas = canvasGO.AddComponent<Canvas>();
-            canvas.renderMode = RenderMode.WorldSpace;
-            canvas.sortingOrder = 100; // Ensure it's on top
-            canvasGO.AddComponent<GraphicRaycaster>();
-
-            RectTransform rt = canvas.GetComponent<RectTransform>();
-            rt.sizeDelta = new Vector2(1, 1); // Adjust as needed
-            rt.localPosition = Vector3.zero;
-            rt.localRotation = Quaternion.identity;
-
-            // Add a transparent button to catch events
-            GameObject btnGO = new GameObject("PolytronButton");
-            btnGO.transform.SetParent(canvasGO.transform, false);
-            var img = btnGO.AddComponent<UnityEngine.UI.Image>();
-            img.color = new Color(1, 1, 1, 0.01f); // Almost invisible
-            var btn = btnGO.AddComponent<UnityEngine.UI.Button>();
-            btn.transition = UnityEngine.UI.Selectable.Transition.None;
-            RectTransform btnRT = btnGO.GetComponent<RectTransform>();
-            btnRT.sizeDelta = rt.sizeDelta;
-
-            // Forward events to Polytron
-            btn.onClick.AddListener(() => OnClicked());
-            // For hover, use EventTrigger or custom script
-        }
-    }
-*/
-
-
 
     void Awake()
     {
@@ -59,14 +20,8 @@ public class SpatialClickable3D : MonoBehaviour
 
         if (button == null)
         {
-
-            gameObject.layer = LayerMask.NameToLayer("UI");
-            Debug.Log($"gameObject.layer: {gameObject.layer}");
-
             // Canvas World Space
-            var canvasGO = new GameObject("ClickCanvas", typeof(Canvas)
-            // ,typeof(GraphicRaycaster)
-            );
+            var canvasGO = new GameObject("ClickCanvas", typeof(Canvas));
 
             canvasGO.layer = LayerMask.NameToLayer("UI");
 
@@ -76,18 +31,7 @@ public class SpatialClickable3D : MonoBehaviour
             canvas.transform.localPosition = Vector3.zero;
             canvas.transform.localRotation = Quaternion.identity;
 
-            canvas.transform.localScale = Vector3.one /* * uiScale */;
-            // canvas.transform.localScale = Vector3.one * uiScale;
-            // canvas.transform.localScale = Vector3.one * 1.0f;
-
-            // canvas.sortingOrder = 100; // Ensure it's on top
-
-            //gr.ignoreReversedGraphics = false;
-            //gr.blockingObjects = GraphicRaycaster.BlockingObjects.All;
-            //gr.blockingMask = 65535;
-            // PhysicsRaycaster pr = canvasGO.AddComponent<PhysicsRaycaster>();
-
-
+            canvas.transform.localScale = Vector3.one;
 
             // Hit area (Image + Button)
             var imgGO = new GameObject("HitArea", typeof(RectTransform), typeof(Image), typeof(Button));
@@ -100,14 +44,13 @@ public class SpatialClickable3D : MonoBehaviour
 
             var img = imgGO.GetComponent<Image>();
             // img.color = new Color(1, 1, 1, 0.001f); // invisibile ma cliccabile
-            img.color = new Color(1, 1, 0, 0.3f); // semi-transparent red for debugging
+            img.color = new Color(1, 1, 0, 0.3f); // semi-transparent for debugging
             img.raycastTarget = true;
 
             button = imgGO.GetComponent<Button>();
             button.onClick.AddListener(OnClicked);
 
             GraphicRaycaster gr = canvasGO.AddComponent<GraphicRaycaster>();
-
         }
     }
 
@@ -120,19 +63,18 @@ public class SpatialClickable3D : MonoBehaviour
             var canvas = button.transform.parent;
             canvas.rotation = Quaternion.LookRotation(canvas.position - cam.position, Vector3.up);
             
-            
+/*            
                         // Move canvas slightly toward the camera to avoid being inside the 3D object
             float offset = 1f; 
                         Vector3 dirToCam = (canvas.position - cam.position).normalized;
                         // Set position relative to the object, not accumulating
                         canvas.position = transform.position - dirToCam * offset;
-            
+ */           
         }
     }
 
     void OnClicked()
     {
-        // TODO: la tua logica di click
         Debug.Log("3D object clicked via Spatial UI ray!");
         WorldSpacePanel wsp = GameObject.Find("InspectorCanvas").GetComponent<WorldSpacePanel>();
 

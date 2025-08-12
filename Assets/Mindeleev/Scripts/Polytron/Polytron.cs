@@ -11,9 +11,6 @@ using SpatialSys.UnitySDK;
 public class Polytron : PolyhedronGenerator, IPointerEnterHandler, IPointerExitHandler, IPointerClickHandler
 {
 
-    // private float clickDelay = 0.3f;
-    // private bool singleClickPending = false;
-
     private float lastClickTime = 0f;
     private const float doubleClickThreshold = 0.3f;
 
@@ -34,11 +31,9 @@ public class Polytron : PolyhedronGenerator, IPointerEnterHandler, IPointerExitH
         PolytronOutline o = GetComponent<PolytronOutline>();
         o.outlineColor = Color.yellow;
         o.EnableOutline();
-               
 
         WorldSpacePanel wsp = GameObject.Find("InspectorCanvas").GetComponent<WorldSpacePanel>();
         wsp.titleText.text = "enter " + name;
- 
     }
 
     public void OnPointerExit(PointerEventData eventData)
@@ -49,8 +44,6 @@ public class Polytron : PolyhedronGenerator, IPointerEnterHandler, IPointerExitH
 
         WorldSpacePanel wsp = GameObject.Find("InspectorCanvas").GetComponent<WorldSpacePanel>();
         wsp.titleText.text = "exit " + name;
-
-
     }
 
     public void OnPointerClick(PointerEventData eventData)
@@ -71,122 +64,15 @@ public class Polytron : PolyhedronGenerator, IPointerEnterHandler, IPointerExitH
         {
             throw new NullReferenceException("Polytron must have a RigidBody component, please check");
         }
-
-        gameObject.layer = LayerMask.NameToLayer("Ignore Raycast");
     }
 
     void Awake()
     {
-        //PolytronOutline o = GetComponent<PolytronOutline>();
-        //o.EnableOutline();
     }
 
-    /*
-        void OnMouseDown()
-        {
-            float timeSinceLastClick = Time.time - lastClickTime;
-            lastClickTime = Time.time;
-
-            if (timeSinceLastClick <= doubleClickThreshold)
-            {
-                HandleDoubleClick();
-            }
-            else
-            {
-                HandleClick();
-            }
-        }
-
-        private void HandleClick()
-        {
-            // ShootPolytron();
-            Debug.Log("[Polytron] click");
-
-            PolytronOutline o = GetComponent<PolytronOutline>();
-            o.EnableOutline();
-            // Invoke(nameof(DisableOutlineLater), 5f);
-
-        }
-
-        private void DisableOutlineLater()
-        {
-
-            Debug.Log("[Polytron] call DisableOutline()");
-            PolytronOutline o = GetComponent<PolytronOutline>();
-            o.DisableOutline();
-
-        }
-
-        private void HandleDoubleClick()
-        {
-            // ShootPolytron();
-            Debug.Log("[Polytron] double click");
-
-            PolytronOutline o = GetComponent<PolytronOutline>();
-            o.DisableOutline();
-
-        }
-    */
-
-    /*
-
-     public void OnPointerClick(PointerEventData eventData)
-        {
-            if (eventData.clickCount == 2)
-            {
-                // Double click
-                singleClickPending = false;
-                CancelInvoke(nameof(SingleClick));
-                DoubleClick();
-            }
-            else if (eventData.clickCount == 1)
-            {
-                // Start waiting for second click
-                singleClickPending = true;
-                Invoke(nameof(SingleClick), clickDelay);
-            }
-        }
-
-        private void SingleClick()
-        {
-            if (singleClickPending)
-            {
-                Debug.Log("Single Click on UI Element!");
-                singleClickPending = false;
-            }
-        }
-
-        private void DoubleClick()
-        {
-            Debug.Log("Double Click on UI Element!");
-        }
-
-    */
-
-    int frameCount = 0;
-    bool outlined = false;
     // Update is called once per frame
     void Update()
     {
-        /*
-        if (frameCount++ % 100 == 0)
-        {
-            outlined = !outlined;
-            if (outlined)
-            {
-                PolytronOutline o = GetComponent<PolytronOutline>();
-                o.EnableOutline();
-
-            }
-            else
-            {
-                PolytronOutline o = GetComponent<PolytronOutline>();
-                o.DisableOutline();
-
-            }
-        }
-        */
-
     }
 
     /*
@@ -205,6 +91,4 @@ public class Polytron : PolyhedronGenerator, IPointerEnterHandler, IPointerExitH
     {
         Engine.Unregister(this);
     }
-
-
 }
