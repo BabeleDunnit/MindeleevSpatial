@@ -46,7 +46,7 @@ public class PolytronEngine : MonoBehaviour
 
         Debug.Log($"PolytronEngine::Start() exiting");
 
-        spatialCamera = FindSpatialCamera();
+        spatialCamera = CrossPlatformUtils.FindCamera();
 
     }
 
@@ -64,45 +64,47 @@ public class PolytronEngine : MonoBehaviour
         }
     }
 
-    private Camera FindSpatialCamera()
-    {
-        var cam = GameObject.FindGameObjectWithTag("MainCamera")?.GetComponent<Camera>();
-        if (cam != null) return cam;
-        return null;
-    }
+    /*
+        private Camera FindSpatialCamera()
+        {
+            var cam = GameObject.FindGameObjectWithTag("MainCamera")?.GetComponent<Camera>();
+            if (cam != null) return cam;
+            return null;
+        }
+    */
 
 /*
-    private GameObject outlinedObject;
-    void Update()
-    {
-        // if (Input.GetMouseButtonDown(0))
-        Ray ray = spatialCamera.ScreenPointToRay(Input.mousePosition);
-        RaycastHit hit;
-
-        if (Physics.Raycast(ray, out hit))
+        private GameObject outlinedObject;
+        void Update()
         {
-            // Debug.Log("[PolytronEngine.Update()]Hai cliccato su " + hit.collider.gameObject.name);
-            PolytronOutline outline = hit.collider.gameObject.GetComponent<PolytronOutline>();
-            if (outline != null)
+            // if (Input.GetMouseButtonDown(0))
+            Ray ray = spatialCamera.ScreenPointToRay(Input.mousePosition);
+            RaycastHit hit;
+
+            if (Physics.Raycast(ray, out hit))
             {
-                outline.EnableOutline();
-                outlinedObject = hit.collider.gameObject;
+                // Debug.Log("[PolytronEngine.Update()]Hai cliccato su " + hit.collider.gameObject.name);
+                PolytronOutline outline = hit.collider.gameObject.GetComponent<PolytronOutline>();
+                if (outline != null)
+                {
+                    outline.EnableOutline();
+                    outlinedObject = hit.collider.gameObject;
+                }
             }
+
+            if (hit.)
+            {
+
+            }
+
         }
-
-        if (hit.)
-        {
-
-        }
-
-    }
-*/
+    */
 
 
-//using UnityEngine;
+    //using UnityEngine;
 
-//public class RaycastHoverOutline : MonoBehaviour
-//{
+    //public class RaycastHoverOutline : MonoBehaviour
+    //{
     /// <summary>
     /// public float rayDistance = 10f;
     /// </summary>
