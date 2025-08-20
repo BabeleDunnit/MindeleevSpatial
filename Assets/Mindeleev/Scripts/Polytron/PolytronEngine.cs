@@ -8,6 +8,9 @@ public class PolytronEngine : MonoBehaviour
     public GameObject polytronPrefab; // Assign the Polytron prefab in the inspector
     public bool callFactory = false;
 
+    // [SerializeReference]
+    public PolytronEngineSpring01Physics enginePhysics;
+
     private Camera spatialCamera;
 
     private List<Polytron> polytrons = new List<Polytron>();
@@ -16,13 +19,13 @@ public class PolytronEngine : MonoBehaviour
     {
         instance.Id = polytrons.Count;
         polytrons.Add(instance);
-        // Debug.Log("Polytron registered: " + instance.Id);
+        Debug.Log("Polytron registered: " + instance.Id);
     }
 
     public void Unregister(Polytron instance)
     {
         polytrons.Remove(instance);
-        // Debug.Log("Prefab deregistered: " + instance.Id);
+        Debug.Log("Prefab deregistered: " + instance.Id);
     }
 
     public List<Polytron> GetAllPolytrons() => polytrons;
@@ -48,19 +51,26 @@ public class PolytronEngine : MonoBehaviour
 
         spatialCamera = CrossPlatformUtils.FindCamera();
 
+        enginePhysics = gameObject.AddComponent<PolytronEngineSpring01Physics>();
+
     }
 
     // Update is called once per frame
     void FixedUpdate()
     {
+
+        enginePhysics.Simulate(GetAllPolytrons());
+
         foreach (Polytron p in GetAllPolytrons())
         {
             // Debug.Log("Call ComputeForce for " + p.Id);
+            /*
             PolytronPhysics b = p.Behaviour;
             if (b != null)
             {
                 b.ComputeForce();
             }
+            */
         }
     }
 

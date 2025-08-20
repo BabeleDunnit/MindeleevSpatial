@@ -25,6 +25,7 @@ public class PolytronSpringRecipeBasedEquilibriumPhysics : PolytronPhysics
 
     public override void ComputeForce()
     {
+        /*
         var allPolytrons = Owner.Engine.GetAllPolytrons();
         forceAccumulator = Vector3.zero;
         torqueAccumulator = Vector3.zero;
@@ -81,6 +82,8 @@ public class PolytronSpringRecipeBasedEquilibriumPhysics : PolytronPhysics
 
         // Debug.DrawLine(me.transform.position, contactPoint, Color.red, 1f);
         // Debug.Log("Torque: " + torqueAccumulator);
+        */
+        
     }
 
 

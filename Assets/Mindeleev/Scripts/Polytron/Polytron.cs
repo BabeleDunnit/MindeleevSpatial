@@ -6,8 +6,8 @@ using UnityEngine.EventSystems;
 using SpatialSys.UnitySDK;
 
 [RequireComponent(typeof(Collider))]
+[RequireComponent(typeof(Rigidbody))]
 public class Polytron : PolyhedronGenerator,
-// IPointerEnterHandler, IPointerExitHandler, IPointerClickHandler
   IPointerEnterHandler,
     IPointerExitHandler,
     IPointerDownHandler,
@@ -26,7 +26,8 @@ public class Polytron : PolyhedronGenerator,
 
     // this is a strategy to encapsulate data and type of polytron behaviour (spring/mass, particleLife, etc)
     // the PolytronEngine will switch on this to execute the relative algorithm
-    public PolytronPhysics Behaviour { get; set; }
+    //     public PolytronPhysics Physics { get; set; }
+    // public PolytronBehaviour Behaviour { get; set; }
 
     public Rigidbody RigidBody { get; set; }
 
@@ -67,7 +68,7 @@ public class Polytron : PolyhedronGenerator,
         o.DisableOutline();
         o.EnableOutline();
 
-                EndDrag();
+        EndDrag();
 
     }
 
@@ -80,8 +81,6 @@ public class Polytron : PolyhedronGenerator,
     {
         Debug.Log($"[PointerEvent] Scroll on {gameObject.name}, delta: {eventData.scrollDelta}");
     }
-
-
 
     public void OnPointerEnter(PointerEventData eventData)
     {
@@ -156,14 +155,12 @@ public class Polytron : PolyhedronGenerator,
 
     }
 
-
-
     void Awake()
     {
     }
 
     // Update is called once per frame    
-        void Update()
+    void Update()
     {
         if (isDragging)
         {

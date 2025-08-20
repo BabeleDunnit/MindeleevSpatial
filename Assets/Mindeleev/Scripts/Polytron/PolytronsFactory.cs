@@ -33,22 +33,22 @@ public class PolytronsFactory : MonoBehaviour
             //            polytron.Behaviour.Initialize();
 
             Vector3 polytronPosition = new Vector3(
-                Random.Range(-10f, 10f),
-                Random.Range(-10f, 10f),
-                Random.Range(-10f, 10f)
+                Random.Range(-5f, 5f),
+                Random.Range(-5f, 5f),
+                Random.Range(-5f, 5f)
             );
 
-            string recipe = "C";
+            string recipe = "tdC";
 
-            GameObject poly = Instantiate(engine.polytronPrefab, polytronPosition, Quaternion.identity, engine.transform);
-            // poly.transform.localScale = engine.polytronPrefab.transform.localScale * 0.04f;
+            GameObject poly = Instantiate(engine.polytronPrefab, engine.gameObject.transform.position + polytronPosition, Quaternion.identity, engine.transform);
+            poly.transform.localScale = engine.polytronPrefab.transform.localScale * 0.5f;
             var polytronComponent = poly.GetComponent<Polytron>();
             if (polytronComponent != null)
             {
                 polytronComponent.Engine = engine;
                 engine.Register(polytronComponent);
                 polytronComponent.recipeString = recipe;
-                polytronComponent.Behaviour = new PolytronSpring01Physics(polytronComponent);
+                // polytronComponent.Behaviour = new PolytronSpring01Physics(polytronComponent);
                 // Debug.Log($"polytron {polytronComponent.Id} is of type {polytronComponent.Behaviour}");
 
             }
