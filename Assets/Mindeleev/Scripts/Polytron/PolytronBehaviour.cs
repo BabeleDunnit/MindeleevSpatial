@@ -4,19 +4,18 @@ using UnityEngine;
 
 public abstract class PolytronBehaviour
 {
-    /*
-    // Start is called before the first frame update
-    void Start()
-    {
-        
-    }
-
-    // Update is called once per frame
-    void Update()
-    {
-        
-    }
-    */
 
     public abstract void Simulate(); 
+}
+
+
+public class PolytronPhysicalBehaviour : PolytronBehaviour
+{
+
+    public PolytronPhysics Physics { get; set; }
+
+    public override void Simulate()
+    {
+
+    }
 }

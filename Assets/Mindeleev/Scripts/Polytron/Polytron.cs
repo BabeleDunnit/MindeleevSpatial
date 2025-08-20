@@ -5,30 +5,87 @@ using System;
 using UnityEngine.EventSystems;
 using SpatialSys.UnitySDK;
 
-
-
 [RequireComponent(typeof(Collider))]
-public class Polytron : PolyhedronGenerator, IPointerEnterHandler, IPointerExitHandler, IPointerClickHandler
+[RequireComponent(typeof(Rigidbody))]
+public class Polytron : PolyhedronGenerator,
+  IPointerEnterHandler,
+    IPointerExitHandler,
+    IPointerDownHandler,
+    IPointerUpHandler,
+    IPointerClickHandler,
+    IBeginDragHandler,
+    IDragHandler,
+    IEndDragHandler,
+    IDropHandler,
+    IScrollHandler
 {
-
-    private float lastClickTime = 0f;
-    private const float doubleClickThreshold = 0.3f;
 
     public PolytronEngine Engine { get; set; }
 
     public int Id { get; set; }
-    // public PolytronEngine Engine { get; set; }
 
     // this is a strategy to encapsulate data and type of polytron behaviour (spring/mass, particleLife, etc)
     // the PolytronEngine will switch on this to execute the relative algorithm
-    public PolytronPhysics Behaviour { get; set; }
+    //     public PolytronPhysics Physics { get; set; }
+    // public PolytronBehaviour Behaviour { get; set; }
 
     public Rigidbody RigidBody { get; set; }
+
+
+    public void OnPointerDown(PointerEventData eventData)
+    {
+        Debug.Log($"[PointerEvent] Down on {gameObject.name}");
+    }
+
+    public void OnPointerUp(PointerEventData eventData)
+    {
+        Debug.Log($"[PointerEvent] Up on {gameObject.name}");
+    }
+
+    public void OnBeginDrag(PointerEventData eventData)
+    {
+        Debug.Log($"[PointerEvent] BeginDrag on {gameObject.name}");
+        Outline o = GetComponent<Outline>();
+        o.outlineColor = Color.blue;
+        o.outlineWidth = 0.5f;
+        o.DisableOutline();
+        o.EnableOutline();
+
+        BeginDrag();
+
+    }
+
+    public void OnDrag(PointerEventData eventData)
+    {
+        Debug.Log($"[PointerEvent] Drag on {gameObject.name}");
+    }
+
+    public void OnEndDrag(PointerEventData eventData)
+    {
+        Debug.Log($"[PointerEvent] EndDrag on {gameObject.name}");
+        Outline o = GetComponent<Outline>();
+        o.outlineColor = Color.magenta;
+        o.DisableOutline();
+        o.EnableOutline();
+
+        EndDrag();
+
+    }
+
+    public void OnDrop(PointerEventData eventData)
+    {
+        Debug.Log($"[PointerEvent] Drop on {gameObject.name}");
+    }
+
+    public void OnScroll(PointerEventData eventData)
+    {
+        Debug.Log($"[PointerEvent] Scroll on {gameObject.name}, delta: {eventData.scrollDelta}");
+    }
 
     public void OnPointerEnter(PointerEventData eventData)
     {
         Debug.Log("Pointer over object");
-        PolytronOutline o = GetComponent<PolytronOutline>();
+        Outline o = GetComponent<Outline>();
         o.outlineColor = Color.yellow;
         o.EnableOutline();
 
@@ -39,7 +96,7 @@ public class Polytron : PolyhedronGenerator, IPointerEnterHandler, IPointerExitH
     public void OnPointerExit(PointerEventData eventData)
     {
         Debug.Log("Pointer left object");
-        PolytronOutline o = GetComponent<PolytronOutline>();
+        Outline o = GetComponent<Outline>();
         o.DisableOutline();
 
         WorldSpacePanel wsp = GameObject.Find("InspectorCanvas").GetComponent<WorldSpacePanel>();
@@ -48,12 +105,41 @@ public class Polytron : PolyhedronGenerator, IPointerEnterHandler, IPointerExitH
 
     public void OnPointerClick(PointerEventData eventData)
     {
-        PolytronOutline o = GetComponent<PolytronOutline>();
+        Outline o = GetComponent<Outline>();
         o.outlineColor = Color.green;
         o.DisableOutline();
         o.EnableOutline();
         Debug.Log("[Polytron.OnPointerClick()] Object clicked!");
     }
+
+    private bool isDragging = false;
+    private Vector3 offset;
+    private Camera mainCamera;
+    private float dragDepth;
+
+
+    private void BeginDrag()
+    {
+        if (!isDragging)
+        {
+            isDragging = true;
+            dragDepth = mainCamera.WorldToScreenPoint(transform.position).z;
+            Vector3 mouseWorld = mainCamera.ScreenToWorldPoint(new Vector3(Input.mousePosition.x, Input.mousePosition.y, dragDepth));
+            offset = transform.position - mouseWorld;
+
+            // avoid camera rotation when dragging
+            CrossPlatformUtils.DisableCameraRotation(true);
+        }
+    }
+
+
+    private void EndDrag()
+    {
+        isDragging = false;
+        CrossPlatformUtils.DisableCameraRotation(false);
+    }
+
+
 
     // Start is called before the first frame update
     public override void Start()
@@ -64,16 +150,25 @@ public class Polytron : PolyhedronGenerator, IPointerEnterHandler, IPointerExitH
         {
             throw new NullReferenceException("Polytron must have a RigidBody component, please check");
         }
+
+        mainCamera = CrossPlatformUtils.FindCamera();
+
     }
 
     void Awake()
     {
     }
 
-    // Update is called once per frame
+    // Update is called once per frame    
     void Update()
     {
+        if (isDragging)
+        {
+            Vector3 mouseWorld = mainCamera.ScreenToWorldPoint(new Vector3(Input.mousePosition.x, Input.mousePosition.y, dragDepth));
+            transform.position = mouseWorld + offset;
+        }
     }
+
 
     /*
         void OnEnable()
@@ -82,13 +177,17 @@ public class Polytron : PolyhedronGenerator, IPointerEnterHandler, IPointerExitH
         }
     */
 
-    void OnDisable()
-    {
-        Engine.Unregister(this);
-    }
+    /*
+        void OnDisable()
+        {
+            Engine.Unregister(this);
+        }
 
-    void OnDestroy()
-    {
-        Engine.Unregister(this);
-    }
+        void OnDestroy()
+        {
+            Engine.Unregister(this);
+        }
+
+        */
+
 }

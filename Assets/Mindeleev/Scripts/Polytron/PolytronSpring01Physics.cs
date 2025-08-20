@@ -23,6 +23,7 @@ public class PolytronSpring01Physics : PolytronPhysics
 
     public override void ComputeForce()
     {
+        /*
         var allPolytrons = Owner.Engine.GetAllPolytrons();
         Vector3 forceAccumulator = Vector3.zero;
         Vector3 torqueAccumulator = Vector3.zero;
@@ -32,7 +33,7 @@ public class PolytronSpring01Physics : PolytronPhysics
             if (p.Behaviour == null) continue;
             if (p.Behaviour.Owner == Owner) continue;
             if (p.Behaviour.Type != Type) continue;
-
+            
             GameObject me = Owner.gameObject;
             GameObject other = p.Behaviour.Owner.gameObject;
 
@@ -85,6 +86,8 @@ public class PolytronSpring01Physics : PolytronPhysics
 
         // Debug.DrawLine(me.transform.position, contactPoint, Color.red, 1f);
         // Debug.Log("Torque: " + torqueAccumulator);
+        */
+        
     }
 
 

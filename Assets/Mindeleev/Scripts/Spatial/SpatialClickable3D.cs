@@ -16,7 +16,7 @@ public class SpatialClickable3D : MonoBehaviour
 
     void Awake()
     {
-        cam = FindSpatialCamera().transform;
+        cam = CrossPlatformUtils.FindCamera().transform;
 
         if (button == null)
         {
@@ -62,14 +62,14 @@ public class SpatialClickable3D : MonoBehaviour
             // Billboard “piatto” verso la camera
             var canvas = button.transform.parent;
             canvas.rotation = Quaternion.LookRotation(canvas.position - cam.position, Vector3.up);
-            
-/*            
-                        // Move canvas slightly toward the camera to avoid being inside the 3D object
-            float offset = 1f; 
-                        Vector3 dirToCam = (canvas.position - cam.position).normalized;
-                        // Set position relative to the object, not accumulating
-                        canvas.position = transform.position - dirToCam * offset;
- */           
+
+            /*            
+                                    // Move canvas slightly toward the camera to avoid being inside the 3D object
+                        float offset = 1f; 
+                                    Vector3 dirToCam = (canvas.position - cam.position).normalized;
+                                    // Set position relative to the object, not accumulating
+                                    canvas.position = transform.position - dirToCam * offset;
+             */
         }
     }
 
@@ -84,11 +84,13 @@ public class SpatialClickable3D : MonoBehaviour
         ch.OnPointerClick(null);
     }
 
-    private Camera FindSpatialCamera()
-    {
-        var cam = GameObject.FindGameObjectWithTag("MainCamera")?.GetComponent<Camera>();
-        if (cam != null) return cam;
-        return null;
-    }
+    /*
+        private Camera FindSpatialCamera()
+        {
+            var cam = GameObject.FindGameObjectWithTag("MainCamera")?.GetComponent<Camera>();
+            if (cam != null) return cam;
+            return null;
+        }
+    */
 
 }

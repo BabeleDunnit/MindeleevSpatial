@@ -83,7 +83,9 @@ public class OrbitalGeneticInstantiator : MonoBehaviour
                     polytronComponent.Engine = polytronEngine;
                     polytronEngine.Register(polytronComponent);
                     polytronComponent.recipeString = permutedRecipe;
-                    polytronComponent.Behaviour = new PolytronSpringRecipeBasedEquilibriumPhysics(polytronComponent);
+                    PolytronPhysicalBehaviour ppb = new PolytronPhysicalBehaviour();
+                    ppb.Physics = new PolytronSpringRecipeBasedEquilibriumPhysics(polytronComponent);
+                    // polytronComponent.Behaviour = ppb;
                     // Debug.Log($"polytron {polytronComponent.Id} is of type {polytronComponent.Behaviour}");
 
                 }

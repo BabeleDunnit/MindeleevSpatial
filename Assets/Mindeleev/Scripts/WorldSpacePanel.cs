@@ -83,7 +83,7 @@ public class WorldSpacePanel : MonoBehaviour
         PolytronEngine polytronEngine = GameObject.Find("PolytronEngine02").GetComponent<PolytronEngine>();
         foreach (var polytron in polytronEngine.GetAllPolytrons())
         {
-            var polytronOutline = polytron.GetComponentInChildren<PolytronOutline>();
+            var polytronOutline = polytron.GetComponentInChildren<Outline>();
             if (polytronOutline != null)
             {
                 polytronOutline.EnableOutline();
