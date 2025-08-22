@@ -6,24 +6,22 @@ using TMPro;
 
 public class PolytronsFactory : MonoBehaviour
 {
+    public static PolytronsFactory Instance { get; private set; }
 
     public GameObject polytronPrefab; // Assign the Polytron prefab in the inspector
 
-    /*
-    // Start is called before the first frame update
-    void Start()
+    private void Awake()
     {
-        
+        if (Instance != null && Instance != this)
+        {
+            Debug.LogWarning("Multiple PolytronsFactory instances detected. Destroying duplicate.");
+            Destroy(this.gameObject);
+            return;
+        }
+        Instance = this;
     }
 
-    // Update is called once per frame
-    void Update()
-    {
-        
-    }
-    */
-
-    public static void Create(PolytronEngine engine, int count, string kind)
+    public void Create(PolytronEngine engine, int count, string kind)
     {
         for (int i = 0; i < count; i++)
         {

@@ -3,8 +3,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using SpatialSys.UnitySDK;
 
-public class PolytronEngineBehaviour : ScriptableObject
+public abstract class PolytronEngineBehaviour : ScriptableObject
 {
-    public virtual void Simulate(List<Polytron> lp, GameObject myEngine) {}
-
+    public abstract void Simulate(List<Polytron> lp, GameObject myEngine);
 }

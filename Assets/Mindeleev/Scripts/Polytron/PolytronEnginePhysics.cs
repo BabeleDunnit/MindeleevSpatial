@@ -5,7 +5,6 @@ using SpatialSys.UnitySDK;
 
 public abstract class PolytronEnginePhysics : PolytronEngineBehaviour
 {
-    // public abstract void Simulate(List<Polytron> lp);
     private Vector3 forceAccumulator = Vector3.zero;
     private Vector3 torqueAccumulator = Vector3.zero;
 

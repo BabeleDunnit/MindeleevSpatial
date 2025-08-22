@@ -145,12 +145,14 @@ public class Polytron : PolyhedronGenerator,
     public override void Start()
     {
         base.Start();
+
+    
         RigidBody = GetComponent<Rigidbody>();
         if (RigidBody == null)
         {
             throw new NullReferenceException("Polytron must have a RigidBody component, please check");
         }
-
+    
         mainCamera = CrossPlatformUtils.FindCamera();
 
     }

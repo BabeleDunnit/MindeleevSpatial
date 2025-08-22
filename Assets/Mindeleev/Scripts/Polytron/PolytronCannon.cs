@@ -5,13 +5,14 @@ public class PolytronCannon : MonoBehaviour
 {
     public float shootForce = 500f;
 
-    private PolytronsFactory factory;
+    // private PolytronsFactory factory;
 
     private float lastClickTime = 0f;
     private const float doubleClickThreshold = 0.3f;
 
     void Start()
     {
+        /*
         // Find sibling PolytronsFactory component
         factory = GetComponentInParent<PolytronsFactory>();
         if (factory == null)
@@ -22,6 +23,8 @@ public class PolytronCannon : MonoBehaviour
         {
             Debug.LogError("PolytronCannon: No PolytronsFactory found!");
         }
+        */
+
     }
 
     void OnMouseDown()
@@ -51,9 +54,9 @@ public class PolytronCannon : MonoBehaviour
 
     private void ShootPolytron()
     {
-        if (factory == null) return;
+        // if (factory == null) return;
 
-        GameObject polytron = factory.Create("poly");
+        GameObject polytron = PolytronsFactory.Instance.Create("poly");
         if (polytron == null)
         {
             Debug.LogWarning("PolytronCannon: PolytronsFactory.Create returned null.");

@@ -36,7 +36,7 @@ public class PolytronEngine : MonoBehaviour
 
         if (callFactory)
         {
-            PolytronsFactory.Create(this, 10, "pippo");
+            PolytronsFactory.Instance.Create(this, 10, "pippo");
         }
 
         Debug.Log($"PolytronEngine::Start() entering");
