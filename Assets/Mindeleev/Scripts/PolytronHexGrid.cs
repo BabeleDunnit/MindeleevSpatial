@@ -63,18 +63,18 @@ public class PolytronHexGrid : MonoBehaviour
                 Quaternion pavementRotation = Quaternion.Euler(0f, - angleToCenter * 360f / 6.28f, 0f);
                 Vector3 pavementPosition = new Vector3(hexPos2D.x, transform.position.y - 1f, hexPos2D.y);
                 GameObject tile = Instantiate(polytronTilePrefab, pavementPosition, pavementRotation, transform);
-                tile.transform.localScale = new Vector3(1f, 0.01f, 1f);
+                tile.transform.localScale = new Vector3(0.6f, 0.01f, 0.8f);
 
                 polyGen = tile.GetComponent<PolyhedronGenerator>();
                 if (polyGen != null)
                 {
                     string recipe = ring switch
                     {
-                        0 => "T",
-                        1 => "tT",
-                        2 => "ttT",
-                        3 => "ltT",
-                        _ => "T"
+                        0 => "O",
+                        1 => "tO",
+                        2 => "ttO",
+                        3 => "ltO",
+                        _ => "O"
                     };
                     polyGen.recipeString = recipe;
                 }

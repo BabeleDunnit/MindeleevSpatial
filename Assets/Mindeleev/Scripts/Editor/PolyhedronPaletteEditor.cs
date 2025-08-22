@@ -9,7 +9,6 @@ using System.Linq;
 public class PolyhedronPaletteEditor : Editor
 {
     private static Color copiedColor;
-    // private static bool hasCopiedColor = false;
     private const float MIN_COLOR_DISTANCE = 0.2f; // Minimum HSV distance between colors
 
     private float GetHSVDistance(Color a, Color b)
@@ -84,8 +83,12 @@ public class PolyhedronPaletteEditor : Editor
         for (int i = 0; i < palette.colors.Count; i++)
         {
             EditorGUILayout.BeginHorizontal();
-            // palette.colors[i] = EditorGUILayout.ColorField($"Color {i + 1}", palette.colors[i], false, true,);
+            Color oldColor = palette.colors[i];
             palette.colors[i] = EditorGUILayout.ColorField(new GUIContent($"Color {i + 1}"), palette.colors[i], false, false, false);
+            if (palette.colors[i] != oldColor)
+            {
+                EditorUtility.SetDirty(palette);
+            }
             if (GUILayout.Button("Copy", GUILayout.Width(45)))
             {
                 GUIUtility.systemCopyBuffer = $"#{ColorUtility.ToHtmlStringRGB(palette.colors[i])}";
