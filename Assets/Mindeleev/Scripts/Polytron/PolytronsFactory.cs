@@ -44,8 +44,8 @@ public class PolytronsFactory : MonoBehaviour
 
             string recipe = "tdC";
 
-            GameObject poly = Instantiate(engine.polytronPrefab, engine.gameObject.transform.position + polytronPosition, Quaternion.identity, engine.transform);
-            poly.transform.localScale = engine.polytronPrefab.transform.localScale * 0.5f;
+            GameObject poly = Instantiate(polytronPrefab, engine.gameObject.transform.position + polytronPosition, Quaternion.identity, engine.transform);
+            poly.transform.localScale = polytronPrefab.transform.localScale * 0.5f;
             var polytronComponent = poly.GetComponent<Polytron>();
             if (polytronComponent != null)
             {

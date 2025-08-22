@@ -5,7 +5,7 @@ using UnityEngine;
 public class PolytronEngine : MonoBehaviour
 {
 
-    public GameObject polytronPrefab; // Assign the Polytron prefab in the inspector
+   //  public GameObject polytronPrefab; // Assign the Polytron prefab in the inspector
 
     [SerializeReference]
     public PolytronEngineBehaviour engineBehaviour;
