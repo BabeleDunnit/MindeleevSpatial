@@ -8,8 +8,8 @@ public class PolytronEngine : MonoBehaviour
     public GameObject polytronPrefab; // Assign the Polytron prefab in the inspector
     public bool callFactory = false;
 
-    // [SerializeReference]
-    public PolytronEngineSpring01Physics enginePhysics;
+    [SerializeReference]
+    public PolytronEngineBehaviour engineBehaviour;
 
     private Camera spatialCamera;
 
@@ -51,7 +51,8 @@ public class PolytronEngine : MonoBehaviour
 
         spatialCamera = CrossPlatformUtils.FindCamera();
 
-        enginePhysics = gameObject.AddComponent<PolytronEngineSpring01Physics>();
+        // engineBehaviour = gameObject.AddComponent<PolytronEngineSpring01Physics>();
+        // engineBehaviour = new PolytronEngineSpring01Physics();
 
     }
 
@@ -59,7 +60,7 @@ public class PolytronEngine : MonoBehaviour
     void FixedUpdate()
     {
 
-        enginePhysics.Simulate(GetAllPolytrons());
+        engineBehaviour.Simulate(GetAllPolytrons(), gameObject);
 
         foreach (Polytron p in GetAllPolytrons())
         {

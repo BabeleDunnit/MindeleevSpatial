@@ -1262,7 +1262,7 @@ MonoBehaviour:
   polytronPrefab: {fileID: 8404194606809146210, guid: a4b29d65d516b4ae19b3532179b68cd4,
     type: 3}
   callFactory: 0
-  enginePhysics: {fileID: 0}
+  engineBehaviour: {fileID: 0}
 --- !u!1 &1008321069
 GameObject:
   m_ObjectHideFlags: 0
@@ -2182,7 +2182,7 @@ MonoBehaviour:
   polytronPrefab: {fileID: 8404194606809146210, guid: a4b29d65d516b4ae19b3532179b68cd4,
     type: 3}
   callFactory: 1
-  enginePhysics: {fileID: 0}
+  engineBehaviour: {fileID: 11400000, guid: e8b3c87aec6a040d1ae2f741baa77797, type: 2}
 --- !u!135 &1914226408
 SphereCollider:
   m_ObjectHideFlags: 0
