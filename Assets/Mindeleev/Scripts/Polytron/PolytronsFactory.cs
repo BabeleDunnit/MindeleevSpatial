@@ -10,6 +10,8 @@ public class PolytronsFactory : MonoBehaviour
 
     public GameObject polytronPrefab; // Assign the Polytron prefab in the inspector
 
+    public List<GameObject> createdPolytrons = new List<GameObject>();
+
     private void Awake()
     {
         if (Instance != null && Instance != this)
@@ -21,14 +23,18 @@ public class PolytronsFactory : MonoBehaviour
         Instance = this;
     }
 
-    public void Create(PolytronEngine engine, int count, string kind)
+    public void Create(GameObject engineGameObject, int count, string kind)
     {
+        PolytronEngine engine = engineGameObject.GetComponent<PolytronEngine>();
+
         for (int i = 0; i < count; i++)
         {
             //            Polytron polytron = new Polytron();
             //            PolytronEngine.Register(polytron);
             //            polytron.Behaviour = new PolytronPhysics(polytron);
             //            polytron.Behaviour.Initialize();
+
+
 
             Vector3 polytronPosition = new Vector3(
                 Random.Range(-5f, 5f),
@@ -46,9 +52,6 @@ public class PolytronsFactory : MonoBehaviour
                 polytronComponent.Engine = engine;
                 engine.Register(polytronComponent);
                 polytronComponent.recipeString = recipe;
-                // polytronComponent.Behaviour = new PolytronSpring01Physics(polytronComponent);
-                // Debug.Log($"polytron {polytronComponent.Id} is of type {polytronComponent.Behaviour}");
-
             }
 
             poly.name = $"Factory_{i}_{recipe}";
@@ -57,6 +60,7 @@ public class PolytronsFactory : MonoBehaviour
                 + PolyhedronRecipeUtils.ComputeComplexity(PolyhedronRecipeParser.Parse(recipe)),
                 Vector3.zero);
 
+            createdPolytrons.Add(poly);
         }
     }
 
@@ -80,7 +84,6 @@ public class PolytronsFactory : MonoBehaviour
         rectTransform.sizeDelta = new Vector2(2, 0.5f);
     }
 
-
     public GameObject Create(string kind)
     {
 
@@ -91,23 +94,20 @@ public class PolytronsFactory : MonoBehaviour
         string recipe = "taC";
 
         GameObject poly = Instantiate(polytronPrefab, polytronPosition, Quaternion.identity, transform);
-        // poly.transform.localScale = transform.localScale * 0.4f;
         var polytronComponent = poly.GetComponent<Polytron>();
         if (polytronComponent != null)
         {
-            // polytronComponent.Engine = engine;
-            // engine.Register(polytronComponent);
             polytronComponent.recipeString = recipe;
-            // polytronComponent.Behaviour = new PolytronSpring01Physics(polytronComponent);
-            // Debug.Log($"polytron {polytronComponent.Id} is of type {polytronComponent.Behaviour}");
         }
 
-        poly.name = $"Alone_{recipe}";
+        poly.name = $"{kind}_{recipe}";
 
         CreateLabel(poly, recipe
             + " "
             + PolyhedronRecipeUtils.ComputeComplexity(PolyhedronRecipeParser.Parse(recipe)),
             Vector3.zero);
+
+        createdPolytrons.Add(poly);
 
         return poly;
 

@@ -136,7 +136,6 @@ GameObject:
   - component: {fileID: 48214720}
   - component: {fileID: 48214719}
   - component: {fileID: 48214718}
-  - component: {fileID: 48214717}
   m_Layer: 0
   m_Name: PolytronCannon
   m_TagString: Untagged
@@ -144,20 +143,6 @@ GameObject:
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
   m_IsActive: 1
---- !u!114 &48214717
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 48214716}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: a405eb5c35fd84f928cbb718ebaa3301, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  polytronPrefab: {fileID: 8404194606809146210, guid: a4b29d65d516b4ae19b3532179b68cd4,
-    type: 3}
 --- !u!114 &48214718
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1261,8 +1246,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   polytronPrefab: {fileID: 8404194606809146210, guid: a4b29d65d516b4ae19b3532179b68cd4,
     type: 3}
-  callFactory: 0
   engineBehaviour: {fileID: 0}
+  registeredPolytrons: []
 --- !u!1 &1008321069
 GameObject:
   m_ObjectHideFlags: 0
@@ -2035,6 +2020,37 @@ BoxCollider:
   serializedVersion: 2
   m_Size: {x: 1, y: 1, z: 1}
   m_Center: {x: 0, y: 0, z: 0}
+--- !u!1 &1885795313
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1885795314}
+  m_Layer: 0
+  m_Name: PolytronsFactory
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1885795314
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1885795313}
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_RootOrder: 15
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1897003265
 GameObject:
   m_ObjectHideFlags: 0
@@ -2181,8 +2197,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   polytronPrefab: {fileID: 8404194606809146210, guid: a4b29d65d516b4ae19b3532179b68cd4,
     type: 3}
-  callFactory: 1
   engineBehaviour: {fileID: 11400000, guid: e8b3c87aec6a040d1ae2f741baa77797, type: 2}
+  registeredPolytrons: []
 --- !u!135 &1914226408
 SphereCollider:
   m_ObjectHideFlags: 0

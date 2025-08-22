@@ -68,6 +68,8 @@ public class PolytronCannon : MonoBehaviour
         {
             rb = polytron.AddComponent<Rigidbody>();
         }
+        rb.drag = 0.2f;
+        rb.AddForce(transform.forward * shootForce);
 
         PolytronCollisionHandler ca = polytron.GetComponent<PolytronCollisionHandler>();
         if (ca == null)
@@ -75,10 +77,6 @@ public class PolytronCannon : MonoBehaviour
             ca = polytron.AddComponent<PolytronCollisionHandler>();
         }
 
-
-
         polytron.transform.position += new Vector3(0, 2, 0);
-        rb.drag = 0.2f;
-        rb.AddForce(transform.forward * shootForce);
     }
 }

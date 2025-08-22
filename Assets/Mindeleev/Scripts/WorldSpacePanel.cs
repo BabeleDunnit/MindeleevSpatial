@@ -81,7 +81,7 @@ public class WorldSpacePanel : MonoBehaviour
 
         // find PolytronEngine02 and call EnableOutline() on all children polytrons
         PolytronEngine polytronEngine = GameObject.Find("PolytronEngine02").GetComponent<PolytronEngine>();
-        foreach (var polytron in polytronEngine.GetAllPolytrons())
+        foreach (var polytron in polytronEngine.registeredPolytrons)
         {
             var polytronOutline = polytron.GetComponentInChildren<Outline>();
             if (polytronOutline != null)
@@ -90,17 +90,13 @@ public class WorldSpacePanel : MonoBehaviour
             }
         }
 
-        Polytron p = polytronEngine.GetAllPolytrons()[0];
+        Polytron p = polytronEngine.registeredPolytrons[0];
         Canvas canvas = p.GetComponentInChildren<Canvas>();
 
         string s = $"polytron name: {p.name}\n"
             + $"canvas name: {canvas.name}\n";
 
-
-
         titleText.text = s;
-
-
     }
 
 
