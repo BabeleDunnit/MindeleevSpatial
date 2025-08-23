@@ -97,6 +97,33 @@ public class WorldSpacePanel : MonoBehaviour
             + $"canvas name: {canvas.name}\n";
 
         titleText.text = s;
+
+        // move all polytrons
+        GameObject engineObj = GameObject.Find("HexCellularAutomata");
+        if (engineObj != null)
+        {
+            PolytronEngine engine = engineObj.GetComponent<PolytronEngine>();
+            if (engine != null)
+            {
+                Debug.Log("Found PolytronEngine02 and casted to PolytronEngine.");
+                // You can now use 'engine' as needed
+                foreach (var poly in PolytronsFactory.Instance.createdPolytrons)
+                {
+                    engine.Register(poly.GetComponent<Polytron>());
+                }
+            }
+            else
+            {
+                Debug.LogWarning("PolytronEngine component not found on PolytronEngine02.");
+            }
+        }
+        else
+        {
+            Debug.LogWarning("GameObject 'PolytronEngine02' not found.");
+        }
+
+
+
     }
 
 

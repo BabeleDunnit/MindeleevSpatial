@@ -210,7 +210,7 @@ public class PolytronEngineHexCellularAutomataBehaviour : PolytronEnginePhysics
             // we now have all the eligible, free sinks that can accomodate the polytron. We can select the nearest and bind it.
             if (eligibleSinks.Count > 0)
             {
-                var nearestSink = eligibleSinks.OrderBy(pair => pair.Value).First().Key;
+                var nearestSink = eligibleSinks.OrderBy(pair => pair.Value).Last().Key;
                 PolytronSink nearestSinkComponent = nearestSink.GetComponent<PolytronSink>();
                 nearestSinkComponent.boundPolytron = polytron;
                 boundPolytrons.Add(polytron);

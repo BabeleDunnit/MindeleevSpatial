@@ -37,7 +37,7 @@ public class PolytronsFactory : MonoBehaviour
                 Random.Range(-5f, 5f)
             );
 
-            string recipe = "tdC";
+            string recipe = "ttC";
 
             GameObject poly = Instantiate(polytronPrefab, engine.gameObject.transform.position + polytronPosition, Quaternion.identity, engine.transform);
             poly.transform.localScale = polytronPrefab.transform.localScale * 0.5f;
