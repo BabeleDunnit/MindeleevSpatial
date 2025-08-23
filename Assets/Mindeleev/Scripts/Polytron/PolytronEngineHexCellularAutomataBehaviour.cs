@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using UnityEngine;
+using System.Linq;
 
 [CreateAssetMenu(fileName = "PolytronEngineHexCellularAutomataBehaviour", menuName = "Polytron Engine/Hex Cellular Automata")]
 public class PolytronEngineHexCellularAutomataBehaviour : PolytronEnginePhysics
@@ -13,96 +14,99 @@ public class PolytronEngineHexCellularAutomataBehaviour : PolytronEnginePhysics
     public GameObject polytronPrefab; // Assign in inspector
     public GameObject polytronTilePrefab; // Assign in inspector
 
+    private HashSet<Polytron> boundPolytrons = new();
+
 
 
     // Store created sinks for runtime manipulation
     // [NonSerialized]
     // "Type Mismatch" in the Inspector... why???
-    public List<GameObject> sinks = new List<GameObject>();
+    // also, this is not cleared. Maybe because this script is an asset and not a component?
+    public List<GameObject> sinks = new();
     // public List<PolytronSink> sinks2 = new List<PolytronSink>();
 
-/*
-    private void BuildGridWithPolytrons(GameObject myEngine)
-    {
-        Vector2 center2D = new Vector2(myEngine.transform.position.x, myEngine.transform.position.z);
-        // int maxRing = 3;
-        int polytronNumber = 0;
-
-        for (int ring = 0; ring <= maxRing; ring++)
+    /*
+        private void BuildGridWithPolytrons(GameObject myEngine)
         {
-            int hexesInRing = ring == 0 ? 1 : 6 * ring;
-            for (int i = 0; i < hexesInRing; i++)
+            Vector2 center2D = new Vector2(myEngine.transform.position.x, myEngine.transform.position.z);
+            // int maxRing = 3;
+            int polytronNumber = 0;
+
+            for (int ring = 0; ring <= maxRing; ring++)
             {
-                HexCoord hex;
-                if (ring == 0)
+                int hexesInRing = ring == 0 ? 1 : 6 * ring;
+                for (int i = 0; i < hexesInRing; i++)
                 {
-                    hex = new HexCoord(0, 0); // Center
-                }
-                else
-                {
-                    // Use AtPolar to get the hex at (ring, i) in polar coordinates
-                    hex = HexCoord.AtPolar(ring, i);
-                }
-
-                // Get world position for hex center
-                Vector2 hexPos2D = hex.Position() + center2D;
-                Vector3 position = new Vector3(hexPos2D.x, myEngine.transform.position.y, hexPos2D.y);
-
-
-                GameObject poly = PolytronsFactory.Instance.Create("polytron");
-                poly.transform.position = position;
-
-                // GameObject poly = Instantiate(polytronPrefab, position, Quaternion.identity, transform);
-
-                poly.transform.localScale = myEngine.transform.localScale * polytronScale;
-
-                var polyGen = poly.GetComponent<PolyhedronGenerator>();
-                if (polyGen != null)
-                {
-                    string recipe = ring switch
+                    HexCoord hex;
+                    if (ring == 0)
                     {
-                        0 => "C",
-                        1 => "tC",
-                        2 => "ttC",
-                        3 => "ltC",
-                        _ => "C"
-                    };
-                    polyGen.recipeString = recipe;
-                }
-
-                poly.name = $"HexP_{polytronNumber}_R{ring}_I{i}";
-                // CreateLabel(poly, poly.name, position);
-
-                polytronNumber++;
-
-                // add a "pavement"
-                float angleToCenter = hex.PolarAngle();
-                Quaternion pavementRotation = Quaternion.Euler(0f, -angleToCenter * 360f / 6.28f, 0f);
-                Vector3 pavementPosition = new Vector3(hexPos2D.x, myEngine.transform.position.y - 1f, hexPos2D.y);
-                GameObject tile = Instantiate(polytronTilePrefab, pavementPosition, pavementRotation, myEngine.transform);
-                tile.transform.localScale = new Vector3(0.6f, 0.01f, 0.8f);
-
-                polyGen = tile.GetComponent<PolyhedronGenerator>();
-                if (polyGen != null)
-                {
-                    string recipe = ring switch
+                        hex = new HexCoord(0, 0); // Center
+                    }
+                    else
                     {
-                        0 => "O",
-                        1 => "tO",
-                        2 => "ttO",
-                        3 => "ltO",
-                        _ => "O"
-                    };
-                    polyGen.recipeString = recipe;
+                        // Use AtPolar to get the hex at (ring, i) in polar coordinates
+                        hex = HexCoord.AtPolar(ring, i);
+                    }
+
+                    // Get world position for hex center
+                    Vector2 hexPos2D = hex.Position() + center2D;
+                    Vector3 position = new Vector3(hexPos2D.x, myEngine.transform.position.y, hexPos2D.y);
+
+
+                    GameObject poly = PolytronsFactory.Instance.Create("polytron");
+                    poly.transform.position = position;
+
+                    // GameObject poly = Instantiate(polytronPrefab, position, Quaternion.identity, transform);
+
+                    poly.transform.localScale = myEngine.transform.localScale * polytronScale;
+
+                    var polyGen = poly.GetComponent<PolyhedronGenerator>();
+                    if (polyGen != null)
+                    {
+                        string recipe = ring switch
+                        {
+                            0 => "C",
+                            1 => "tC",
+                            2 => "ttC",
+                            3 => "ltC",
+                            _ => "C"
+                        };
+                        polyGen.recipeString = recipe;
+                    }
+
+                    poly.name = $"HexP_{polytronNumber}_R{ring}_I{i}";
+                    // CreateLabel(poly, poly.name, position);
+
+                    polytronNumber++;
+
+                    // add a "pavement"
+                    float angleToCenter = hex.PolarAngle();
+                    Quaternion pavementRotation = Quaternion.Euler(0f, -angleToCenter * 360f / 6.28f, 0f);
+                    Vector3 pavementPosition = new Vector3(hexPos2D.x, myEngine.transform.position.y - 1f, hexPos2D.y);
+                    GameObject tile = Instantiate(polytronTilePrefab, pavementPosition, pavementRotation, myEngine.transform);
+                    tile.transform.localScale = new Vector3(0.6f, 0.01f, 0.8f);
+
+                    polyGen = tile.GetComponent<PolyhedronGenerator>();
+                    if (polyGen != null)
+                    {
+                        string recipe = ring switch
+                        {
+                            0 => "O",
+                            1 => "tO",
+                            2 => "ttO",
+                            3 => "ltO",
+                            _ => "O"
+                        };
+                        polyGen.recipeString = recipe;
+                    }
                 }
             }
         }
-    }
-    */
+        */
 
     private void BuildGridWithSinks(GameObject myEngine)
     {
-        sinks.Clear();
+        // sinks.Clear();
         Vector2 center2D = new Vector2(myEngine.transform.position.x, myEngine.transform.position.z);
         // int maxRing = 3;
 
@@ -176,6 +180,66 @@ public class PolytronEngineHexCellularAutomataBehaviour : PolytronEnginePhysics
 
     public override void Loop(List<Polytron> registeredPolytrons, GameObject myEngine)
     {
+        // first: check for new, unbound polytrons. We could have a new polytron, a new sink etc.
+        foreach (var polytron in registeredPolytrons)
+        {
+            if (boundPolytrons.Contains(polytron))
+            {
+                continue;
+            }
+
+            // find all the eligible sinks for the bound with this polytron
+            Dictionary<GameObject, float> eligibleSinks = new();
+            foreach (var sink in sinks)
+            {
+                PolytronSink sinkComponent = sink.GetComponent<PolytronSink>();
+                if (polytron.recipeString != sinkComponent.attractedRecipe)
+                {
+                    continue;
+                }
+
+                if (sinkComponent.boundPolytron != null)
+                {
+                    continue;
+                }
+
+                float distanceFromPolytronToSink = (sink.transform.position - polytron.transform.position).magnitude;
+                eligibleSinks.Add(sink, distanceFromPolytronToSink);
+            }
+
+            // we now have all the eligible, free sinks that can accomodate the polytron. We can select the nearest and bind it.
+            if (eligibleSinks.Count > 0)
+            {
+                var nearestSink = eligibleSinks.OrderBy(pair => pair.Value).First().Key;
+                PolytronSink nearestSinkComponent = nearestSink.GetComponent<PolytronSink>();
+                nearestSinkComponent.boundPolytron = polytron;
+                boundPolytrons.Add(polytron);
+            }
+        }
+
+        // now we can attract all the bound polytrons to their sinks
+        foreach (var sink in sinks)
+        {
+            PolytronSink sinkComponent = sink.GetComponent<PolytronSink>();
+            if (sinkComponent.boundPolytron == null)
+            {
+                continue;
+            }
+
+            (Vector3 attractionForce, Vector3 from1To2Versor, float from1To2Distance) = CalcSpringForce(sinkComponent.boundPolytron.transform.position, sink.transform.position, 1, 0.1f);
+
+                            Rigidbody polytronRigidBody = sinkComponent.boundPolytron.GetComponent<Rigidbody>();
+                            polytronRigidBody.AddForce(attractionForce);
+
+        
+
+
+        }
+
+    }
+
+    public void LoopUnused(List<Polytron> registeredPolytrons, GameObject myEngine)
+    {
         /*
         // Example: Manipulate sinks at runtime
         // Here you could implement cellular automata rules, attract polytrons, etc.
@@ -200,6 +264,7 @@ public class PolytronEngineHexCellularAutomataBehaviour : PolytronEnginePhysics
             }
         }
         */
+
 
         foreach (var sink in sinks)
         {

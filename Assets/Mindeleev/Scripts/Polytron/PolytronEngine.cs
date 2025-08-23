@@ -5,14 +5,22 @@ using UnityEngine;
 public class PolytronEngine : MonoBehaviour
 {
 
-   //  public GameObject polytronPrefab; // Assign the Polytron prefab in the inspector
+    //  public GameObject polytronPrefab; // Assign the Polytron prefab in the inspector
 
     [SerializeReference]
-    public PolytronEngineBehaviour engineBehaviour;
+    public PolytronEngineBehaviour engineBehaviour_;
+    
+    private PolytronEngineBehaviour engineBehaviour;
 
     private Camera spatialCamera;
 
     public List<Polytron> registeredPolytrons = new List<Polytron>();
+
+
+    void Awake()
+    {
+        engineBehaviour = ScriptableObject.Instantiate(engineBehaviour_);
+    }
 
     public void Register(Polytron instance)
     {
