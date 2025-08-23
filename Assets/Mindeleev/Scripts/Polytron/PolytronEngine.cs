@@ -9,7 +9,7 @@ public class PolytronEngine : MonoBehaviour
 
     [SerializeReference]
     public PolytronEngineBehaviour engineBehaviour_;
-    
+
     private PolytronEngineBehaviour engineBehaviour;
 
     private Camera spatialCamera;
@@ -29,7 +29,7 @@ public class PolytronEngine : MonoBehaviour
         Debug.Log("Polytron registered: " + instance.Id);
     }
 
-    public void Unregister(Polytron instance)
+    public void Deregister(Polytron instance)
     {
         registeredPolytrons.Remove(instance);
         Debug.Log("Prefab deregistered: " + instance.Id);

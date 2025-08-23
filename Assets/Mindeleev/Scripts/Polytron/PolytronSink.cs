@@ -10,7 +10,9 @@ public class PolytronSink : MonoBehaviour
     public string attractedRecipe; // The recipe this sink will attract
     public Polytron boundPolytron;
 
-    public bool IsEmpty => boundPolytron == null;
+    public float weight = 1f;
+
+    // public bool IsEmpty => boundPolytron == null;
 
     // Call this to attempt to bind a Polytron to this sink
     /*

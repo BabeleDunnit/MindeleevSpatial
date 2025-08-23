@@ -10,6 +10,8 @@ public class PolytronsFactory : MonoBehaviour
     public GameObject polytronPrefab; // Assign the Polytron prefab in the inspector
     public GameObject sinkPrefab;
 
+    public float polytronScale = 0.3f;
+
     public List<GameObject> createdPolytrons = new List<GameObject>();
     public List<GameObject> createdSinks = new List<GameObject>();
 
@@ -40,7 +42,7 @@ public class PolytronsFactory : MonoBehaviour
             string recipe = "ttC";
 
             GameObject poly = Instantiate(polytronPrefab, engine.gameObject.transform.position + polytronPosition, Quaternion.identity, engine.transform);
-            poly.transform.localScale = polytronPrefab.transform.localScale * 0.5f;
+            poly.transform.localScale = polytronPrefab.transform.localScale * polytronScale;
             var polytronComponent = poly.GetComponent<Polytron>();
             if (polytronComponent != null)
             {

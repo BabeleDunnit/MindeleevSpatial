@@ -15,8 +15,10 @@ MonoBehaviour:
   maxRing: 3
   hexDistance: 2
   polytronScale: 0.5
-  polytronSinkPrefab: {fileID: 0}
+  polytronSinkPrefab: {fileID: 8404194606809146210, guid: 708bd6b7505964711b65be889661713b,
+    type: 3}
   polytronPrefab: {fileID: 8404194606809146210, guid: a4b29d65d516b4ae19b3532179b68cd4,
     type: 3}
   polytronTilePrefab: {fileID: 8404194606809146210, guid: de1b48898876345a08618665da16e625,
     type: 3}
+  sinks: []

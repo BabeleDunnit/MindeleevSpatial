@@ -143,6 +143,9 @@ public class PolytronEngineHexCellularAutomataBehaviour : PolytronEnginePhysics
                     _ => "C"
                 };
                 sinkComponent.attractedRecipe = sinkRecipe;
+                // sinkComponent.weight *= ((ring + 0.1f) * (float)Math.Exp(ring));
+                // sinkComponent.weight += ((float)(ring * 0.1f)) * 2f; 
+                sinkComponent.weight += Mathf.Pow((float)(ring * 0.1f), 2f);
                 sink.name = $"sink_{sinkRecipe}";
                 sink.GetComponent<Renderer>().material.color = new Color(1f, 0f, 0f, 0.5f);
                 sinks.Add(sink);
@@ -181,6 +184,7 @@ public class PolytronEngineHexCellularAutomataBehaviour : PolytronEnginePhysics
     public override void Loop(List<Polytron> registeredPolytrons, GameObject myEngine)
     {
         // first: check for new, unbound polytrons. We could have a new polytron, a new sink etc.
+        /*
         foreach (var polytron in registeredPolytrons)
         {
             if (boundPolytrons.Contains(polytron))
@@ -216,6 +220,45 @@ public class PolytronEngineHexCellularAutomataBehaviour : PolytronEnginePhysics
                 boundPolytrons.Add(polytron);
             }
         }
+        */
+
+        foreach (var sink in sinks)
+        {
+            PolytronSink sinkComponent = sink.GetComponent<PolytronSink>();
+            if (sinkComponent.boundPolytron != null)
+            {
+                continue;
+            }
+
+            Dictionary<Polytron, float> eligiblePolytrons = new();
+            foreach (var polytron in registeredPolytrons)
+            {
+                if (boundPolytrons.Contains(polytron))
+                {
+                    continue;
+                }
+
+                if (polytron.recipeString != sinkComponent.attractedRecipe)
+                {
+                    continue;
+                }
+
+                float distanceFromPolytronToSink = (sink.transform.position - polytron.transform.position).magnitude;
+                eligiblePolytrons.Add(polytron, distanceFromPolytronToSink);
+            }
+
+            // we now have all the eligible, unbound polytrons that can be accomodated in the sink. 
+            // We can select the nearest and bind it.
+            if (eligiblePolytrons.Count > 0)
+            {
+                var nearestPolytron = eligiblePolytrons.OrderBy(pair => pair.Value).First().Key;
+                // PolytronSink nearestSinkComponent = nearestSink.GetComponent<PolytronSink>();
+                sinkComponent.boundPolytron = nearestPolytron;
+                boundPolytrons.Add(nearestPolytron);
+            }
+
+        }
+
 
         // now we can attract all the bound polytrons to their sinks
         foreach (var sink in sinks)
@@ -226,13 +269,10 @@ public class PolytronEngineHexCellularAutomataBehaviour : PolytronEnginePhysics
                 continue;
             }
 
-            (Vector3 attractionForce, Vector3 from1To2Versor, float from1To2Distance) = CalcSpringForce(sinkComponent.boundPolytron.transform.position, sink.transform.position, 1, 0.1f);
+            (Vector3 attractionForce, Vector3 from1To2Versor, float from1To2Distance) = CalcSpringForce(sinkComponent.boundPolytron.transform.position, sink.transform.position, sinkComponent.weight, 0.01f);
 
-                            Rigidbody polytronRigidBody = sinkComponent.boundPolytron.GetComponent<Rigidbody>();
-                            polytronRigidBody.AddForce(attractionForce);
-
-        
-
+            Rigidbody polytronRigidBody = sinkComponent.boundPolytron.GetComponent<Rigidbody>();
+            polytronRigidBody.AddForce(attractionForce);
 
         }
 
