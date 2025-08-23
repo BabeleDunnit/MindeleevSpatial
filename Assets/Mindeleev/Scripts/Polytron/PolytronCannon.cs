@@ -56,7 +56,7 @@ public class PolytronCannon : MonoBehaviour
     {
         // if (factory == null) return;
 
-        GameObject polytron = PolytronsFactory.Instance.Create("poly");
+        GameObject polytron = PolytronsFactory.Instance.Create("polytron");
         if (polytron == null)
         {
             Debug.LogWarning("PolytronCannon: PolytronsFactory.Create returned null.");
