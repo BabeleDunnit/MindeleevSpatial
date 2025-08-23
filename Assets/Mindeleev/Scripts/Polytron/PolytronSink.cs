@@ -7,16 +7,17 @@ using UnityEngine;
 /// </summary>
 public class PolytronSink : MonoBehaviour
 {
-    public string attractRecipe; // The recipe this sink will attract
-    public Polytron boundPolytron { get; private set; } // The Polytron currently bound to this sink
+    public string attractedRecipe; // The recipe this sink will attract
+    public Polytron boundPolytron;
 
     public bool IsEmpty => boundPolytron == null;
 
     // Call this to attempt to bind a Polytron to this sink
+    /*
     public bool TryBindPolytron(Polytron polytron)
     {
         if (!IsEmpty) return false;
-        if (polytron.recipeString != attractRecipe) return false;
+        if (polytron.recipeString != attractedRecipe) return false;
 
         boundPolytron = polytron;
         // Optionally: Move polytron to sink position, parent it, etc.
@@ -37,4 +38,6 @@ public class PolytronSink : MonoBehaviour
             boundPolytron = null;
         }
     }
+    */
+
 }

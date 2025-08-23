@@ -30,6 +30,8 @@ public class PolytronEngine : MonoBehaviour
     // Start is called before the first frame update
     void Start()
     {
+        GetComponent<MeshRenderer>().enabled = false;
+
         engineBehaviour.Setup(gameObject);
 
         Debug.Log($"PolytronEngine::Start() entering");

@@ -3,14 +3,15 @@ using System.Collections.Generic;
 using UnityEngine;
 using TMPro;
 
-
 public class PolytronsFactory : MonoBehaviour
 {
     public static PolytronsFactory Instance { get; private set; }
 
     public GameObject polytronPrefab; // Assign the Polytron prefab in the inspector
+    public GameObject sinkPrefab;
 
     public List<GameObject> createdPolytrons = new List<GameObject>();
+    public List<GameObject> createdSinks = new List<GameObject>();
 
     private void Awake()
     {
@@ -29,12 +30,6 @@ public class PolytronsFactory : MonoBehaviour
 
         for (int i = 0; i < count; i++)
         {
-            //            Polytron polytron = new Polytron();
-            //            PolytronEngine.Register(polytron);
-            //            polytron.Behaviour = new PolytronPhysics(polytron);
-            //            polytron.Behaviour.Initialize();
-
-
 
             Vector3 polytronPosition = new Vector3(
                 Random.Range(-5f, 5f),
@@ -86,30 +81,53 @@ public class PolytronsFactory : MonoBehaviour
 
     public GameObject Create(string kind)
     {
-
-        Vector3 polytronPosition = new Vector3(
-            transform.position.x, transform.position.y, transform.position.z
-        );
-
-        string recipe = "taC";
-
-        GameObject poly = Instantiate(polytronPrefab, polytronPosition, Quaternion.identity, transform);
-        var polytronComponent = poly.GetComponent<Polytron>();
-        if (polytronComponent != null)
+        switch (kind)
         {
-            polytronComponent.recipeString = recipe;
+            case "polytron":
+                {
+                    string recipe = "taC";
+
+                    GameObject poly = Instantiate(polytronPrefab, Vector3.zero, Quaternion.identity, transform);
+                    var polytronComponent = poly.GetComponent<Polytron>();
+                    if (polytronComponent != null)
+                    {
+                        polytronComponent.recipeString = recipe;
+                    }
+
+                    poly.name = $"{kind}_{recipe}";
+
+                    CreateLabel(poly, recipe
+                        + " "
+                        + PolyhedronRecipeUtils.ComputeComplexity(PolyhedronRecipeParser.Parse(recipe)),
+                        Vector3.zero);
+
+                    createdPolytrons.Add(poly);
+
+                    return poly;
+
+                }
+                break;
+            case "sink":
+                {
+                    GameObject sink = Instantiate(sinkPrefab, Vector3.zero, Quaternion.identity, transform);
+                    createdSinks.Add(sink);
+                    sink.name = "sink";
+
+                    return sink;
+
+                }
+                break;
+
+            default:
+                break;
         }
 
-        poly.name = $"{kind}_{recipe}";
+        /*
+                    Vector3 polytronPosition = new Vector3(
+                        transform.position.x, transform.position.y, transform.position.z
+                    );
+        */
 
-        CreateLabel(poly, recipe
-            + " "
-            + PolyhedronRecipeUtils.ComputeComplexity(PolyhedronRecipeParser.Parse(recipe)),
-            Vector3.zero);
-
-        createdPolytrons.Add(poly);
-
-        return poly;
-
+        return null;
     }
 }

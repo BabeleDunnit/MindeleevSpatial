@@ -59,6 +59,7 @@ public class PolytronEngineSpring01Physics : PolytronEnginePhysics
                 }
             }
 
+            Debug.Assert(p1.RigidBody != null, $"{p1.ToString()} has NULL RigidBody");
             Vector3 friction = -p1.RigidBody.velocity * linearFriction;
             forceAccumulator += friction;
 

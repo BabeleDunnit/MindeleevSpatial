@@ -12,6 +12,12 @@ public class PolytronHexGrid : MonoBehaviour
 
     void Start()
     {
+
+        GetComponent<MeshRenderer>().enabled = false;
+
+        // effettivamente funziona
+        // gameObject.SetActive(false);
+
         Vector2 center2D = new Vector2(transform.position.x, transform.position.z);
         int maxRing = 3;
         int polytronNumber = 0;
@@ -37,7 +43,7 @@ public class PolytronHexGrid : MonoBehaviour
                 Vector3 position = new Vector3(hexPos2D.x, transform.position.y, hexPos2D.y);
 
 
-                GameObject poly = PolytronsFactory.Instance.Create("hex");
+                GameObject poly = PolytronsFactory.Instance.Create("polytron");
                 poly.transform.position = position;
 
                 // GameObject poly = Instantiate(polytronPrefab, position, Quaternion.identity, transform);
@@ -58,7 +64,7 @@ public class PolytronHexGrid : MonoBehaviour
                     polyGen.recipeString = recipe;
                 }
 
-                poly.name = $"HexP_{polytronNumber}_R{ring}_I{i}";
+                poly.name = $"HexP_{polytronNumber}_R{ring}_I{i}_{polyGen.recipeString}";
                 CreateLabel(poly, poly.name, position);
 
                 polytronNumber++;

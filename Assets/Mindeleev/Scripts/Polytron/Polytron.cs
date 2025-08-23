@@ -111,7 +111,7 @@ public class Polytron : PolyhedronGenerator,
         o.EnableOutline();
         Debug.Log("[Polytron.OnPointerClick()] Object clicked!");
 
-        GameObject engineObj = GameObject.Find("PolytronEngine02");
+        GameObject engineObj = GameObject.Find("HexCellularAutomata");
         if (engineObj != null)
         {
             PolytronEngine engine = engineObj.GetComponent<PolytronEngine>();
