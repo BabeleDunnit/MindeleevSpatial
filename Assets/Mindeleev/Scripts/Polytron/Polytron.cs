@@ -110,6 +110,26 @@ public class Polytron : PolyhedronGenerator,
         o.DisableOutline();
         o.EnableOutline();
         Debug.Log("[Polytron.OnPointerClick()] Object clicked!");
+
+        GameObject engineObj = GameObject.Find("HexCellularAutomata");
+        if (engineObj != null)
+        {
+            PolytronEngine engine = engineObj.GetComponent<PolytronEngine>();
+            if (engine != null)
+            {
+                Debug.Log("Found PolytronEngine02 and casted to PolytronEngine.");
+                // You can now use 'engine' as needed
+                engine.Register(this);
+            }
+            else
+            {
+                Debug.LogWarning("PolytronEngine component not found on PolytronEngine02.");
+            }
+        }
+        else
+        {
+            Debug.LogWarning("GameObject 'PolytronEngine02' not found.");
+        }
     }
 
     private bool isDragging = false;
@@ -145,12 +165,14 @@ public class Polytron : PolyhedronGenerator,
     public override void Start()
     {
         base.Start();
+
+    
         RigidBody = GetComponent<Rigidbody>();
         if (RigidBody == null)
         {
             throw new NullReferenceException("Polytron must have a RigidBody component, please check");
         }
-
+    
         mainCamera = CrossPlatformUtils.FindCamera();
 
     }

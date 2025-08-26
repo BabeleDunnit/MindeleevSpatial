@@ -3,10 +3,8 @@ using System.Collections.Generic;
 using UnityEngine;
 using SpatialSys.UnitySDK;
 
-public abstract class PolytronEnginePhysics : MonoBehaviour
+public abstract class PolytronEnginePhysics : PolytronEngineBehaviour
 {
-//     public abstract void ComputeForce();
-    public abstract void Simulate(List<Polytron> lp);
     private Vector3 forceAccumulator = Vector3.zero;
     private Vector3 torqueAccumulator = Vector3.zero;
 
@@ -49,7 +47,6 @@ public abstract class PolytronEnginePhysics : MonoBehaviour
             1.0f,
             4.0f);
 
-
         return attractionForce;
     }
 
@@ -63,7 +60,6 @@ public abstract class PolytronEnginePhysics : MonoBehaviour
             gameObjectPosition,
             1.0f,
             4.0f);
-
 
         return attractionForce;
     }

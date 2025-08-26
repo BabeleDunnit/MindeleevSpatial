@@ -2,7 +2,7 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
-
+[CreateAssetMenu(fileName = "PolytronEngineSpring01Physics", menuName = "Polytron Engine/Spring 01 Physics")]
 // spring behaviour with single point of equilibrium
 public class PolytronEngineSpring01Physics : PolytronEnginePhysics
 {
@@ -13,7 +13,12 @@ public class PolytronEngineSpring01Physics : PolytronEnginePhysics
     public float contactStiffness = 500f;
     public float linearFriction = 0.5f;
 
-    public override void Simulate(List<Polytron> allPolytrons)
+    public override void Setup(GameObject myEngine)
+    {
+            PolytronsFactory.Instance.Create(myEngine, 10, "pippo");
+    }
+
+    public override void Loop(List<Polytron> allPolytrons, GameObject myEngine)
     {
         foreach (Polytron p1 in allPolytrons)
         {
@@ -54,10 +59,11 @@ public class PolytronEngineSpring01Physics : PolytronEnginePhysics
                 }
             }
 
+            Debug.Assert(p1.RigidBody != null, $"{p1.ToString()} has NULL RigidBody");
             Vector3 friction = -p1.RigidBody.velocity * linearFriction;
             forceAccumulator += friction;
 
-            forceAccumulator += ComputeForceTowardOriginGameObject(this.gameObject, p1);
+            forceAccumulator += ComputeForceTowardOriginGameObject(myEngine, p1);
 
             p1.RigidBody.AddForce(forceAccumulator);
             p1.RigidBody.AddTorque(torqueAccumulator);

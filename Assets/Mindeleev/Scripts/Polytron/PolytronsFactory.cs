@@ -3,34 +3,35 @@ using System.Collections.Generic;
 using UnityEngine;
 using TMPro;
 
-
 public class PolytronsFactory : MonoBehaviour
 {
+    public static PolytronsFactory Instance { get; private set; }
 
     public GameObject polytronPrefab; // Assign the Polytron prefab in the inspector
+    public GameObject sinkPrefab;
 
-    /*
-    // Start is called before the first frame update
-    void Start()
+    public float polytronScale = 0.3f;
+
+    public List<GameObject> createdPolytrons = new List<GameObject>();
+    public List<GameObject> createdSinks = new List<GameObject>();
+
+    private void Awake()
     {
-        
+        if (Instance != null && Instance != this)
+        {
+            Debug.LogWarning("Multiple PolytronsFactory instances detected. Destroying duplicate.");
+            Destroy(this.gameObject);
+            return;
+        }
+        Instance = this;
     }
 
-    // Update is called once per frame
-    void Update()
+    public void Create(GameObject engineGameObject, int count, string kind)
     {
-        
-    }
-    */
+        PolytronEngine engine = engineGameObject.GetComponent<PolytronEngine>();
 
-    public static void Create(PolytronEngine engine, int count, string kind)
-    {
         for (int i = 0; i < count; i++)
         {
-            //            Polytron polytron = new Polytron();
-            //            PolytronEngine.Register(polytron);
-            //            polytron.Behaviour = new PolytronPhysics(polytron);
-            //            polytron.Behaviour.Initialize();
 
             Vector3 polytronPosition = new Vector3(
                 Random.Range(-5f, 5f),
@@ -38,19 +39,16 @@ public class PolytronsFactory : MonoBehaviour
                 Random.Range(-5f, 5f)
             );
 
-            string recipe = "tdC";
+            string recipe = "ttC";
 
-            GameObject poly = Instantiate(engine.polytronPrefab, engine.gameObject.transform.position + polytronPosition, Quaternion.identity, engine.transform);
-            poly.transform.localScale = engine.polytronPrefab.transform.localScale * 0.5f;
+            GameObject poly = Instantiate(polytronPrefab, engine.gameObject.transform.position + polytronPosition, Quaternion.identity, engine.transform);
+            poly.transform.localScale = polytronPrefab.transform.localScale * polytronScale;
             var polytronComponent = poly.GetComponent<Polytron>();
             if (polytronComponent != null)
             {
                 polytronComponent.Engine = engine;
                 engine.Register(polytronComponent);
                 polytronComponent.recipeString = recipe;
-                // polytronComponent.Behaviour = new PolytronSpring01Physics(polytronComponent);
-                // Debug.Log($"polytron {polytronComponent.Id} is of type {polytronComponent.Behaviour}");
-
             }
 
             poly.name = $"Factory_{i}_{recipe}";
@@ -59,6 +57,7 @@ public class PolytronsFactory : MonoBehaviour
                 + PolyhedronRecipeUtils.ComputeComplexity(PolyhedronRecipeParser.Parse(recipe)),
                 Vector3.zero);
 
+            createdPolytrons.Add(poly);
         }
     }
 
@@ -82,36 +81,55 @@ public class PolytronsFactory : MonoBehaviour
         rectTransform.sizeDelta = new Vector2(2, 0.5f);
     }
 
-
     public GameObject Create(string kind)
     {
-
-        Vector3 polytronPosition = new Vector3(
-            transform.position.x, transform.position.y, transform.position.z
-        );
-
-        string recipe = "taC";
-
-        GameObject poly = Instantiate(polytronPrefab, polytronPosition, Quaternion.identity, transform);
-        // poly.transform.localScale = transform.localScale * 0.4f;
-        var polytronComponent = poly.GetComponent<Polytron>();
-        if (polytronComponent != null)
+        switch (kind)
         {
-            // polytronComponent.Engine = engine;
-            // engine.Register(polytronComponent);
-            polytronComponent.recipeString = recipe;
-            // polytronComponent.Behaviour = new PolytronSpring01Physics(polytronComponent);
-            // Debug.Log($"polytron {polytronComponent.Id} is of type {polytronComponent.Behaviour}");
+            case "polytron":
+                {
+                    string recipe = "taC";
+
+                    GameObject poly = Instantiate(polytronPrefab, Vector3.zero, Quaternion.identity, transform);
+                    var polytronComponent = poly.GetComponent<Polytron>();
+                    if (polytronComponent != null)
+                    {
+                        polytronComponent.recipeString = recipe;
+                    }
+
+                    poly.name = $"{kind}_{recipe}";
+
+                    CreateLabel(poly, recipe
+                        + " "
+                        + PolyhedronRecipeUtils.ComputeComplexity(PolyhedronRecipeParser.Parse(recipe)),
+                        Vector3.zero);
+
+                    createdPolytrons.Add(poly);
+
+                    return poly;
+
+                }
+                break;
+            case "sink":
+                {
+                    GameObject sink = Instantiate(sinkPrefab, Vector3.zero, Quaternion.identity, transform);
+                    createdSinks.Add(sink);
+                    sink.name = "sink";
+
+                    return sink;
+
+                }
+                break;
+
+            default:
+                break;
         }
 
-        poly.name = $"Alone_{recipe}";
+        /*
+                    Vector3 polytronPosition = new Vector3(
+                        transform.position.x, transform.position.y, transform.position.z
+                    );
+        */
 
-        CreateLabel(poly, recipe
-            + " "
-            + PolyhedronRecipeUtils.ComputeComplexity(PolyhedronRecipeParser.Parse(recipe)),
-            Vector3.zero);
-
-        return poly;
-
+        return null;
     }
 }

@@ -4,6 +4,7 @@ using UnityEngine;
 /// Attach this to a Polytron GameObject to enable an outline/halo effect that can be toggled on/off.
 /// </summary>
 [RequireComponent(typeof(Renderer))]
+[RequireComponent(typeof(SpatialClickable3D))]
 public class Outline : MonoBehaviour
 {
     public Color outlineColor = Color.yellow;

@@ -5,11 +5,19 @@ using TMPro;
 public class PolytronHexGrid : MonoBehaviour
 {
     public GameObject polytronPrefab; // Assign in inspector
+    public GameObject polytronTilePrefab; // Assign in inspector
+
     // public float hexDistance = 2.0f;  // Distance between hex centers
-    public float scale = 0.3f;
+    public float polytronScale = 0.3f;
 
     void Start()
     {
+
+        GetComponent<MeshRenderer>().enabled = false;
+
+        // effettivamente funziona
+        // gameObject.SetActive(false);
+
         Vector2 center2D = new Vector2(transform.position.x, transform.position.z);
         int maxRing = 3;
         int polytronNumber = 0;
@@ -34,8 +42,13 @@ public class PolytronHexGrid : MonoBehaviour
                 Vector2 hexPos2D = hex.Position() + center2D;
                 Vector3 position = new Vector3(hexPos2D.x, transform.position.y, hexPos2D.y);
 
-                GameObject poly = Instantiate(polytronPrefab, position, Quaternion.identity, transform);
-                poly.transform.localScale = transform.localScale * scale;
+
+                GameObject poly = PolytronsFactory.Instance.Create("polytron");
+                poly.transform.position = position;
+
+                // GameObject poly = Instantiate(polytronPrefab, position, Quaternion.identity, transform);
+
+                poly.transform.localScale = transform.localScale * polytronScale;
 
                 var polyGen = poly.GetComponent<PolyhedronGenerator>();
                 if (polyGen != null)
@@ -51,10 +64,31 @@ public class PolytronHexGrid : MonoBehaviour
                     polyGen.recipeString = recipe;
                 }
 
-                poly.name = $"HexP_{polytronNumber}_R{ring}_I{i}";
+                poly.name = $"HexP_{polytronNumber}_R{ring}_I{i}_{polyGen.recipeString}";
                 CreateLabel(poly, poly.name, position);
 
                 polytronNumber++;
+
+                // add a "pavement"
+                float angleToCenter = hex.PolarAngle();
+                Quaternion pavementRotation = Quaternion.Euler(0f, - angleToCenter * 360f / 6.28f, 0f);
+                Vector3 pavementPosition = new Vector3(hexPos2D.x, transform.position.y - 1f, hexPos2D.y);
+                GameObject tile = Instantiate(polytronTilePrefab, pavementPosition, pavementRotation, transform);
+                tile.transform.localScale = new Vector3(0.6f, 0.01f, 0.8f);
+
+                polyGen = tile.GetComponent<PolyhedronGenerator>();
+                if (polyGen != null)
+                {
+                    string recipe = ring switch
+                    {
+                        0 => "O",
+                        1 => "tO",
+                        2 => "ttO",
+                        3 => "ltO",
+                        _ => "O"
+                    };
+                    polyGen.recipeString = recipe;
+                }
             }
         }
     }
