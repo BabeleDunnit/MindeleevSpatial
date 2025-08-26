@@ -97,11 +97,14 @@ public class PolytronsFactory : MonoBehaviour
                     }
 
                     poly.name = $"{kind}_{recipe}";
+                    // poly.transform. = new Vector3(0.003f, 0.003f, 0.003f);
 
-                    CreateLabel(poly, recipe
-                        + " "
-                        + PolyhedronRecipeUtils.ComputeComplexity(PolyhedronRecipeParser.Parse(recipe)),
-                        Vector3.zero);
+                    /*
+                                        CreateLabel(poly, recipe
+                                            + " "
+                                            + PolyhedronRecipeUtils.ComputeComplexity(PolyhedronRecipeParser.Parse(recipe)),
+                                            Vector3.zero);
+                    */
 
                     createdPolytrons.Add(poly);
 
