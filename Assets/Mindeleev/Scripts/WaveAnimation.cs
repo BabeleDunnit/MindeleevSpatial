@@ -68,7 +68,7 @@ public class WaveAnimation : MonoBehaviour
 
     void Start()
     {
- GetInitialScale();
+ // GetInitialScale();
     }
 
     void ResetAnimation()
@@ -186,6 +186,23 @@ public class WaveAnimation : MonoBehaviour
     {
         animationName = type;
         ResetAnimation();
+
+        if (type == AnimationType.Appear)
+        {
+            // Store the intended final scale
+            initialScale = transform.localScale;
+            // Set scale to nearly zero for the first frame
+            transform.localScale = initialScale * 0.01f;
+        }
+        else if (type == AnimationType.Disappear)
+        {
+            // Store the intended final scale (current scale)
+            initialScale = transform.localScale;
+        }
+        else if (type == AnimationType.Breathe || type == AnimationType.Think)
+        {
+            initialScale = transform.localScale;
+        }
     }
 
     // Example: For future, you can combine multiple modulators for scale, position, rotation
