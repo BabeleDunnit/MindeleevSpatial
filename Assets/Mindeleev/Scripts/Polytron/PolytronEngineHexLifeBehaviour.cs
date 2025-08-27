@@ -49,16 +49,17 @@ public class PolytronEngineHexLifeBehaviour : PolytronEngineBehaviour
 
                 if (alive)
                 {
-                    GameObject poly = PolytronsFactory.Instance.Create("polytron");
+                    GameObject poly = PolytronsFactory.Instance.Create("polytron", polytronScale);
                     poly.transform.position = position;
                     poly.transform.SetParent(myEngine.transform);
-                    poly.transform.localScale = myEngine.transform.localScale * polytronScale;
+//                     poly.transform.localScale = myEngine.transform.localScale * polytronScale;
                     polytrons[hex] = poly;
 
                     // Add and trigger Appear animation
                     var waveAnim = poly.GetComponent<WaveAnimation>();
                     if (waveAnim != null)
                     {
+                        // waveAnim.SetReferenceTransform(poly.transform.localScale);
                         waveAnim.SetAnimation(WaveAnimation.AnimationType.Appear);
                     }
                 }
@@ -127,9 +128,9 @@ public class PolytronEngineHexLifeBehaviour : PolytronEngineBehaviour
 
             if (isAlive && !wasAlive)
             {
-                GameObject poly = PolytronsFactory.Instance.Create("polytron");
+                GameObject poly = PolytronsFactory.Instance.Create("polytron", polytronScale);
                 poly.transform.position = position;
-                poly.transform.localScale = myEngine.transform.localScale * polytronScale;
+                // poly.transform.localScale = myEngine.transform.localScale * polytronScale;
                 poly.transform.SetParent(myEngine.transform);
                 polytrons[hex] = poly;
 
@@ -137,6 +138,7 @@ public class PolytronEngineHexLifeBehaviour : PolytronEngineBehaviour
                 var waveAnim = poly.GetComponent<WaveAnimation>();
                 if (waveAnim != null)
                 {
+                    // waveAnim.SetReferenceTransform(poly.transform.localScale);
                     waveAnim.SetAnimation(WaveAnimation.AnimationType.Appear);
                 }
             }

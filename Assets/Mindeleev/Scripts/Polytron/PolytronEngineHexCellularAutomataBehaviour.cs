@@ -130,9 +130,9 @@ public class PolytronEngineHexCellularAutomataBehaviour : PolytronEnginePhysics
                 Vector2 hexPos2D = hex.Position() + center2D;
                 Vector3 position = new Vector3(hexPos2D.x, myEngine.transform.position.y, hexPos2D.y);
 
-                GameObject sink = PolytronsFactory.Instance.Create("sink");
+                GameObject sink = PolytronsFactory.Instance.Create("sink", polytronScale);
                 sink.transform.position = position;
-                sink.transform.localScale = myEngine.transform.localScale * polytronScale;
+//                 sink.transform.localScale = myEngine.transform.localScale * polytronScale;
                 PolytronSink sinkComponent = sink.GetComponent<PolytronSink>();
                 string sinkRecipe = ring switch
                 {

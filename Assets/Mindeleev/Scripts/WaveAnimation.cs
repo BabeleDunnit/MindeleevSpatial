@@ -38,20 +38,20 @@ public class WaveAnimation : MonoBehaviour
     public AnimationType animationName = AnimationType.None;
     public ModMatrix matrix;
 
-    private Vector3 initialScale = Vector3.zero;
-    private Vector3 initialPosition;
-    private Quaternion initialRotation;
+    private Vector3 referenceLocalScale;
+    private Vector3 referenceLocalPosition;
+    private Quaternion referenceLocalRotation;
 
     private float appearStartTime;
     private float disappearStartTime;
     private bool appearDone;
     private bool disappearDone;
 
-    void GetInitialScale()
+    public void SetReferenceTransform(Vector3 referenceLocalScale)
     {
-        initialScale = transform.localScale;
-        initialPosition = transform.localPosition;
-        initialRotation = transform.localRotation;
+        this.referenceLocalScale = referenceLocalScale;
+        referenceLocalPosition = transform.localPosition;
+        referenceLocalRotation = transform.localRotation;
     }
 
     void Awake()
@@ -68,7 +68,7 @@ public class WaveAnimation : MonoBehaviour
 
     void Start()
     {
- // GetInitialScale();
+        // GetInitialScale();
     }
 
     void ResetAnimation()
@@ -113,7 +113,7 @@ public class WaveAnimation : MonoBehaviour
         float t = Time.time;
         float freq = 0.5f; // 2 seconds period
         float scaleMod = Wave(WaveShape.Sine, t, freq, 0.05f, 1f);
-        Vector3 s = initialScale * (1f + scaleMod);
+        Vector3 s = referenceLocalScale * (1f + scaleMod);
         transform.localScale = s;
     }
 
@@ -124,7 +124,7 @@ public class WaveAnimation : MonoBehaviour
         float duration = 1.0f;
         float progress = Mathf.Clamp01(t / duration);
         float scaleVal = Mathf.Lerp(0.01f, 1f, progress);
-        transform.localScale = initialScale * scaleVal;
+        transform.localScale = referenceLocalScale * scaleVal;
         if (progress >= 1f) appearDone = true;
     }
 
@@ -135,7 +135,7 @@ public class WaveAnimation : MonoBehaviour
         float duration = 1.0f;
         float progress = Mathf.Clamp01(t / duration);
         float scaleVal = Mathf.Lerp(1f, 0.01f, progress);
-        transform.localScale = initialScale * scaleVal;
+        transform.localScale = referenceLocalScale * scaleVal;
         if (progress >= 1f) disappearDone = true;
     }
 
@@ -153,9 +153,9 @@ public class WaveAnimation : MonoBehaviour
         mods[2] = Wave(WaveShape.Sine, t - 4f, freq, 0.2f, 1f);
 
         Vector3 s = new Vector3(
-            initialScale.x * (1f + mods[0]),
-            initialScale.y * (1f + mods[1]),
-            initialScale.z * (1f + mods[2])
+            referenceLocalScale.x * (1f + mods[0]),
+            referenceLocalScale.y * (1f + mods[1]),
+            referenceLocalScale.z * (1f + mods[2])
         );
         transform.localScale = s;
     }
@@ -190,19 +190,31 @@ public class WaveAnimation : MonoBehaviour
         if (type == AnimationType.Appear)
         {
             // Store the intended final scale
-            initialScale = transform.localScale;
             // Set scale to nearly zero for the first frame
-            transform.localScale = initialScale * 0.01f;
-        }
-        else if (type == AnimationType.Disappear)
-        {
-            // Store the intended final scale (current scale)
-            initialScale = transform.localScale;
-        }
-        else if (type == AnimationType.Breathe || type == AnimationType.Think)
-        {
-            initialScale = transform.localScale;
-        }
+            transform.localScale = referenceLocalScale * 0.01f;
+                }
+
+
+
+        /*
+                if (type == AnimationType.Appear)
+                {
+                    // Store the intended final scale
+                    initialScale = transform.localScale;
+                    // Set scale to nearly zero for the first frame
+                    transform.localScale = initialScale * 0.01f;
+                }
+                else if (type == AnimationType.Disappear)
+                {
+                    // Store the intended final scale (current scale)
+                    initialScale = transform.localScale;
+                }
+                else if (type == AnimationType.Breathe || type == AnimationType.Think)
+                {
+                    GetInitialScale();
+                }
+                */
+
     }
 
     // Example: For future, you can combine multiple modulators for scale, position, rotation
@@ -215,7 +227,7 @@ public class WaveAnimation : MonoBehaviour
             Wave(matrix.scaleY.shape, t, matrix.scaleY.frequency, matrix.scaleY.amplitude, matrix.scaleY.offset, matrix.scaleY.dutyCycle, matrix.scaleY.slope),
             Wave(matrix.scaleZ.shape, t, matrix.scaleZ.frequency, matrix.scaleZ.amplitude, matrix.scaleZ.offset, matrix.scaleZ.dutyCycle, matrix.scaleZ.slope)
         );
-        transform.localScale = Vector3.Scale(initialScale, Vector3.one + scaleMod);
+        transform.localScale = Vector3.Scale(referenceLocalScale, Vector3.one + scaleMod);
 
         // Similarly for position and rotation...
     }

@@ -81,7 +81,7 @@ public class PolytronsFactory : MonoBehaviour
         rectTransform.sizeDelta = new Vector2(2, 0.5f);
     }
 
-    public GameObject Create(string kind)
+    public GameObject Create(string kind, float localUniformScale)
     {
         switch (kind)
         {
@@ -90,6 +90,16 @@ public class PolytronsFactory : MonoBehaviour
                     string recipe = "taC";
 
                     GameObject poly = Instantiate(polytronPrefab, Vector3.zero, Quaternion.identity, transform);
+
+                    poly.transform.localScale = Vector3.one * localUniformScale;
+
+                var waveAnim = poly.GetComponent<WaveAnimation>();
+                if (waveAnim != null)
+                {
+                    waveAnim.SetReferenceTransform(poly.transform.localScale);
+                }
+
+
                     var polytronComponent = poly.GetComponent<Polytron>();
                     if (polytronComponent != null)
                     {

@@ -42,13 +42,20 @@ public class PolytronHexGrid : MonoBehaviour
                 Vector2 hexPos2D = hex.Position() + center2D;
                 Vector3 position = new Vector3(hexPos2D.x, transform.position.y, hexPos2D.y);
 
-
-                GameObject poly = PolytronsFactory.Instance.Create("polytron");
+                GameObject poly = PolytronsFactory.Instance.Create("polytron", polytronScale);
                 poly.transform.position = position;
 
                 // GameObject poly = Instantiate(polytronPrefab, position, Quaternion.identity, transform);
 
-                poly.transform.localScale = transform.localScale * polytronScale;
+                /*
+                                poly.transform.localScale = transform.localScale * polytronScale;
+
+                                var waveAnim = poly.GetComponent<WaveAnimation>();
+                                if (waveAnim != null)
+                                {
+                                    waveAnim.SetReferenceTransform(poly.transform.localScale);
+                                }
+                */
 
                 var polyGen = poly.GetComponent<PolyhedronGenerator>();
                 if (polyGen != null)
