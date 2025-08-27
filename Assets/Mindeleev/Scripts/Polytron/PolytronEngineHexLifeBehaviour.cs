@@ -13,9 +13,16 @@ public class PolytronEngineHexLifeBehaviour : PolytronEngineBehaviour
     public float hexDistance = 2.0f;
     float polytronScale = 0.3f;
 
-    private Dictionary<HexCoord, bool> currentState = new Dictionary<HexCoord, bool>();
-    private Dictionary<HexCoord, bool> nextState = new Dictionary<HexCoord, bool>();
-    private Dictionary<HexCoord, GameObject> polytrons = new Dictionary<HexCoord, GameObject>();
+    // Struct to hold all cell data
+    public class HexCellData
+    {
+        public bool currentState;
+        public bool nextState;
+        public GameObject polytron;
+        // Extend here with more fields as needed
+    }
+
+    private Dictionary<HexCoord, HexCellData> gridCells = new Dictionary<HexCoord, HexCellData>();
     private List<HexCoord> gridHexes = new List<HexCoord>();
 
     private float evolveTimer = 0f;
@@ -25,9 +32,7 @@ public class PolytronEngineHexLifeBehaviour : PolytronEngineBehaviour
     {
         Debug.Log("Entering HexLifeBehaviour.Setup()");
 
-        currentState.Clear();
-        nextState.Clear();
-        polytrons.Clear();
+        gridCells.Clear();
         gridHexes.Clear();
 
         Vector2 center2D = new Vector2(myEngine.transform.position.x, myEngine.transform.position.z);
@@ -41,8 +46,12 @@ public class PolytronEngineHexLifeBehaviour : PolytronEngineBehaviour
                 gridHexes.Add(hex);
 
                 bool alive = Random.value > 0.1f;
-                currentState[hex] = alive;
-                nextState[hex] = false;
+                var cell = new HexCellData
+                {
+                    currentState = alive,
+                    nextState = false,
+                    polytron = null
+                };
 
                 Vector2 hexPos2D = hex.Position() * hexDistance + center2D;
                 Vector3 position = new Vector3(hexPos2D.x, myEngine.transform.position.y, hexPos2D.y);
@@ -52,17 +61,16 @@ public class PolytronEngineHexLifeBehaviour : PolytronEngineBehaviour
                     GameObject poly = PolytronsFactory.Instance.Create("polytron", polytronScale);
                     poly.transform.position = position;
                     poly.transform.SetParent(myEngine.transform);
-//                     poly.transform.localScale = myEngine.transform.localScale * polytronScale;
-                    polytrons[hex] = poly;
+                    cell.polytron = poly;
 
-                    // Add and trigger Appear animation
                     var waveAnim = poly.GetComponent<WaveAnimation>();
                     if (waveAnim != null)
                     {
-                        // waveAnim.SetReferenceTransform(poly.transform.localScale);
                         waveAnim.SetAnimation(WaveAnimation.AnimationType.Appear);
                     }
                 }
+
+                gridCells[hex] = cell;
             }
         }
         evolveTimer = 0f;
@@ -90,17 +98,19 @@ public class PolytronEngineHexLifeBehaviour : PolytronEngineBehaviour
 
     public void Evolve(GameObject myEngine)
     {
+        // Compute next state
         foreach (var hex in gridHexes)
         {
             int aliveNeighbors = 0;
             for (int n = 0; n < 6; n++)
             {
                 HexCoord neighbor = hex.Neighbor(n);
-                if (currentState.ContainsKey(neighbor) && currentState[neighbor])
+                if (gridCells.ContainsKey(neighbor) && gridCells[neighbor].currentState)
                     aliveNeighbors++;
             }
 
-            bool alive = currentState[hex];
+            var cell = gridCells[hex];
+            bool alive = cell.currentState;
             bool nextAlive = false;
 
             // Game of Life rules for hex grid
@@ -113,15 +123,17 @@ public class PolytronEngineHexLifeBehaviour : PolytronEngineBehaviour
                 nextAlive = (aliveNeighbors == 2);
             }
 
-            nextState[hex] = nextAlive;
+            cell.nextState = nextAlive;
         }
 
         Vector2 center2D = new Vector2(myEngine.transform.position.x, myEngine.transform.position.z);
 
+        // Apply next state and update Polytrons
         foreach (var hex in gridHexes)
         {
-            bool wasAlive = currentState[hex];
-            bool isAlive = nextState[hex];
+            var cell = gridCells[hex];
+            bool wasAlive = cell.currentState;
+            bool isAlive = cell.nextState;
 
             Vector2 hexPos2D = hex.Position() * hexDistance + center2D;
             Vector3 position = new Vector3(hexPos2D.x, myEngine.transform.position.y, hexPos2D.y);
@@ -130,48 +142,42 @@ public class PolytronEngineHexLifeBehaviour : PolytronEngineBehaviour
             {
                 GameObject poly = PolytronsFactory.Instance.Create("polytron", polytronScale);
                 poly.transform.position = position;
-                // poly.transform.localScale = myEngine.transform.localScale * polytronScale;
                 poly.transform.SetParent(myEngine.transform);
-                polytrons[hex] = poly;
+                cell.polytron = poly;
 
-                // Add and trigger Appear animation
                 var waveAnim = poly.GetComponent<WaveAnimation>();
                 if (waveAnim != null)
                 {
-                    // waveAnim.SetReferenceTransform(poly.transform.localScale);
                     waveAnim.SetAnimation(WaveAnimation.AnimationType.Appear);
                 }
             }
             else if (!isAlive && wasAlive)
             {
-                if (polytrons.ContainsKey(hex) && polytrons[hex] != null)
+                if (cell.polytron != null)
                 {
-                    // Trigger Disappear animation before destroying
-                    var waveAnim = polytrons[hex].GetComponent<WaveAnimation>();
+                    var waveAnim = cell.polytron.GetComponent<WaveAnimation>();
                     if (waveAnim != null)
                     {
                         waveAnim.SetAnimation(WaveAnimation.AnimationType.Disappear);
-                        // Optionally, delay destruction to allow animation to finish
-                        Destroy(polytrons[hex], 1.0f); // 1 second delay for animation
+                        Destroy(cell.polytron, 1.0f);
                     }
                     else
                     {
-                        Destroy(polytrons[hex]);
+                        Destroy(cell.polytron);
                     }
-                    polytrons.Remove(hex);
+                    cell.polytron = null;
                 }
             }
             else if (isAlive && wasAlive)
             {
-                if (polytrons.ContainsKey(hex) && polytrons[hex] != null)
+                if (cell.polytron != null)
                 {
-                    polytrons[hex].transform.position = position;
+                    cell.polytron.transform.position = position;
                 }
             }
-        }
 
-        var temp = currentState;
-        currentState = nextState;
-        nextState = temp;
+            // Swap state
+            cell.currentState = cell.nextState;
+        }
     }
 }

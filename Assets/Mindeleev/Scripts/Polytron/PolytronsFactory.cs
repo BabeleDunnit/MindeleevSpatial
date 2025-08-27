@@ -121,17 +121,18 @@ public class PolytronsFactory : MonoBehaviour
                     return poly;
 
                 }
-                break;
+                // break;
             case "sink":
                 {
                     GameObject sink = Instantiate(sinkPrefab, Vector3.zero, Quaternion.identity, transform);
+                    sink.transform.localScale = Vector3.one * localUniformScale;
                     createdSinks.Add(sink);
                     sink.name = "sink";
 
                     return sink;
 
                 }
-                break;
+                // break;
 
             default:
                 break;
