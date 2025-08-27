@@ -54,6 +54,13 @@ public class PolytronEngineHexLifeBehaviour : PolytronEngineBehaviour
                     poly.transform.SetParent(myEngine.transform);
                     poly.transform.localScale = myEngine.transform.localScale * polytronScale;
                     polytrons[hex] = poly;
+
+                    // Add and trigger Appear animation
+                    var waveAnim = poly.GetComponent<WaveAnimation>();
+                    if (waveAnim != null)
+                    {
+                        waveAnim.SetAnimation(WaveAnimation.AnimationType.Appear);
+                    }
                 }
             }
         }
@@ -125,12 +132,30 @@ public class PolytronEngineHexLifeBehaviour : PolytronEngineBehaviour
                 poly.transform.localScale = myEngine.transform.localScale * polytronScale;
                 poly.transform.SetParent(myEngine.transform);
                 polytrons[hex] = poly;
+
+                // Add and trigger Appear animation
+                var waveAnim = poly.GetComponent<WaveAnimation>();
+                if (waveAnim != null)
+                {
+                    waveAnim.SetAnimation(WaveAnimation.AnimationType.Appear);
+                }
             }
             else if (!isAlive && wasAlive)
             {
                 if (polytrons.ContainsKey(hex) && polytrons[hex] != null)
                 {
-                    GameObject.Destroy(polytrons[hex]);
+                    // Trigger Disappear animation before destroying
+                    var waveAnim = polytrons[hex].GetComponent<WaveAnimation>();
+                    if (waveAnim != null)
+                    {
+                        waveAnim.SetAnimation(WaveAnimation.AnimationType.Disappear);
+                        // Optionally, delay destruction to allow animation to finish
+                        Destroy(polytrons[hex], 1.0f); // 1 second delay for animation
+                    }
+                    else
+                    {
+                        Destroy(polytrons[hex]);
+                    }
                     polytrons.Remove(hex);
                 }
             }
