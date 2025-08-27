@@ -15,15 +15,11 @@ public class PolytronEngineHexCellularAutomataBehaviour : PolytronEnginePhysics
     public GameObject polytronTilePrefab; // Assign in inspector
 
     private HashSet<Polytron> boundPolytrons = new();
-
-
-
     // Store created sinks for runtime manipulation
     // [NonSerialized]
     // "Type Mismatch" in the Inspector... why???
     // also, this is not cleared. Maybe because this script is an asset and not a component?
     public List<GameObject> sinks = new();
-    // public List<PolytronSink> sinks2 = new List<PolytronSink>();
 
     /*
         private void BuildGridWithPolytrons(GameObject myEngine)
@@ -184,81 +180,6 @@ public class PolytronEngineHexCellularAutomataBehaviour : PolytronEnginePhysics
     public override void Loop(List<Polytron> registeredPolytrons, GameObject myEngine)
     {
         // first: check for new, unbound polytrons. We could have a new polytron, a new sink etc.
-        /*
-        foreach (var polytron in registeredPolytrons)
-        {
-            if (boundPolytrons.Contains(polytron))
-            {
-                continue;
-            }
-
-            // find all the eligible sinks for the bound with this polytron
-            Dictionary<GameObject, float> eligibleSinks = new();
-            foreach (var sink in sinks)
-            {
-                PolytronSink sinkComponent = sink.GetComponent<PolytronSink>();
-                if (polytron.recipeString != sinkComponent.attractedRecipe)
-                {
-                    continue;
-                }
-
-                if (sinkComponent.boundPolytron != null)
-                {
-                    continue;
-                }
-
-                float distanceFromPolytronToSink = (sink.transform.position - polytron.transform.position).magnitude;
-                eligibleSinks.Add(sink, distanceFromPolytronToSink);
-            }
-
-            // we now have all the eligible, free sinks that can accomodate the polytron. We can select the nearest and bind it.
-            if (eligibleSinks.Count > 0)
-            {
-                var nearestSink = eligibleSinks.OrderBy(pair => pair.Value).Last().Key;
-                PolytronSink nearestSinkComponent = nearestSink.GetComponent<PolytronSink>();
-                nearestSinkComponent.boundPolytron = polytron;
-                boundPolytrons.Add(polytron);
-            }
-        }
-        */
-
-        /*
-        foreach (var sink in sinks)
-        {
-            PolytronSink sinkComponent = sink.GetComponent<PolytronSink>();
-            if (sinkComponent.boundPolytron != null)
-            {
-                continue;
-            }
-
-            Dictionary<Polytron, float> eligiblePolytrons = new();
-            foreach (var polytron in registeredPolytrons)
-            {
-                if (boundPolytrons.Contains(polytron))
-                {
-                    continue;
-                }
-
-                if (polytron.recipeString != sinkComponent.attractedRecipe)
-                {
-                    continue;
-                }
-
-                float distanceFromPolytronToSink = (sink.transform.position - polytron.transform.position).magnitude;
-                eligiblePolytrons.Add(polytron, distanceFromPolytronToSink);
-            }
-
-            // we now have all the eligible, unbound polytrons that can be accomodated in the sink. 
-            // We can select the nearest and bind it.
-            if (eligiblePolytrons.Count > 0)
-            {
-                var nearestPolytron = eligiblePolytrons.OrderBy(pair => pair.Value).Last().Key;
-                sinkComponent.boundPolytron = nearestPolytron;
-                boundPolytrons.Add(nearestPolytron);
-            }
-
-        }
-        */
 
         float minDistance = float.MaxValue;
         Polytron minDistancePolytron = null;

@@ -12,6 +12,5 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 2319b89bde7964ec692eb9d70b1e13e7, type: 3}
   m_Name: PolytronEngineHexLifeBehaviour
   m_EditorClassIdentifier: 
-  maxRing: 3
-  hexDistance: 2
-  polytronPrefab: {fileID: 0}
+  maxRing: 6
+  hexDistance: 1

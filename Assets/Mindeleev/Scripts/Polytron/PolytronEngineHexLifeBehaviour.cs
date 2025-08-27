@@ -9,7 +9,7 @@ using System.Collections.Generic;
 public class PolytronEngineHexLifeBehaviour : PolytronEngineBehaviour
 {
     [Header("Hex Grid Settings")]
-    public int maxRing = 6;
+    public int maxRing = 3;
     public float hexDistance = 2.0f;
     float polytronScale = 0.3f;
 
@@ -19,6 +19,10 @@ public class PolytronEngineHexLifeBehaviour : PolytronEngineBehaviour
         public bool currentState;
         public bool nextState;
         public GameObject polytron;
+
+        public int ring;
+
+        public int ringPlace;
         // Extend here with more fields as needed
     }
 
@@ -28,9 +32,9 @@ public class PolytronEngineHexLifeBehaviour : PolytronEngineBehaviour
     private float evolveTimer = 0f;
     private const float evolveInterval = 1.5f;
 
-    public override void Setup(GameObject myEngine)
+    private void Reset(GameObject myEngine)
     {
-        Debug.Log("Entering HexLifeBehaviour.Setup()");
+        Debug.Log("Entering HexLifeBehaviour.Reset()");
 
         gridCells.Clear();
         gridHexes.Clear();
@@ -46,11 +50,18 @@ public class PolytronEngineHexLifeBehaviour : PolytronEngineBehaviour
                 gridHexes.Add(hex);
 
                 bool alive = Random.value > 0.1f;
+                // bool alive = (ring == 0);
+
+                // bool alive = IsMetatronCoord(ring, i);
+
+
                 var cell = new HexCellData
                 {
                     currentState = alive,
                     nextState = false,
-                    polytron = null
+                    polytron = null,
+                    ring = ring,
+                    ringPlace = i
                 };
 
                 Vector2 hexPos2D = hex.Position() * hexDistance + center2D;
@@ -76,6 +87,18 @@ public class PolytronEngineHexLifeBehaviour : PolytronEngineBehaviour
         evolveTimer = 0f;
     }
 
+    public override void Setup(GameObject myEngine)
+    {
+        Reset(myEngine);
+    }
+
+    bool IsMetatronCoord(int ring, int i)
+    {
+        if (ring == 0 || ring == 1) return true;
+        if (ring == 2 && (i % 2 == 0)) return true;
+        return false;
+    }
+
     public override void Loop(List<Polytron> registeredPolytrons, GameObject myEngine)
     {
         evolveTimer += Time.deltaTime;
@@ -93,6 +116,13 @@ public class PolytronEngineHexLifeBehaviour : PolytronEngineBehaviour
             Evolve(myEngine);
             return 1;
         }
+
+        if (s == "reset")
+        {
+            Reset(myEngine);
+            return 1;
+        }
+
         return 0;
     }
 
@@ -109,21 +139,29 @@ public class PolytronEngineHexLifeBehaviour : PolytronEngineBehaviour
                     aliveNeighbors++;
             }
 
-            var cell = gridCells[hex];
-            bool alive = cell.currentState;
+            HexCellData cellData = gridCells[hex];
+            bool alive = cellData.currentState;
             bool nextAlive = false;
 
-            // Game of Life rules for hex grid
-            if (alive)
-            {
-                nextAlive = (aliveNeighbors == 3 || aliveNeighbors == 6);
-            }
-            else
-            {
-                nextAlive = (aliveNeighbors == 2);
-            }
+        
+                        // Game of Life rules for hex grid
+                        if (alive)
+                        {
+                            // this is simmetrical with the Metatron initial scheme
+                            // nextAlive = (aliveNeighbors == 3 || aliveNeighbors == 4);
+                            nextAlive = (aliveNeighbors == 3 || aliveNeighbors == 6);
+                        }
+                        else
+                        {
+                            nextAlive = (aliveNeighbors == 2);
+                        }
 
-            cell.nextState = nextAlive;
+            // rule for pattern breeder
+            // nextAlive = ((aliveNeighbors % 2) == 1) /* || cellData.ring == 0 */;
+
+            cellData.nextState = nextAlive;
+            
+
         }
 
         Vector2 center2D = new Vector2(myEngine.transform.position.x, myEngine.transform.position.z);

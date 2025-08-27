@@ -74,6 +74,13 @@ public class PolytronEngine : MonoBehaviour
             Debug.Log("E pressed");
             engineBehaviour.Invoke("evolve", this.gameObject);
         }
+        else
+        if (Input.GetKeyDown(KeyCode.R))
+        {
+            Debug.Log("R pressed");
+            engineBehaviour.Invoke("reset", this.gameObject);
+        }
+
 
     }
 
