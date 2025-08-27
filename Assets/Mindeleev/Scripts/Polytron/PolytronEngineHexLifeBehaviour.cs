@@ -65,15 +65,6 @@ public class PolytronEngineHexLifeBehaviour : PolytronEngineBehaviour
 
     public override void Loop(List<Polytron> registeredPolytrons, GameObject myEngine)
     {
-        /*
-        Debug.Log("loop called");
-        // Detect E key press to evolve
-        if (Input.GetKeyDown(KeyCode.E))
-        {
-            Debug.Log("E pressed");
-            Evolve(myEngine);
-        }
-        */
     }
 
     public override int Invoke(string s, GameObject myEngine)
