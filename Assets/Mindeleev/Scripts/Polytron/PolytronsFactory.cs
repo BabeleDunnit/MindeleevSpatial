@@ -93,12 +93,11 @@ public class PolytronsFactory : MonoBehaviour
 
                     poly.transform.localScale = Vector3.one * localUniformScale;
 
-                var waveAnim = poly.GetComponent<WaveAnimation>();
-                if (waveAnim != null)
-                {
-                    waveAnim.SetReferenceTransform(poly.transform.localScale);
-                }
-
+                    var waveAnim = poly.GetComponent<WaveAnimation>();
+                    if (waveAnim != null)
+                    {
+                        waveAnim.SetReferenceTransform(poly.transform.localScale);
+                    }
 
                     var polytronComponent = poly.GetComponent<Polytron>();
                     if (polytronComponent != null)
