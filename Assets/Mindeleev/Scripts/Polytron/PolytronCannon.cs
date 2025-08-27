@@ -57,12 +57,14 @@ public class PolytronCannon : MonoBehaviour
         Debug.Log("Shoot!");
         // if (factory == null) return;
 
-        GameObject polytron = PolytronsFactory.Instance.Create("polytron", 0.5f);
+        GameObject polytron = PolytronsFactory.Instance.Create("polytron", 0.2f);
         if (polytron == null)
         {
             Debug.LogWarning("PolytronCannon: PolytronsFactory.Create returned null.");
             return;
         }
+
+        polytron.transform.position = transform.position + new Vector3(0, 2, 0);
 
         Rigidbody rb = polytron.GetComponent<Rigidbody>();
         if (rb == null)
@@ -78,6 +80,5 @@ public class PolytronCannon : MonoBehaviour
             ca = polytron.AddComponent<PolytronCollisionHandler>();
         }
 
-        polytron.transform.position += new Vector3(0, 2, 0);
     }
 }
