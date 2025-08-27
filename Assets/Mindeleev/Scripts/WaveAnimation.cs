@@ -35,8 +35,60 @@ public class WaveAnimation : MonoBehaviour
         public Modulator rotX, rotY, rotZ;
     }
 
-    public AnimationType animationName = AnimationType.None;
+    private AnimationType _animationName = AnimationType.None;
+    public AnimationType animationName
+    {
+        get => _animationName;
+        set
+        {
+            _animationName = value;
+            switch (_animationName)
+            {
+                case AnimationType.Breathe:
+                    float freq = 0.1f + UnityEngine.Random.value * 0.3f;
+                    matrix = new ModMatrix
+                    {
+                        scaleX = new Modulator { shape = WaveShape.Sine, frequency = freq, amplitude = 0.05f, offset = 0f, dutyCycle = 0.5f, slope = 0.5f },
+                        scaleY = new Modulator { shape = WaveShape.Sine, frequency = freq, amplitude = 0.05f, offset = 0f, dutyCycle = 0.5f, slope = 0.5f },
+                        scaleZ = new Modulator { shape = WaveShape.Sine, frequency = freq, amplitude = 0.05f, offset = 0f, dutyCycle = 0.5f, slope = 0.5f }
+                    };
+                    break;
+                case AnimationType.Appear:
+                    matrix = new ModMatrix
+                    {
+                        scaleX = new Modulator { shape = WaveShape.Sine, frequency = 0f, amplitude = 0f, offset = 0f },
+                        scaleY = new Modulator { shape = WaveShape.Sine, frequency = 0f, amplitude = 0f, offset = 0f },
+                        scaleZ = new Modulator { shape = WaveShape.Sine, frequency = 0f, amplitude = 0f, offset = 0f }
+                    };
+                    break;
+                case AnimationType.Disappear:
+                    matrix = new ModMatrix
+                    {
+                        scaleX = new Modulator { shape = WaveShape.Sine, frequency = 0f, amplitude = 0f, offset = 0f },
+                        scaleY = new Modulator { shape = WaveShape.Sine, frequency = 0f, amplitude = 0f, offset = 0f },
+                        scaleZ = new Modulator { shape = WaveShape.Sine, frequency = 0f, amplitude = 0f, offset = 0f }
+                    };
+                    break;
+                case AnimationType.Think:
+                    matrix = new ModMatrix
+                    {
+                        scaleX = new Modulator { shape = WaveShape.Sine, frequency = 0.5f, amplitude = 0.2f, offset = 0f },
+                        scaleY = new Modulator { shape = WaveShape.Sine, frequency = 0.5f, amplitude = 0.2f, offset = 0f },
+                        scaleZ = new Modulator { shape = WaveShape.Sine, frequency = 0.5f, amplitude = 0.2f, offset = 0f }
+                    };
+                    break;
+                default:
+                    matrix = new ModMatrix();
+                    break;
+            }
+            ResetAnimation();
+        }
+    }
+
+    // public AnimationType animationName = AnimationType.None;
     public ModMatrix matrix;
+
+
 
     private Vector3 referenceLocalScale;
     private Vector3 referenceLocalPosition;
@@ -92,7 +144,7 @@ public class WaveAnimation : MonoBehaviour
         switch (animationName)
         {
             case AnimationType.Breathe:
-                ApplyBreathe();
+                ApplyModMatrix();
                 break;
             case AnimationType.Appear:
                 ApplyAppear();
