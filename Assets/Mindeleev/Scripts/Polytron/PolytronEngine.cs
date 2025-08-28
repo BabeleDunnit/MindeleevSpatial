@@ -67,6 +67,23 @@ public class PolytronEngine : MonoBehaviour
         }
     }
 
+    void Update()
+    {
+        if (Input.GetKeyDown(KeyCode.E))
+        {
+            Debug.Log("E pressed");
+            engineBehaviour.Invoke("evolve", this.gameObject);
+        }
+        else
+        if (Input.GetKeyDown(KeyCode.R))
+        {
+            Debug.Log("R pressed");
+            engineBehaviour.Invoke("reset", this.gameObject);
+        }
+
+
+    }
+
     public Dictionary<string, int> CollectRecipes()
     {
         Dictionary<string, int> recipeCounts = new();

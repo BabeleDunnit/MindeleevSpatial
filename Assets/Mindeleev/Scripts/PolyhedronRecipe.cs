@@ -317,6 +317,13 @@ public static class PolyhedronRecipeBuilder
             int faceSignatureRounding = Convert.ToInt32(token.Parameter("faceSignatureRounding"));
             int facesSidesFilter = Convert.ToInt32(token.Parameter("facesSidesFilter"));
 
+            // introduce an upper bound complexity control
+            if (current.Item1.Length > 100)
+            {
+                Debug.LogWarning("We have hit a polyhedron complexity upper bound, stopping generation");
+                break;
+            }
+
             switch (op)
             {
                 case "k":

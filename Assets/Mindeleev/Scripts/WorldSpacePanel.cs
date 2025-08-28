@@ -109,6 +109,8 @@ public class WorldSpacePanel : MonoBehaviour
                 // You can now use 'engine' as needed
                 foreach (var poly in PolytronsFactory.Instance.createdPolytrons)
                 {
+                    if (poly == null) continue;
+                    
                     GameObject.Find("PolytronEngine02").GetComponent<PolytronEngine>().Deregister(poly.GetComponent<Polytron>());
                     engine.Register(poly.GetComponent<Polytron>());
                 }

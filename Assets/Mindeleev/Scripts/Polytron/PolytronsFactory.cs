@@ -81,7 +81,7 @@ public class PolytronsFactory : MonoBehaviour
         rectTransform.sizeDelta = new Vector2(2, 0.5f);
     }
 
-    public GameObject Create(string kind)
+    public GameObject Create(string kind, float localUniformScale)
     {
         switch (kind)
         {
@@ -90,6 +90,16 @@ public class PolytronsFactory : MonoBehaviour
                     string recipe = "taC";
 
                     GameObject poly = Instantiate(polytronPrefab, Vector3.zero, Quaternion.identity, transform);
+
+                    poly.transform.localScale = Vector3.one * localUniformScale;
+
+                    var waveAnim = poly.GetComponent<WaveAnimation>();
+                    if (waveAnim != null)
+                    {
+                        waveAnim.animationName = WaveAnimation.AnimationType.Breathe;
+                        waveAnim.SetReferenceTransform(poly.transform.localScale);
+                    }
+
                     var polytronComponent = poly.GetComponent<Polytron>();
                     if (polytronComponent != null)
                     {
@@ -97,28 +107,32 @@ public class PolytronsFactory : MonoBehaviour
                     }
 
                     poly.name = $"{kind}_{recipe}";
+                    // poly.transform. = new Vector3(0.003f, 0.003f, 0.003f);
 
-                    CreateLabel(poly, recipe
-                        + " "
-                        + PolyhedronRecipeUtils.ComputeComplexity(PolyhedronRecipeParser.Parse(recipe)),
-                        Vector3.zero);
+                    /*
+                                        CreateLabel(poly, recipe
+                                            + " "
+                                            + PolyhedronRecipeUtils.ComputeComplexity(PolyhedronRecipeParser.Parse(recipe)),
+                                            Vector3.zero);
+                    */
 
                     createdPolytrons.Add(poly);
 
                     return poly;
 
                 }
-                break;
+                // break;
             case "sink":
                 {
                     GameObject sink = Instantiate(sinkPrefab, Vector3.zero, Quaternion.identity, transform);
+                    sink.transform.localScale = Vector3.one * localUniformScale;
                     createdSinks.Add(sink);
                     sink.name = "sink";
 
                     return sink;
 
                 }
-                break;
+                // break;
 
             default:
                 break;
