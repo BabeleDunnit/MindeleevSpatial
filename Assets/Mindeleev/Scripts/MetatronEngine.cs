@@ -37,7 +37,7 @@ public class MetatronEngine : MonoBehaviour
         // hide the placeholder
         GetComponent<MeshRenderer>().enabled = false;
 
-        BuildMetatron(2);
+        BuildMetatron(3);
 
     }
 
@@ -49,13 +49,13 @@ public class MetatronEngine : MonoBehaviour
 
     void BuildMetatron(int ringsToBuild)
     {
-        int linesCount = 0;
+        // int linesCount = 0;
         Dictionary<string, int> skippedLines = new();
         foreach (HexCellData hcd in gridCells.Values)
         {
             if (hcd.isOnMetatronPattern && hcd.ring <= ringsToBuild)
             {
-                CircleRenderer cr = CreateCircle(hcd.worldCoords, 0.87f);
+                CircleRenderer cr = CreateCircle(hcd.worldCoords, 1.73f);
 
                 /*                
                                 foreach (HexCellData hcd2 in gridCells.Values)
@@ -120,52 +120,55 @@ public class MetatronEngine : MonoBehaviour
             }
         }
 
-        Debug.Log($"[BuildMetatron] draw {linesCount} lines");
-        int totalSkipped = 0;
-        foreach (var kvp in skippedLines)
-        {
-            Debug.Log($"{kvp.Key}: {kvp.Value}");
-            totalSkipped += kvp.Value;
-        }
-        Debug.Log($"Total skipped: {totalSkipped}");
+        /*
+                Debug.Log($"[BuildMetatron] draw {linesCount} lines");
+                int totalSkipped = 0;
+                foreach (var kvp in skippedLines)
+                {
+                    Debug.Log($"{kvp.Key}: {kvp.Value}");
+                    totalSkipped += kvp.Value;
+                }
+                Debug.Log($"Total skipped: {totalSkipped}");
 
-        var orderedHexCoords = gridCells
-            .OrderBy(kvp => kvp.Value.ring)
-            .ThenBy(kvp => kvp.Value.idxInRing)
-            .Select(kvp => kvp.Key)
-            .ToList();
+                var orderedHexCoords = gridCells
+                    .OrderBy(kvp => kvp.Value.ring)
+                    .ThenBy(kvp => kvp.Value.idxInRing)
+                    .Select(kvp => kvp.Key)
+                    .ToList();
 
-        foreach (HexCoord hc in orderedHexCoords)
-        {
-            Debug.Log($"{gridCells[hc].ring} {gridCells[hc].idxInRing}");
-        }
+                foreach (HexCoord hc in orderedHexCoords)
+                {
+                    Debug.Log($"{gridCells[hc].ring} {gridCells[hc].idxInRing}");
+                }
+        */
 
-        // create the hexagons. For each ring, the "corner" hexagons have coord (ring, ring * i) for i (0, 5)
-        for (int r = 1; r <= ringsToBuild; r++)
-        {
-            for (int i = 0; i < 6; i++)
-            {
-                int idxInRing = r * i;
-                KeyValuePair<HexCoord, HexCellData>? hc1 = FindCellByRingAndIdx(r, idxInRing);
-                KeyValuePair<HexCoord, HexCellData>? hc2 = FindCellByRingAndIdx(r, (idxInRing + r) % (r * 6));
-                CircleRenderer cr = new CircleRenderer();
-                cr.DrawLine(hc1.Value.Value.worldCoords, hc2.Value.Value.worldCoords, Color.yellow, 0.05f);
-            }
-        }
+                // create the hexagons. For each ring, the "corner" hexagons have coord (ring, ring * i) for i (0, 5)
+                for (int r = 1; r <= ringsToBuild; r++)
+                {
+                    for (int i = 0; i < 6; i++)
+                    {
+                        int idxInRing = r * i;
+                        KeyValuePair<HexCoord, HexCellData>? hc1 = FindCellByRingAndIdx(r, idxInRing);
+                        KeyValuePair<HexCoord, HexCellData>? hc2 = FindCellByRingAndIdx(r, (idxInRing + r) % (r * 6));
+                        CircleRenderer cr = new CircleRenderer();
+                        cr.DrawLine(hc1.Value.Value.worldCoords, hc2.Value.Value.worldCoords, Color.yellow, 0.05f);
+                    }
+                }
 
-        // create the central cross.
-        // we must join the outer opposite corners two by two
-        for (int i = 0; i < 3; i++)
-        {
-            int idxInRing1 = (i * ringsToBuild);
-            int idxInRing2 = ((i + 3) * ringsToBuild);
-            KeyValuePair<HexCoord, HexCellData>? hc1 = FindCellByRingAndIdx(ringsToBuild, idxInRing1);
-            KeyValuePair<HexCoord, HexCellData>? hc2 = FindCellByRingAndIdx(ringsToBuild, idxInRing2);
-            CircleRenderer cr = new CircleRenderer();
-            cr.DrawLine(hc1.Value.Value.worldCoords, hc2.Value.Value.worldCoords, Color.blue, 0.05f);
-        }
+                // create the central cross.
+                // we must join the outer opposite corners two by two
+                for (int i = 0; i < 3; i++)
+                {
+                    int idxInRing1 = (i * ringsToBuild);
+                    int idxInRing2 = ((i + 3) * ringsToBuild);
+                    KeyValuePair<HexCoord, HexCellData>? hc1 = FindCellByRingAndIdx(ringsToBuild, idxInRing1);
+                    KeyValuePair<HexCoord, HexCellData>? hc2 = FindCellByRingAndIdx(ringsToBuild, idxInRing2);
+                    CircleRenderer cr = new CircleRenderer();
+                    cr.DrawLine(hc1.Value.Value.worldCoords, hc2.Value.Value.worldCoords, Color.blue, 0.05f);
+                }
+        
 
-        // create the two opposite triangles
+        // create the two opposite equilateral triangles on each ring
         for (int r = 1; r <= ringsToBuild; r++)
         {
             for (int i = 0; i < 2; i++)
@@ -182,6 +185,27 @@ public class MetatronEngine : MonoBehaviour
                 cr.DrawLine(hc3.Value.Value.worldCoords, hc1.Value.Value.worldCoords, Color.red, 0.05f);
             }
         }
+
+        {
+            // create the isosceles triangles.
+            int r = 2;
+            for (int i = 0; i < 6; i++)
+            {
+                int idxInRing1 = (i * r);
+                int idxInRing2 = ((i + 2) * (r - 1)) % ((r - 1) * 6);
+                int idxInRing3 = ((i + 4) * (r - 1)) % ((r - 1) * 6);
+                KeyValuePair<HexCoord, HexCellData>? hc1 = FindCellByRingAndIdx(r, idxInRing1);
+                KeyValuePair<HexCoord, HexCellData>? hc2 = FindCellByRingAndIdx(r - 1, idxInRing2);
+                KeyValuePair<HexCoord, HexCellData>? hc3 = FindCellByRingAndIdx(r - 1, idxInRing3);
+                CircleRenderer cr = new CircleRenderer();
+                cr.DrawLine(hc1.Value.Value.worldCoords, hc2.Value.Value.worldCoords, Color.cyan, 0.05f);
+                cr.DrawLine(hc2.Value.Value.worldCoords, hc3.Value.Value.worldCoords, Color.cyan, 0.05f);
+                cr.DrawLine(hc3.Value.Value.worldCoords, hc1.Value.Value.worldCoords, Color.cyan, 0.05f);
+
+
+            }
+        }
+
 
 
     }
@@ -211,7 +235,7 @@ public class MetatronEngine : MonoBehaviour
                 gridHexes.Add(hex);
 
                 // Get world position for hex center
-                Vector2 hexPos2D = hex.Position() + center2D;
+                Vector2 hexPos2D = hex.Position() * 2f + center2D;
                 Vector3 position = new Vector3(hexPos2D.x, transform.position.y, hexPos2D.y);
 
                 var cellData = new HexCellData
@@ -277,26 +301,3 @@ public class MetatronEngine : MonoBehaviour
     }
 
 }
-
-/*
-public class CircleManager : MonoBehaviour
-{
-    public GameObject circlePrefab; // un prefab con CircleDrawer
-
-    void Start()
-    {
-        CreateCircle(new Vector3(0,0,0), 1f, Color.red);
-        CreateCircle(new Vector3(5,0,0), 2f, Color.green);
-        CreateCircle(new Vector3(-3,0,4), 0.5f, Color.blue);
-    }
-
-    void CreateCircle(Vector3 pos, float radius, Color color)
-    {
-        var go = Instantiate(circlePrefab, pos, Quaternion.identity);
-        var cd = go.GetComponent<CircleDrawer>();
-        cd.radius = radius;
-        cd.color = color;
-        cd.DrawCircle();
-    }
-}
-*/

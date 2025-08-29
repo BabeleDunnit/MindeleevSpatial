@@ -7,10 +7,10 @@ public class CircleRenderer : MonoBehaviour
     public float radius = 1f;
 
     [Range(3, 128)]
-    public int segments = 16;
+    int segments = 20;
 
     [Range(0.001f, 0.2f)]
-    public float lineWidth = 0.02f;
+    float lineWidth = 0.05f;
 
     private LineRenderer lr;
 
