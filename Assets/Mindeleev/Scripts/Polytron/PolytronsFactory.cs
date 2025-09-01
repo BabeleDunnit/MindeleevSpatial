@@ -9,6 +9,7 @@ public class PolytronsFactory : MonoBehaviour
 
     public GameObject polytronPrefab; // Assign the Polytron prefab in the inspector
     public GameObject sinkPrefab;
+    public GameObject tilePrefab;
 
     public float polytronScale = 0.3f;
 
@@ -83,60 +84,84 @@ public class PolytronsFactory : MonoBehaviour
 
     public GameObject Create(string kind, float localUniformScale)
     {
-        switch (kind)
+
+        string recipe = "C";
+        // string kind = null;
+
+        // the "kind" string is composed from a kind of object and eventually some parameters
+        // keep it simple: "kind/recipe"
+        int idx = kind.IndexOf('/');
+        if (idx > 0)
         {
-            case "polytron":
-                {
-                    string recipe = "taC";
-
-                    GameObject poly = Instantiate(polytronPrefab, Vector3.zero, Quaternion.identity, transform);
-
-                    poly.transform.localScale = Vector3.one * localUniformScale;
-
-                    var waveAnim = poly.GetComponent<WaveAnimation>();
-                    if (waveAnim != null)
-                    {
-                        waveAnim.animationName = WaveAnimation.AnimationType.Breathe;
-                        waveAnim.SetReferenceTransform(poly.transform.localScale);
-                    }
-
-                    var polytronComponent = poly.GetComponent<Polytron>();
-                    if (polytronComponent != null)
-                    {
-                        polytronComponent.recipeString = recipe;
-                    }
-
-                    poly.name = $"{kind}_{recipe}";
-                    // poly.transform. = new Vector3(0.003f, 0.003f, 0.003f);
-
-                    /*
-                                        CreateLabel(poly, recipe
-                                            + " "
-                                            + PolyhedronRecipeUtils.ComputeComplexity(PolyhedronRecipeParser.Parse(recipe)),
-                                            Vector3.zero);
-                    */
-
-                    createdPolytrons.Add(poly);
-
-                    return poly;
-
-                }
-                // break;
-            case "sink":
-                {
-                    GameObject sink = Instantiate(sinkPrefab, Vector3.zero, Quaternion.identity, transform);
-                    sink.transform.localScale = Vector3.one * localUniformScale;
-                    createdSinks.Add(sink);
-                    sink.name = "sink";
-
-                    return sink;
-
-                }
-                // break;
-
-            default:
-                break;
+            recipe = kind.Substring(idx + 1);
+            kind = kind.Substring(0, idx);
         }
+
+        switch (kind)
+            {
+                case "polytron":
+                    {
+                        GameObject poly = Instantiate(polytronPrefab, Vector3.zero, Quaternion.identity, transform);
+
+                        poly.transform.localScale = Vector3.one * localUniformScale;
+
+                        var waveAnim = poly.GetComponent<WaveAnimation>();
+                        if (waveAnim != null)
+                        {
+                            waveAnim.animationName = WaveAnimation.AnimationType.Breathe;
+                            waveAnim.SetReferenceTransform(poly.transform.localScale);
+                        }
+
+                        var polytronComponent = poly.GetComponent<Polytron>();
+                        if (polytronComponent != null)
+                        {
+                            polytronComponent.recipeString = recipe;
+                        }
+
+                        poly.name = $"{kind}_{recipe}";
+                        // poly.transform. = new Vector3(0.003f, 0.003f, 0.003f);
+
+                        /*
+                                            CreateLabel(poly, recipe
+                                                + " "
+                                                + PolyhedronRecipeUtils.ComputeComplexity(PolyhedronRecipeParser.Parse(recipe)),
+                                                Vector3.zero);
+                        */
+
+                        createdPolytrons.Add(poly);
+
+                        return poly;
+
+                    }
+                // break;
+                case "sink":
+                    {
+                        GameObject sink = Instantiate(sinkPrefab, Vector3.zero, Quaternion.identity, transform);
+                        sink.transform.localScale = Vector3.one * localUniformScale;
+                        createdSinks.Add(sink);
+                        sink.name = "sink";
+
+                        return sink;
+
+                    }
+            // break;
+
+                case "tile":
+                {
+                    GameObject tile = Instantiate(tilePrefab, Vector3.zero, Quaternion.identity, transform);
+                    tile.transform.localScale = Vector3.one * localUniformScale;
+
+                        var pg = tile.GetComponent<PolyhedronGenerator>();
+                            pg.recipeString = recipe;
+
+
+                    return tile;
+                }
+                break;
+
+                default:
+                    break;
+            }
 
         /*
                     Vector3 polytronPosition = new Vector3(

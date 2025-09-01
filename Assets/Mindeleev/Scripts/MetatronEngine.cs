@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using SpatialSys.UnitySDK.Internal;
 using System.Linq;
 using UnityEngine;
+using Unity.VisualScripting;
 
 public class MetatronEngine : MonoBehaviour
 {
@@ -28,6 +29,7 @@ public class MetatronEngine : MonoBehaviour
 
     void Start()
     {
+        // hide placeholder
         GetComponent<MeshRenderer>().enabled = false;
     }
 
@@ -35,21 +37,68 @@ public class MetatronEngine : MonoBehaviour
     {
         if (Input.GetKeyDown(KeyCode.M))
         {
-            StartCoroutine(BuildPavementCoroutine());
+            BuildLevel(0);
         }
     }
 
     void BuildLevel(int levelNumber)
     {
 
+            // the level number will determine the Metatron complexity 
+
+            StartCoroutine(BuildMetatronCoroutine(3));
+            StartCoroutine(BuildSinksCoroutine(3));
+            StartCoroutine(BuildTilesCoroutine(3));
+
     }
 
-    IEnumerator BuildPavementCoroutine()
+    /*
+        IEnumerator BuildPavementCoroutine()
+        {
+            yield return BuildMetatronCoroutine(3);
+            // it works
+            // yield return new WaitForSeconds(4f);
+            // yield return BuildMetatronCoroutine(4);
+        }
+    */
+
+    IEnumerator BuildSinksCoroutine(int ringsToBuild)
     {
-        yield return BuildMetatronCoroutine(3);
-        // it works
-        // yield return new WaitForSeconds(4f);
-        // yield return BuildMetatronCoroutine(4);
+        yield return new WaitForSeconds(2f);
+        foreach (HexCellData hcd in gridCells.Values)
+        {
+            if (hcd.ring <= ringsToBuild)
+            {
+                if (hcd.isOnMetatronPattern)
+                {
+                    GameObject poly = PolytronsFactory.Instance.Create("polytron/ttC", 0.3f);
+                    poly.transform.position = new Vector3(hcd.worldCoords.x, 1.0f, hcd.worldCoords.z);
+                    yield return new WaitForSeconds(0.2f);
+                }
+            }
+        }
+    }
+
+    IEnumerator BuildTilesCoroutine(int ringsToBuild)
+    {
+        yield return new WaitForSeconds(1f);
+        foreach (var hc in gridCells)
+        {
+            if (hc.Value.ring <= ringsToBuild)
+            {
+
+                float angleToCenter = hc.Key.PolarAngle();
+                Quaternion tileRotation = Quaternion.Euler(0f, - angleToCenter * 360f / 6.28f, 0f);
+
+                GameObject tile = PolytronsFactory.Instance.Create("tile/ttC", 1f);
+                tile.transform.localScale = new Vector3(0.6f, 0.01f, 0.8f);
+                tile.transform.position = hc.Value.worldCoords + new Vector3(0,0.01f,0);
+                tile.transform.localRotation = tileRotation;
+
+                    yield return new WaitForSeconds(0.2f);
+                
+            }
+        }
     }
 
 
