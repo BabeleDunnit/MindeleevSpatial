@@ -39,6 +39,7 @@ public class CircleRenderer : MonoBehaviour
 
     public void DrawCircle()
     {
+        return;
         lr.positionCount = segments;
 
         for (int i = 0; i < segments; i++)
@@ -52,6 +53,7 @@ public class CircleRenderer : MonoBehaviour
 
     public void DrawLine(Vector3 start, Vector3 end, Color color, float width = 0.05f)
     {
+        return;
         var go = new GameObject("Line");
         var lr = go.AddComponent<LineRenderer>();
 

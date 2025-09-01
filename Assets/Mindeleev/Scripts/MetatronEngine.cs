@@ -6,8 +6,8 @@ using UnityEngine;
 
 public class MetatronEngine : MonoBehaviour
 {
-    public GameObject circlePrefab;
-    int maxRings = 10;
+    // public GameObject circlePrefab;
+    int maxRings = 12;
 
     public class HexCellData
     {
@@ -35,16 +35,21 @@ public class MetatronEngine : MonoBehaviour
     {
         if (Input.GetKeyDown(KeyCode.M))
         {
-//             StartCoroutine(BuildMetatronCoroutine(3));
             StartCoroutine(BuildPavementCoroutine());
         }
     }
 
+    void BuildLevel(int levelNumber)
+    {
+
+    }
+
     IEnumerator BuildPavementCoroutine()
     {
-        yield return BuildMetatronCoroutine(2);
-        yield return new WaitForSeconds(4f);
-        yield return BuildMetatronCoroutine(4);
+        yield return BuildMetatronCoroutine(3);
+        // it works
+        // yield return new WaitForSeconds(4f);
+        // yield return BuildMetatronCoroutine(4);
     }
 
 
@@ -53,10 +58,19 @@ public class MetatronEngine : MonoBehaviour
         // Draw circles
         foreach (HexCellData hcd in gridCells.Values)
         {
-            if (hcd.isOnMetatronPattern && hcd.ring <= ringsToBuild)
+            if (hcd.ring <= ringsToBuild)
             {
-                DrawCircle(hcd.worldCoords, 1.73f);
-                yield return new WaitForSeconds(0.1f);
+                if (hcd.isOnMetatronPattern)
+                {
+                    DrawCircle(hcd.worldCoords, 1.73f, Color.white, 0.025f);
+                    yield return new WaitForSeconds(0.1f);
+                }
+                else
+                {
+                    DrawCircle(hcd.worldCoords, 1.73f, Color.gray, 0.01f);
+                    yield return null;
+                }
+
             }
         }
 
@@ -70,7 +84,7 @@ public class MetatronEngine : MonoBehaviour
                 int idxInRing = r * i;
                 KeyValuePair<HexCoord, HexCellData>? hc1 = FindCellByRingAndIdx(r, idxInRing);
                 KeyValuePair<HexCoord, HexCellData>? hc2 = FindCellByRingAndIdx(r, (idxInRing + r) % (r * 6));
-                DrawLine(hc1.Value.Value.worldCoords, hc2.Value.Value.worldCoords, Color.yellow, 0.05f);
+                DrawLine(hc1.Value.Value.worldCoords, hc2.Value.Value.worldCoords, Color.gray, 0.02f);
                 yield return new WaitForSeconds(0.1f);
             }
         }
@@ -84,14 +98,17 @@ public class MetatronEngine : MonoBehaviour
             int idxInRing2 = ((i + 3) * ringsToBuild);
             KeyValuePair<HexCoord, HexCellData>? hc1 = FindCellByRingAndIdx(ringsToBuild, idxInRing1);
             KeyValuePair<HexCoord, HexCellData>? hc2 = FindCellByRingAndIdx(ringsToBuild, idxInRing2);
-            DrawLine(hc1.Value.Value.worldCoords, hc2.Value.Value.worldCoords, Color.blue, 0.05f);
+            DrawLine(hc1.Value.Value.worldCoords, hc2.Value.Value.worldCoords, Color.gray, 0.02f);
         }
 
         yield return new WaitForSeconds(0.3f);
 
         // Draw opposite equilateral triangles
-        for (int r = 1; r <= ringsToBuild; r++)
         {
+            // simplify.... :)
+            // for (int r = ringsToBuild; r <= ringsToBuild; r++)
+            //{
+            int r = ringsToBuild;
             for (int i = 0; i < 2; i++)
             {
                 int idxInRing1 = (i * r);
@@ -100,37 +117,38 @@ public class MetatronEngine : MonoBehaviour
                 KeyValuePair<HexCoord, HexCellData>? hc1 = FindCellByRingAndIdx(r, idxInRing1);
                 KeyValuePair<HexCoord, HexCellData>? hc2 = FindCellByRingAndIdx(r, idxInRing2);
                 KeyValuePair<HexCoord, HexCellData>? hc3 = FindCellByRingAndIdx(r, idxInRing3);
-                DrawLine(hc1.Value.Value.worldCoords, hc2.Value.Value.worldCoords, Color.red, 0.05f);
+                DrawLine(hc1.Value.Value.worldCoords, hc2.Value.Value.worldCoords, Color.white, 0.045f);
                 yield return new WaitForSeconds(0.1f);
-                DrawLine(hc2.Value.Value.worldCoords, hc3.Value.Value.worldCoords, Color.red, 0.05f);
+                DrawLine(hc2.Value.Value.worldCoords, hc3.Value.Value.worldCoords, Color.white, 0.045f);
                 yield return new WaitForSeconds(0.1f);
-                DrawLine(hc3.Value.Value.worldCoords, hc1.Value.Value.worldCoords, Color.red, 0.05f);
+                DrawLine(hc3.Value.Value.worldCoords, hc1.Value.Value.worldCoords, Color.white, 0.045f);
                 yield return new WaitForSeconds(0.1f);
             }
         }
+        //}
 
-        // Draw isosceles triangles
-        for (int r = 2; r <= ringsToBuild; r++)
-        {
-            for (int i = 0; i < 6; i++)
+            // Draw isosceles triangles
+            for (int r = 2; r <= ringsToBuild; r++)
             {
-                for (int q = r - 1; q >= 1; q--)
+                for (int i = 0; i < 6; i++)
                 {
-                    int idxInRing1 = (i * r);
-                    int idxInRing2 = ((i + 2) * q) % (q * 6);
-                    int idxInRing3 = ((i + 4) * q) % (q * 6);
-                    KeyValuePair<HexCoord, HexCellData>? hc1 = FindCellByRingAndIdx(r, idxInRing1);
-                    KeyValuePair<HexCoord, HexCellData>? hc2 = FindCellByRingAndIdx(q, idxInRing2);
-                    KeyValuePair<HexCoord, HexCellData>? hc3 = FindCellByRingAndIdx(q, idxInRing3);
-                    DrawLine(hc1.Value.Value.worldCoords, hc2.Value.Value.worldCoords, Color.cyan, 0.05f);
-                    yield return new WaitForSeconds(0.1f);
-                    DrawLine(hc2.Value.Value.worldCoords, hc3.Value.Value.worldCoords, Color.cyan, 0.05f);
-                    yield return new WaitForSeconds(0.1f);
-                    DrawLine(hc3.Value.Value.worldCoords, hc1.Value.Value.worldCoords, Color.cyan, 0.05f);
-                    yield return new WaitForSeconds(0.1f);
+                    for (int q = r - 1; q >= 1; q--)
+                    {
+                        int idxInRing1 = (i * r);
+                        int idxInRing2 = ((i + 2) * q) % (q * 6);
+                        int idxInRing3 = ((i + 4) * q) % (q * 6);
+                        KeyValuePair<HexCoord, HexCellData>? hc1 = FindCellByRingAndIdx(r, idxInRing1);
+                        KeyValuePair<HexCoord, HexCellData>? hc2 = FindCellByRingAndIdx(q, idxInRing2);
+                        KeyValuePair<HexCoord, HexCellData>? hc3 = FindCellByRingAndIdx(q, idxInRing3);
+                        DrawLine(hc1.Value.Value.worldCoords, hc2.Value.Value.worldCoords, Color.gray, 0.01f);
+                        yield return new WaitForSeconds(0.1f);
+                        DrawLine(hc2.Value.Value.worldCoords, hc3.Value.Value.worldCoords, Color.gray, 0.01f);
+                        yield return new WaitForSeconds(0.1f);
+                        DrawLine(hc3.Value.Value.worldCoords, hc1.Value.Value.worldCoords, Color.gray, 0.01f);
+                        yield return new WaitForSeconds(0.1f);
+                    }
                 }
             }
-        }
     }
 
         void BuildMetatronImmediate(int ringsToBuild)
@@ -140,7 +158,7 @@ public class MetatronEngine : MonoBehaviour
         {
             if (hcd.isOnMetatronPattern && hcd.ring <= ringsToBuild)
             {
-                DrawCircle(hcd.worldCoords, 1.73f);
+                DrawCircle(hcd.worldCoords, 1.73f, Color.blue);
             }
         }
 
@@ -264,20 +282,51 @@ public class MetatronEngine : MonoBehaviour
         return false;
     }
 
-    void DrawCircle(Vector3 pos, float radius)
+    void DrawCircle(Vector3 pos, float radius, Color color, float lineWidth = 0.05f, int segments = 20)
     {
-        var go = Instantiate(circlePrefab, pos, Quaternion.identity);
-        var cd = go.GetComponent<CircleRenderer>();
-        cd.radius = radius;
-        cd.DrawCircle();
+        var go = new GameObject("circle");
+        go.transform.SetParent(transform);
+
+        //         var go = Instantiate(circlePrefab, pos, Quaternion.identity);
+        //         lr = GetComponent<LineRenderer>();
+
+        LineRenderer lr = go.AddComponent<LineRenderer>();
+        // lr.useWorldSpace = false;   // così resta relativo all'oggetto
+        lr.loop = true;             // chiude il cerchio
+        lr.startWidth = lineWidth;
+        lr.endWidth = lineWidth;
+
+        // Puoi cambiare materiale in Inspector (default = unlit/white)
+        lr.material = new Material(Shader.Find("Sprites/Default"));
+        lr.material.color = color;
+
+
+        /*
+                var cd = go.GetComponent<CircleRenderer>();
+                cd.radius = radius;
+                cd.DrawCircle();
+                */
+
+        lr.positionCount = segments;
+
+        for (int i = 0; i < segments; i++)
+        {
+            float angle = (float)i / segments * Mathf.PI * 2f;
+            float x = Mathf.Cos(angle) * radius;
+            float y = Mathf.Sin(angle) * radius;
+            lr.SetPosition(i, pos + new Vector3(x, 0f, y));
+        }
+
     }
 
     void DrawLine(Vector3 start, Vector3 end, Color color, float width = 0.05f)
     {
         var go = new GameObject("Line");
+        // GameObject go = Instantiate(GameObject, transform);
+        go.transform.SetParent(transform);
         var lr = go.AddComponent<LineRenderer>();
 
-        lr.useWorldSpace = true;
+        // lr.useWorldSpace = true;
         lr.positionCount = 2;
         lr.SetPosition(0, start);
         lr.SetPosition(1, end);
