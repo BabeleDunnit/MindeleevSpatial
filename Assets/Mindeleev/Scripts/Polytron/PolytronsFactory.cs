@@ -140,6 +140,7 @@ public class PolytronsFactory : MonoBehaviour
                         sink.transform.localScale = Vector3.one * localUniformScale;
                         createdSinks.Add(sink);
                         sink.name = "sink";
+                    sink.GetComponent<PolytronSink>().attractedRecipe = recipe;
 
                         return sink;
 

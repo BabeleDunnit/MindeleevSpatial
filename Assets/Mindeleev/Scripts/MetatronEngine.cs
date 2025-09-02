@@ -4,11 +4,15 @@ using SpatialSys.UnitySDK.Internal;
 using System.Linq;
 using UnityEngine;
 using Unity.VisualScripting;
+using System.Diagnostics.Tracing;
 
 public class MetatronEngine : MonoBehaviour
 {
     // public GameObject circlePrefab;
     int maxRings = 12;
+
+    enum Behaviour { None,  AttractPolytronsToSinks };
+    Behaviour actualBehaviour = Behaviour.None;
 
     public class HexCellData
     {
@@ -17,12 +21,20 @@ public class MetatronEngine : MonoBehaviour
         public Vector3 worldCoords;
         public bool isOnMetatronPattern;
         public GameObject sink;
-
+        public GameObject tile;
+        // public GameObject polytron;
     }
 
     private Dictionary<HexCoord, HexCellData> gridCells = new Dictionary<HexCoord, HexCellData>();
     private List<HexCoord> gridHexes = new List<HexCoord>();
+
+    // subset of gridHexes, only the hexes on the Metatron pattern (a six braces cross)
     private List<HexCoord> metatronHexes = new List<HexCoord>();
+
+    private List<GameObject> polytrons = new();
+    private HashSet<GameObject> boundPolytrons = new();
+    private List<GameObject> sinks = new();
+    private List<GameObject> tiles = new();
 
     void Awake()
     {
@@ -41,7 +53,112 @@ public class MetatronEngine : MonoBehaviour
         {
             BuildLevel(0);
         }
+
+        if (Input.GetKeyDown(KeyCode.X))
+        {
+            actualBehaviour = Behaviour.AttractPolytronsToSinks;
+        }
     }
+
+    void FixedUpdate()
+    {
+        switch (actualBehaviour)
+        {
+            case Behaviour.AttractPolytronsToSinks:
+                AttractPolytronsToSinks();
+                break;
+
+            default:
+                break;
+        }
+    }
+
+    void AttractPolytronsToSinks()
+    {
+        foreach (var polytron in polytrons)
+        {
+            if (boundPolytrons.Contains(polytron))
+            {
+                continue;
+            }
+
+            Rigidbody polytronRigidBodyComponent = polytron.GetComponent<Rigidbody>();
+            Polytron polytronComponent = polytron.GetComponent<Polytron>();
+            foreach (var sink in sinks)
+            {
+                PolytronSink sinkComponent = sink.GetComponent<PolytronSink>();
+
+                if (polytronComponent.recipeString != sinkComponent.attractedRecipe)
+                {
+                    continue;
+                }
+
+                if (sinkComponent.boundPolytron != null)
+                {
+                    // Debug.Log("sink bound, skip");
+                    continue;
+                }
+
+                (Vector3 attractionForce, Vector3 from1To2Versor, float from1To2Distance) = CalcSpringForce(polytron.transform.position, sink.transform.position, sinkComponent.weight, 0.01f);
+
+                if (from1To2Distance < 1f)
+                {
+                    // Debug.Log("sink bounded");
+                    sinkComponent.boundPolytron = polytronComponent;
+                    sink.GetComponent<MeshRenderer>().material.color = Color.red;
+                    boundPolytrons.Add(polytron);
+                }
+                else
+                {
+                    polytronRigidBodyComponent.AddForce(attractionForce);
+                }
+            }
+        }
+
+        int unboundSinks = 0;
+        foreach (var sink in sinks)
+        {
+            PolytronSink sinkComponent = sink.GetComponent<PolytronSink>();
+            if (sinkComponent.boundPolytron != null)
+            {
+                (Vector3 attractionForce, Vector3 from1To2Versor, float from1To2Distance) = CalcSpringForce(sinkComponent.boundPolytron.transform.position, sink.transform.position, sinkComponent.weight * 5f, 0.01f);
+                sinkComponent.boundPolytron.GetComponent<Rigidbody>().AddForce(attractionForce);
+            }
+            else
+            {
+                unboundSinks++;
+            }
+        }
+
+        /*
+                if (unboundSinks == 0)
+                {
+                    foreach (var polytron in polytrons)
+                    {
+                        if (!boundPolytrons.Contains(polytron))
+                        {
+                            polytron.GetComponent<Rigidbody>().AddForce(0, 1f, 0);
+                        }
+                    }
+                }
+        */
+
+    }
+
+        public (Vector3 attractionForce, Vector3 from1To2Versor, float from1To2Distance)
+    CalcSpringForce(Vector3 obj1pos, Vector3 obj2pos, float attractionMultiplier, float equilibriumDistance)
+    {
+        Vector3 from1to2Vector = obj2pos - obj1pos;
+        float from1To2Distance = from1to2Vector.magnitude;
+
+        float distanceFromEquilibrium = from1To2Distance - equilibriumDistance;
+
+        Vector3 from1To2Versor = from1to2Vector.normalized;
+        Vector3 attractionForce = from1To2Versor * distanceFromEquilibrium * attractionMultiplier;
+
+        return (attractionForce, from1To2Versor, from1To2Distance);
+    }
+
 
     void BuildLevel(int levelNumber)
     {
@@ -50,7 +167,7 @@ public class MetatronEngine : MonoBehaviour
 
             StartCoroutine(BuildMetatronCoroutine(3));
             StartCoroutine(BuildSinksAndTilesCoroutine(3));
-            // StartCoroutine(BuildTilesCoroutine(3));
+            StartCoroutine(BuildPolytronsCoroutine());
 
     }
 
@@ -78,6 +195,8 @@ public class MetatronEngine : MonoBehaviour
                     GameObject sink = PolytronsFactory.Instance.Create($"sink/{recipe}", 0.3f);
                     sink.transform.position = new Vector3(hckv.Value.worldCoords.x, 1.0f, hckv.Value.worldCoords.z);
                     hckv.Value.sink = sink;
+                    sinks.Add(sink);
+                    sink.GetComponent<PolytronSink>().weight = 0.2f;
                     yield return new WaitForSeconds(0.2f);
                 }
 
@@ -88,32 +207,41 @@ public class MetatronEngine : MonoBehaviour
                 tile.transform.localScale = new Vector3(0.6f, 0.01f, 0.8f);
                 tile.transform.position = hckv.Value.worldCoords + new Vector3(0,0.01f,0);
                 tile.transform.localRotation = tileRotation;
+                tiles.Add(tile);                
+                hckv.Value.tile = tile;
 
                 yield return new WaitForSeconds(0.2f);
             }
         }
     }
 
-    IEnumerator BuildTilesCoroutine(int ringsToBuild)
+    IEnumerator BuildPolytronsCoroutine()
     {
         yield return new WaitForSeconds(1f);
         foreach (var hc in gridCells)
         {
-            if (hc.Value.ring <= ringsToBuild)
+            if (hc.Value.ring == 12)
             {
 
+                DrawCircle(hc.Value.worldCoords, 1.73f, Color.gray, 0.01f);
+                yield return new WaitForSeconds(0.1f);
+
                 float angleToCenter = hc.Key.PolarAngle();
-                Quaternion tileRotation = Quaternion.Euler(0f, - angleToCenter * 360f / 6.28f, 0f);
+                Quaternion polytronRotation = Quaternion.Euler(0f, -angleToCenter * 360f / 6.28f, 0f);
 
-                GameObject tile = PolytronsFactory.Instance.Create("tile/ttC", 1f);
-                tile.transform.localScale = new Vector3(0.6f, 0.01f, 0.8f);
-                tile.transform.position = hc.Value.worldCoords + new Vector3(0,0.01f,0);
-                tile.transform.localRotation = tileRotation;
+                string recipe = "ttC";
+                if (hc.Value.idxInRing % 12 == 0) recipe = "lT";
 
-                    yield return new WaitForSeconds(0.2f);
-                
+                GameObject polytron = PolytronsFactory.Instance.Create($"polytron/{recipe}", 0.4f);
+                polytron.transform.position = hc.Value.worldCoords + new Vector3(0, 1f, 0);
+                polytron.transform.localRotation = polytronRotation;
+                polytrons.Add(polytron);
+
+                yield return new WaitForSeconds(0.1f);
+
             }
         }
+
     }
 
 
@@ -215,7 +343,7 @@ public class MetatronEngine : MonoBehaviour
             }
     }
 
-        void BuildMetatronImmediate(int ringsToBuild)
+    void BuildMetatronImmediate(int ringsToBuild)
     {
         Dictionary<string, int> skippedLines = new();
         foreach (HexCellData hcd in gridCells.Values)
