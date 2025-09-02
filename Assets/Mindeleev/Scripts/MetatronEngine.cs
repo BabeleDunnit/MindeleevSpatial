@@ -16,6 +16,8 @@ public class MetatronEngine : MonoBehaviour
         public int idxInRing;
         public Vector3 worldCoords;
         public bool isOnMetatronPattern;
+        public GameObject sink;
+
     }
 
     private Dictionary<HexCoord, HexCellData> gridCells = new Dictionary<HexCoord, HexCellData>();
@@ -47,8 +49,8 @@ public class MetatronEngine : MonoBehaviour
             // the level number will determine the Metatron complexity 
 
             StartCoroutine(BuildMetatronCoroutine(3));
-            StartCoroutine(BuildSinksCoroutine(3));
-            StartCoroutine(BuildTilesCoroutine(3));
+            StartCoroutine(BuildSinksAndTilesCoroutine(3));
+            // StartCoroutine(BuildTilesCoroutine(3));
 
     }
 
@@ -62,19 +64,32 @@ public class MetatronEngine : MonoBehaviour
         }
     */
 
-    IEnumerator BuildSinksCoroutine(int ringsToBuild)
+    IEnumerator BuildSinksAndTilesCoroutine(int ringsToBuild)
     {
         yield return new WaitForSeconds(2f);
-        foreach (HexCellData hcd in gridCells.Values)
+        foreach (var hckv in gridCells)
         {
-            if (hcd.ring <= ringsToBuild)
+            if (hckv.Value.ring <= ringsToBuild)
             {
-                if (hcd.isOnMetatronPattern)
+                string recipe = "tC";
+                if (hckv.Value.isOnMetatronPattern)
                 {
-                    GameObject poly = PolytronsFactory.Instance.Create("polytron/ttC", 0.3f);
-                    poly.transform.position = new Vector3(hcd.worldCoords.x, 1.0f, hcd.worldCoords.z);
+                    recipe = "ttC";
+                    GameObject sink = PolytronsFactory.Instance.Create($"sink/{recipe}", 0.3f);
+                    sink.transform.position = new Vector3(hckv.Value.worldCoords.x, 1.0f, hckv.Value.worldCoords.z);
+                    hckv.Value.sink = sink;
                     yield return new WaitForSeconds(0.2f);
                 }
+
+                float angleToCenter = hckv.Key.PolarAngle();
+                Quaternion tileRotation = Quaternion.Euler(0f, - angleToCenter * 360f / 6.28f, 0f);
+
+                GameObject tile = PolytronsFactory.Instance.Create($"tile/{recipe}", 1f);
+                tile.transform.localScale = new Vector3(0.6f, 0.01f, 0.8f);
+                tile.transform.position = hckv.Value.worldCoords + new Vector3(0,0.01f,0);
+                tile.transform.localRotation = tileRotation;
+
+                yield return new WaitForSeconds(0.2f);
             }
         }
     }

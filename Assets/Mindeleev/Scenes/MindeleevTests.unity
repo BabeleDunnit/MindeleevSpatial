@@ -860,8 +860,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 9e089d208b6c74395ad16f516a83cb70, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  circlePrefab: {fileID: 3872696002527629199, guid: 884b652bb8abf44d7b4a5df6c0b8d6f6,
-    type: 3}
 --- !u!1 &648480486
 GameObject:
   m_ObjectHideFlags: 0
@@ -1111,7 +1109,7 @@ MeshRenderer:
   m_RenderingLayerMask: 1
   m_RendererPriority: 0
   m_Materials:
-  - {fileID: 2100000, guid: 021388920651b4e259395b75d4737acf, type: 2}
+  - {fileID: 2100000, guid: 0cfcacf56a5f5443fac73904b75ee1b6, type: 2}
   m_StaticBatchInfo:
     firstSubMesh: 0
     subMeshCount: 0
@@ -2411,6 +2409,8 @@ MonoBehaviour:
   polytronPrefab: {fileID: 8404194606809146210, guid: a4b29d65d516b4ae19b3532179b68cd4,
     type: 3}
   sinkPrefab: {fileID: 8404194606809146210, guid: 708bd6b7505964711b65be889661713b,
+    type: 3}
+  tilePrefab: {fileID: 8404194606809146210, guid: de1b48898876345a08618665da16e625,
     type: 3}
   polytronScale: 0.3
   createdPolytrons: []
