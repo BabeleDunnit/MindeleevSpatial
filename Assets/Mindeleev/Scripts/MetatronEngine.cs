@@ -120,10 +120,25 @@ public class MetatronEngine : MonoBehaviour
                 sinkComponent.boundPolytron = polytronComponent;
                 sink.GetComponent<MeshRenderer>().material.color = Color.red;
                 boundPolytrons.Add(polytron);
-                // MaterialUtils.SetMaterialHSV(gridCellsMap[sinkComponent.hexCoord].tile, 0f, 0f, 0f);
-                // gridCellsMap[sinkComponent.hexCoord].tile.transform.localScale = Vector3.one * 1.5f;
+
+                RebuildTile(sink, "C");
+
                 
                 break;
+            }
+        }
+    }
+
+    void RebuildTile(GameObject sink, string recipe)
+    {
+        PolytronSink sinkComponent = sink?.GetComponent<PolytronSink>();
+        if (sinkComponent != null)
+        {
+            GameObject tile = gridCellsMap[sinkComponent.hexCoord].tile;
+            if (tile != null)
+            {
+                tile.GetComponent<PolyhedronGenerator>().recipeString = recipe;
+                tile.GetComponent<PolyhedronGenerator>().RebuildMesh();
             }
         }
     }
