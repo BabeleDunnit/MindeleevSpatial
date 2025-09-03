@@ -24,7 +24,7 @@ public class MetatronEngine : MonoBehaviour
         public GameObject tile;
         // public GameObject polytron;
 
-        public bool currentState = false;
+        public bool actualState = false;
         public bool nextState = false;
     }
 
@@ -44,13 +44,36 @@ public class MetatronEngine : MonoBehaviour
 
     void Awake()
     {
-        BuildHexGridDataStructure();
+    }
+
+    void BuildPolytrons()
+    {
+        foreach (var hckv in gridCellsMap)
+        {
+            if (hckv.Value.ring == 12)
+            {
+                DrawCircle(hckv.Value.worldCoords, 1.73f, Color.gray, 0.01f);
+
+                int polytronId = polytrons.Count;
+
+                GameObject polytron = PolytronsFactory.Instance.Create($"polytron/T", 0.4f);
+                polytron.transform.position = hckv.Value.worldCoords + new Vector3(0, 1f, 0);
+                float angleToCenter = hckv.Key.PolarAngle();
+                Quaternion polytronRotation = Quaternion.Euler(0f, -angleToCenter * 360f / 6.28f, 0f);
+                // polytron.transform.localRotation = polytronRotation;
+                polytrons.Add(polytron);
+            }
+        }
     }
 
     void Start()
     {
         // hide placeholder
         GetComponent<MeshRenderer>().enabled = false;
+
+        BuildHexGridDataStructure();
+        BuildPolytrons();
+
     }
 
     void Update()
@@ -133,7 +156,7 @@ public class MetatronEngine : MonoBehaviour
                 sink.GetComponent<MeshRenderer>().material.color = Color.red;
                 boundPolytrons.Add(polytron);
 
-                RebuildTile(sinkComponent.hexCoord, "C");
+                RebuildTileMesh(sinkComponent.hexCoord, "C");
 
 
                 break;
@@ -157,15 +180,22 @@ public class MetatronEngine : MonoBehaviour
     }
 #endif
 
-    void RebuildTile(HexCoord coord, string recipe)
+    void RebuildTileMesh(HexCoord coord, string recipe)
     {
-            GameObject tile = gridCellsMap[coord].tile;
-            if (tile != null)
-            {
-                tile.GetComponent<PolyhedronGenerator>().recipeString = recipe;
-                tile.GetComponent<PolyhedronGenerator>().RebuildMesh();
-            }
+        GameObject tile = gridCellsMap[coord].tile;
+        if (tile != null)
+        {
+            tile.GetComponent<PolyhedronGenerator>().recipeString = recipe;
+            tile.GetComponent<PolyhedronGenerator>().RebuildMesh();
+        }
     }
+
+    void RebuildPolytronMesh(GameObject p, string recipe)
+    {
+        p.GetComponent<PolyhedronGenerator>().recipeString = recipe;
+        p.GetComponent<PolyhedronGenerator>().RebuildMesh();
+    }
+
 
     // bool polytronsToSinksBindingDone = false;
 
@@ -342,7 +372,7 @@ public class MetatronEngine : MonoBehaviour
 
         StartCoroutine(BuildMetatronCoroutine(actualRingsCount));
         StartCoroutine(BuildSinksAndTilesCoroutine(actualRingsCount));
-        StartCoroutine(BuildPolytronsCoroutine());
+        StartCoroutine(ResetPolytronsCoroutine());
 
     }
 
@@ -374,7 +404,7 @@ public class MetatronEngine : MonoBehaviour
                     sinks.Add(sink);
                     sink.GetComponent<PolytronSink>().weight = 0.2f;
                     sink.GetComponent<PolytronSink>().hexCoord = hckv.Key;
-                    hckv.Value.currentState = true;
+                    hckv.Value.actualState = true;
                     // yield return new WaitForSeconds(0.1f);
                 }
 
@@ -393,9 +423,40 @@ public class MetatronEngine : MonoBehaviour
         }
     }
 
-    IEnumerator BuildPolytronsCoroutine()
+    IEnumerator ResetPolytronsCoroutine()
     {
-        yield return new WaitForSeconds(1f);
+        yield return new WaitForSeconds(0.5f);
+        int polytronIdx = 0;
+        foreach (var hckv in gridCellsMap)
+        {
+            if (hckv.Value.ring == 12)
+            {
+
+                DrawCircle(hckv.Value.worldCoords, 1.73f, Color.gray, 0.01f);
+                yield return new WaitForSeconds(0.1f);
+
+                // int polytronId = polytrons.Count;
+                string recipe = PolyhedronRecipeKabbalah.IntToOperatorsSequence(polytronIdx) + "C";
+
+                // GameObject polytron = PolytronsFactory.Instance.Create($"polytron/{recipe}C", 0.4f);
+                GameObject polytron = polytrons[polytronIdx];
+                polytron.transform.position = hckv.Value.worldCoords + new Vector3(0, 1f, 0);
+                float angleToCenter = hckv.Key.PolarAngle();
+                Quaternion polytronRotation = Quaternion.Euler(0f, -angleToCenter * 360f / 6.28f, 0f);
+                polytron.transform.localRotation = polytronRotation;
+                //polytrons.Add(polytron);
+                RebuildPolytronMesh(polytron, recipe);
+
+                yield return new WaitForSeconds(0.1f);
+                polytronIdx++;
+            }
+        }
+    }
+
+
+    IEnumerator BuildPolytronsCoroutine_V1()
+    {
+        yield return new WaitForSeconds(0.5f);
         foreach (var hc in gridCellsMap)
         {
             if (hc.Value.ring == 12)
@@ -419,7 +480,6 @@ public class MetatronEngine : MonoBehaviour
 
             }
         }
-
     }
 
 
@@ -718,13 +778,13 @@ public class MetatronEngine : MonoBehaviour
 
                 HexCoord neighbor = hckv.Key.Neighbor(n);
 
-                if (gridCellsMap.ContainsKey(neighbor) && gridCellsMap[neighbor].currentState)
+                if (gridCellsMap.ContainsKey(neighbor) && gridCellsMap[neighbor].actualState)
                     aliveNeighbors++;
 
             }
 
             HexCellData cellData = hckv.Value;
-            bool alive = cellData.currentState;
+            bool alive = cellData.actualState;
             bool nextAlive = false;
 
             /*
@@ -748,61 +808,64 @@ public class MetatronEngine : MonoBehaviour
             cellData.nextState = nextAlive;
         }
 
+        UpdateSinks();
+
         foreach (var hckv in gridCellsMap)
         {
             if (hckv.Value.ring > actualRingsCount) continue;
-            hckv.Value.currentState = hckv.Value.nextState;
+            hckv.Value.actualState = hckv.Value.nextState;
         }
 
-        UpdateSinks();
+        UpdateTiles();
 
 
     }
 
-    void UpdateSinks()
+    void UpdateTiles()
     {
 
         foreach (var hckv in gridCellsMap)
         {
             if (hckv.Value.ring > actualRingsCount) continue;
 
-            bool state = hckv.Value.currentState;
+            bool state = hckv.Value.actualState;
             if (state)
             {
                 // sink.GetComponent<MeshRenderer>().material.color = Color.white;
-                RebuildTile(hckv.Key, "ttC");
+                RebuildTileMesh(hckv.Key, "ttC");
             }
             else
             {
                 // sink.GetComponent<MeshRenderer>().material.color = Color.black;
-                RebuildTile(hckv.Key, "C");
+                RebuildTileMesh(hckv.Key, "C");
             }
 
         }
+    }
 
-        /*
+    void UpdateSinks()
+    {
+
         foreach (var sink in sinks)
         {
             PolytronSink sinkComponent = sink.GetComponent<PolytronSink>();
 
-            bool state = gridCellsMap[sinkComponent.hexCoord].currentState;
+            HexCellData sinkCellData = gridCellsMap[sinkComponent.hexCoord];
+            Debug.Assert(sinkCellData.sink == sink);
 
-            if (state)
-            {
-                sink.GetComponent<MeshRenderer>().material.color = Color.white;
-                RebuildTile(sink, "ttC");
-            }
-            else
-            {
-                sink.GetComponent<MeshRenderer>().material.color = Color.black;
-                RebuildTile(sink, "C");
-            }
 
-            // boundPolytrons.Add(polytron);
+            /*
+                        if (state)
+                        {
+                            sink.GetComponent<MeshRenderer>().material.color = Color.white;
+                        }
+                        else
+                        {
+                            sink.GetComponent<MeshRenderer>().material.color = Color.black;
+                        }
+            */
 
-            //                 RebuildTile(sink, "C");
-        }        
-        */
-
+        }
     }
+
 }
