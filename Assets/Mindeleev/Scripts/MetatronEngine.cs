@@ -23,18 +23,24 @@ public class MetatronEngine : MonoBehaviour
         public GameObject sink;
         public GameObject tile;
         // public GameObject polytron;
+
+        public bool currentState = false;
+        public bool nextState = false;
     }
 
+    // these HexCoord lists and maps contains ALL the cells, prebuilt, rings [0,12]
     private Dictionary<HexCoord, HexCellData> gridCellsMap = new Dictionary<HexCoord, HexCellData>();
-    private List<HexCoord> gridCellsList = new List<HexCoord>();
-
-    // subset of gridHexes, only the hexes on the Metatron pattern (a six braces cross)
+    // private List<HexCoord> gridCellsList = new List<HexCoord>();
+    // subset of gridCellsList, only and all the hexes on the Metatron pattern (a six braces cross)
     private List<HexCoord> metatronCellsList = new List<HexCoord>();
 
+    // the lists of objects of the actual configuration
     private List<GameObject> polytrons = new();
     private HashSet<GameObject> boundPolytrons = new();
     private List<GameObject> sinks = new();
     private List<GameObject> tiles = new();
+
+    int actualRingsCount = 3;
 
     void Awake()
     {
@@ -58,6 +64,12 @@ public class MetatronEngine : MonoBehaviour
         {
             actualBehaviour = Behaviour.AttractPolytronsToSinks;
         }
+
+        if (Input.GetKeyDown(KeyCode.E))
+        {
+            Evolve();
+        }
+
     }
 
     void FixedUpdate()
@@ -121,14 +133,15 @@ public class MetatronEngine : MonoBehaviour
                 sink.GetComponent<MeshRenderer>().material.color = Color.red;
                 boundPolytrons.Add(polytron);
 
-                RebuildTile(sink, "C");
+                RebuildTile(sinkComponent.hexCoord, "C");
 
-                
+
                 break;
             }
         }
     }
 
+#if VECCHIO
     void RebuildTile(GameObject sink, string recipe)
     {
         PolytronSink sinkComponent = sink?.GetComponent<PolytronSink>();
@@ -142,6 +155,17 @@ public class MetatronEngine : MonoBehaviour
             }
         }
     }
+#endif
+
+    void RebuildTile(HexCoord coord, string recipe)
+    {
+            GameObject tile = gridCellsMap[coord].tile;
+            if (tile != null)
+            {
+                tile.GetComponent<PolyhedronGenerator>().recipeString = recipe;
+                tile.GetComponent<PolyhedronGenerator>().RebuildMesh();
+            }
+    }
 
     // bool polytronsToSinksBindingDone = false;
 
@@ -149,8 +173,8 @@ public class MetatronEngine : MonoBehaviour
     {
         //if (!polytronsToSinksBindingDone)
         //{
-            BindPolytronsToSinks();
-            //polytronsToSinksBindingDone = true;
+        BindPolytronsToSinks();
+        //polytronsToSinksBindingDone = true;
         //}
 
         foreach (var sink in sinks)
@@ -313,10 +337,11 @@ public class MetatronEngine : MonoBehaviour
     void BuildLevel(int levelNumber)
     {
 
-        // the level number will determine the Metatron complexity 
+        // the level number will determine the Metatron complexity
+        // and set actualRingsCount, etc.
 
-        StartCoroutine(BuildMetatronCoroutine(3));
-        StartCoroutine(BuildSinksAndTilesCoroutine(3));
+        StartCoroutine(BuildMetatronCoroutine(actualRingsCount));
+        StartCoroutine(BuildSinksAndTilesCoroutine(actualRingsCount));
         StartCoroutine(BuildPolytronsCoroutine());
 
     }
@@ -333,7 +358,7 @@ public class MetatronEngine : MonoBehaviour
 
     IEnumerator BuildSinksAndTilesCoroutine(int ringsToBuild)
     {
-        yield return new WaitForSeconds(2f);
+        yield return new WaitForSeconds(1f);
         foreach (var hckv in gridCellsMap)
         {
             if (hckv.Value.ring <= ringsToBuild)
@@ -349,7 +374,8 @@ public class MetatronEngine : MonoBehaviour
                     sinks.Add(sink);
                     sink.GetComponent<PolytronSink>().weight = 0.2f;
                     sink.GetComponent<PolytronSink>().hexCoord = hckv.Key;
-                    yield return new WaitForSeconds(0.2f);
+                    hckv.Value.currentState = true;
+                    // yield return new WaitForSeconds(0.1f);
                 }
 
                 float angleToCenter = hckv.Key.PolarAngle();
@@ -362,7 +388,7 @@ public class MetatronEngine : MonoBehaviour
                 tiles.Add(tile);
                 hckv.Value.tile = tile;
 
-                yield return new WaitForSeconds(0.2f);
+                yield return new WaitForSeconds(0.1f);
             }
         }
     }
@@ -418,7 +444,7 @@ public class MetatronEngine : MonoBehaviour
             }
         }
 
-        yield return new WaitForSeconds(0.5f);
+        yield return new WaitForSeconds(0.2f);
 
         // Draw hexagons
         for (int r = 1; r <= ringsToBuild; r++)
@@ -433,7 +459,7 @@ public class MetatronEngine : MonoBehaviour
             }
         }
 
-        yield return new WaitForSeconds(0.3f);
+        yield return new WaitForSeconds(0.2f);
 
         // Draw central cross
         for (int i = 0; i < 3; i++)
@@ -445,7 +471,7 @@ public class MetatronEngine : MonoBehaviour
             DrawLine(hc1.Value.Value.worldCoords, hc2.Value.Value.worldCoords, Color.gray, 0.02f);
         }
 
-        yield return new WaitForSeconds(0.3f);
+        yield return new WaitForSeconds(0.2f);
 
         // Draw opposite equilateral triangles
         {
@@ -485,9 +511,7 @@ public class MetatronEngine : MonoBehaviour
                     KeyValuePair<HexCoord, HexCellData>? hc2 = FindCellByRingAndIdx(q, idxInRing2);
                     KeyValuePair<HexCoord, HexCellData>? hc3 = FindCellByRingAndIdx(q, idxInRing3);
                     DrawLine(hc1.Value.Value.worldCoords, hc2.Value.Value.worldCoords, Color.gray, 0.01f);
-                    yield return new WaitForSeconds(0.1f);
                     DrawLine(hc2.Value.Value.worldCoords, hc3.Value.Value.worldCoords, Color.gray, 0.01f);
-                    yield return new WaitForSeconds(0.1f);
                     DrawLine(hc3.Value.Value.worldCoords, hc1.Value.Value.worldCoords, Color.gray, 0.01f);
                     yield return new WaitForSeconds(0.1f);
                 }
@@ -593,7 +617,7 @@ public class MetatronEngine : MonoBehaviour
             for (int i = 0; i < hexesInRing; i++)
             {
                 HexCoord hex = ring == 0 ? new HexCoord(0, 0) : HexCoord.AtPolar(ring, i);
-                gridCellsList.Add(hex);
+                // gridCellsList.Add(hex);
 
                 Vector2 hexPos2D = hex.Position() * 2f + center2D;
                 Vector3 position = new Vector3(hexPos2D.x, transform.position.y, hexPos2D.y);
@@ -678,5 +702,107 @@ public class MetatronEngine : MonoBehaviour
         lr.startWidth = lr.endWidth = width;
         lr.material = new Material(Shader.Find("Sprites/Default"));
         lr.startColor = lr.endColor = color;
+    }
+
+
+    public void Evolve()
+    {
+        // Compute next state
+        foreach (var hckv in gridCellsMap)
+        {
+            if (hckv.Value.ring > actualRingsCount) continue;
+
+            int aliveNeighbors = 0;
+            for (int n = 0; n < 6; n++)
+            {
+
+                HexCoord neighbor = hckv.Key.Neighbor(n);
+
+                if (gridCellsMap.ContainsKey(neighbor) && gridCellsMap[neighbor].currentState)
+                    aliveNeighbors++;
+
+            }
+
+            HexCellData cellData = hckv.Value;
+            bool alive = cellData.currentState;
+            bool nextAlive = false;
+
+            /*
+
+                        // Game of Life rules for hex grid
+                        if (alive)
+                        {
+                            // this is simmetrical with the Metatron initial scheme
+                            // nextAlive = (aliveNeighbors == 3 || aliveNeighbors == 4);
+                            nextAlive = (aliveNeighbors == 3 || aliveNeighbors == 6);
+                        }
+                        else
+                        {
+                            nextAlive = (aliveNeighbors == 2);
+                        }
+            */
+
+            // rule for pattern breeder
+            nextAlive = ((aliveNeighbors % 2) == 1) /* || cellData.ring == 0 */;
+
+            cellData.nextState = nextAlive;
+        }
+
+        foreach (var hckv in gridCellsMap)
+        {
+            if (hckv.Value.ring > actualRingsCount) continue;
+            hckv.Value.currentState = hckv.Value.nextState;
+        }
+
+        UpdateSinks();
+
+
+    }
+
+    void UpdateSinks()
+    {
+
+        foreach (var hckv in gridCellsMap)
+        {
+            if (hckv.Value.ring > actualRingsCount) continue;
+
+            bool state = hckv.Value.currentState;
+            if (state)
+            {
+                // sink.GetComponent<MeshRenderer>().material.color = Color.white;
+                RebuildTile(hckv.Key, "ttC");
+            }
+            else
+            {
+                // sink.GetComponent<MeshRenderer>().material.color = Color.black;
+                RebuildTile(hckv.Key, "C");
+            }
+
+        }
+
+        /*
+        foreach (var sink in sinks)
+        {
+            PolytronSink sinkComponent = sink.GetComponent<PolytronSink>();
+
+            bool state = gridCellsMap[sinkComponent.hexCoord].currentState;
+
+            if (state)
+            {
+                sink.GetComponent<MeshRenderer>().material.color = Color.white;
+                RebuildTile(sink, "ttC");
+            }
+            else
+            {
+                sink.GetComponent<MeshRenderer>().material.color = Color.black;
+                RebuildTile(sink, "C");
+            }
+
+            // boundPolytrons.Add(polytron);
+
+            //                 RebuildTile(sink, "C");
+        }        
+        */
+
     }
 }
