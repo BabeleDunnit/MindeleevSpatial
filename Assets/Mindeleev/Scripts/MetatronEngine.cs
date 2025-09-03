@@ -40,7 +40,7 @@ public class MetatronEngine : MonoBehaviour
     private List<GameObject> sinks = new();
     private List<GameObject> tiles = new();
 
-    int actualRingsCount = 3;
+    int actualRingsCount = 4;
 
     void Awake()
     {
@@ -432,19 +432,17 @@ public class MetatronEngine : MonoBehaviour
             if (hckv.Value.ring == 12)
             {
 
-                DrawCircle(hckv.Value.worldCoords, 1.73f, Color.gray, 0.01f);
-                yield return new WaitForSeconds(0.1f);
+                // DrawCircle(hckv.Value.worldCoords, 1.73f, Color.gray, 0.01f);
+                // yield return new WaitForSeconds(0.1f);
 
-                // int polytronId = polytrons.Count;
                 string recipe = PolyhedronRecipeKabbalah.IntToOperatorsSequence(polytronIdx) + "C";
 
-                // GameObject polytron = PolytronsFactory.Instance.Create($"polytron/{recipe}C", 0.4f);
                 GameObject polytron = polytrons[polytronIdx];
                 polytron.transform.position = hckv.Value.worldCoords + new Vector3(0, 1f, 0);
                 float angleToCenter = hckv.Key.PolarAngle();
                 Quaternion polytronRotation = Quaternion.Euler(0f, -angleToCenter * 360f / 6.28f, 0f);
                 polytron.transform.localRotation = polytronRotation;
-                //polytrons.Add(polytron);
+
                 RebuildPolytronMesh(polytron, recipe);
 
                 yield return new WaitForSeconds(0.1f);
@@ -775,12 +773,10 @@ public class MetatronEngine : MonoBehaviour
             int aliveNeighbors = 0;
             for (int n = 0; n < 6; n++)
             {
-
                 HexCoord neighbor = hckv.Key.Neighbor(n);
 
                 if (gridCellsMap.ContainsKey(neighbor) && gridCellsMap[neighbor].actualState)
                     aliveNeighbors++;
-
             }
 
             HexCellData cellData = hckv.Value;
@@ -823,10 +819,14 @@ public class MetatronEngine : MonoBehaviour
 
     void UpdateTiles()
     {
-
         foreach (var hckv in gridCellsMap)
         {
             if (hckv.Value.ring > actualRingsCount) continue;
+            if (hckv.Value.sink != null)
+            {
+                RebuildTileMesh(hckv.Key, hckv.Value.sink.GetComponent<PolytronSink>().attractedRecipe);
+                continue;
+            }
 
             bool state = hckv.Value.actualState;
             if (state)
@@ -852,6 +852,37 @@ public class MetatronEngine : MonoBehaviour
 
             HexCellData sinkCellData = gridCellsMap[sinkComponent.hexCoord];
             Debug.Assert(sinkCellData.sink == sink);
+
+            if (sinkCellData.actualState == false && sinkCellData.nextState == true)
+            {
+                Debug.Log("starting fusion");
+                // sink is "born", make a fusion
+                List<string> recipesForFusion = new();
+                for (int n = 0; n < 6; n++)
+                {
+                    HexCoord neighbor = sinkComponent.hexCoord.Neighbor(n);
+
+                    if (gridCellsMap.ContainsKey(neighbor))
+                    {
+                        HexCellData neighborCellData = gridCellsMap[neighbor];
+                        if (neighborCellData.sink != null)
+                        {
+                            recipesForFusion.Add(neighborCellData.sink.GetComponent<PolytronSink>().attractedRecipe);
+                        }
+                    }
+                }
+                Debug.Log($"fusion recipes: {string.Join(", ", recipesForFusion)}");
+
+                string fusionRecipe = PolyhedronRecipeKabbalah.RecipeFusion(recipesForFusion);
+                Debug.Log($"fusion result: {fusionRecipe}");
+                sinkComponent.attractedRecipe = fusionRecipe;
+
+            }
+
+            if (sinkCellData.actualState == true && sinkCellData.nextState == false)
+            {
+                // sink is "dead", make a fission
+            }
 
 
             /*
