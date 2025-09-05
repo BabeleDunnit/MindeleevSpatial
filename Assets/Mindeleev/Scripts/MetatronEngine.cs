@@ -7,6 +7,21 @@ using Unity.VisualScripting;
 using System.Diagnostics.Tracing;
 using System;
 
+/* how does it works
+
+we have an hexagonal grid, built entirely at start time but shown partly during the game. This creates an
+hexagonal big grid with rings [0,12], so the external ring has 72 places.
+
+we have a Pattern Breeder Cellular Automata working under the hood, with two different rules applied to alternate rings.
+the Pattern Breeder uses the count of neighbour cells modulo 2 to decide if a cell will live or die, and using it on alternate
+rings forces the cells on different rings to preferentially live or die, when the initial CA pattern is perfectly simmetrical.
+
+initially the cells set to alive are the ones on the "metatron pattern", i.e. the ones on the diagonals.
+
+
+*/
+
+
 public class MetatronEngine : MonoBehaviour
 {
     // public GameObject circlePrefab;
@@ -35,7 +50,7 @@ public class MetatronEngine : MonoBehaviour
 
     // these HexCoord lists and maps contains ALL the cells, prebuilt, rings [0,12]
     private Dictionary<HexCoord, HexCellData> gridCellsMap = new Dictionary<HexCoord, HexCellData>();
-    // private List<HexCoord> gridCellsList = new List<HexCoord>();
+
     // subset of gridCellsList, only and all the hexes on the Metatron pattern (a six braces cross)
     private List<HexCoord> metatronCellsList = new List<HexCoord>();
 
@@ -46,6 +61,19 @@ public class MetatronEngine : MonoBehaviour
     private List<GameObject> tiles = new();
 
     int actualRingsCount = 2;
+
+    struct LevelConfig
+    {
+        // we will start with 2
+        int actualRingsCount;
+
+        int fusionFissionThreshold;
+
+        int tileIntToOperatorsSequenceOffset;
+
+        string tileBasePoly;
+
+    }
 
     void Awake()
     {
@@ -113,36 +141,6 @@ public class MetatronEngine : MonoBehaviour
         }
     }
 
-
-#if TENTATIVO2
-    void BindPolytronsToSinks()
-    {
-        var unboundSink = sinks.Select(s => s.GetComponent<PolytronSink>())
-                                      .FirstOrDefault(sinkComp => sinkComp.boundPolytron == null);
-        if (unboundSink != null)
-        {
-            /*
-            var unboundPolytronMatchingUnboundSink = polytrons.Select(p => p.GetComponent<Polytron>()).
-                FirstOrDefault(p => boundPolytrons.Contains(p) && polytronComp => polytronComp.recipeString == unboundSink.GetComponent<PolytronSink>().attractedRecipe);
-                */
-
-            var unboundPolytronMatchingUnboundSink = polytrons
-                .Select(p => p.GetComponent<Polytron>())
-                .FirstOrDefault(polytronComp =>
-                    !boundPolytrons.Contains(polytronComp.gameObject) &&
-                    polytronComp.recipeString == unboundSink.attractedRecipe
-                );
-
-            if (unboundPolytronMatchingUnboundSink != null)
-            {
-
-            }
-
-        }
-    }
-
-#endif
-
     void BindPolytronsToSinks()
     {
         foreach (var sink in sinks)
@@ -163,51 +161,16 @@ public class MetatronEngine : MonoBehaviour
 
                 RebuildTileMesh(sinkComponent.hexCoord, "C");
 
-
                 break;
             }
         }
     }
-
-#if VECCHIO
-    void RebuildTile(GameObject sink, string recipe)
-    {
-        PolytronSink sinkComponent = sink?.GetComponent<PolytronSink>();
-        if (sinkComponent != null)
-        {
-            GameObject tile = gridCellsMap[sinkComponent.hexCoord].tile;
-            if (tile != null)
-            {
-                tile.GetComponent<PolyhedronGenerator>().recipeString = recipe;
-                tile.GetComponent<PolyhedronGenerator>().RebuildMesh();
-            }
-        }
-    }
-#endif
 
     void RebuildTileMesh(HexCoord coord, string recipe)
     {
         GameObject tile = gridCellsMap[coord].tile;
         if (tile != null)
         {
-            // Debug.Log("Rebuilding tile");
-
-            // ok, funzionano ma sono distruttivi, è un asset e quindi viene salvato
-            // anche se è una copia
-            /*
-                        tile.GetComponent<PolyhedronGenerator>().palette.colors[0] = Color.red;
-                        tile.GetComponent<PolyhedronGenerator>().palette.colors[1] = Color.blue;
-                        tile.GetComponent<PolyhedronGenerator>().palette.colors.RemoveRange(2, tile.GetComponent<PolyhedronGenerator>().palette.colors.Count - 2);
-            */
-
-            /*
-                        PolyhedronPalette pp = new PolyhedronPalette();
-                        pp.colors.Add(Color.red);
-                        pp.colors.Add(Color.blue);
-                        tile.GetComponent<PolyhedronGenerator>().palette = pp;
-            */
-
-
             tile.GetComponent<PolyhedronGenerator>().recipeString = recipe;
             tile.GetComponent<PolyhedronGenerator>().RebuildMesh();
         }
@@ -219,17 +182,9 @@ public class MetatronEngine : MonoBehaviour
         p.GetComponent<PolyhedronGenerator>().RebuildMesh();
     }
 
-
-    // bool polytronsToSinksBindingDone = false;
-
     void AttractPolytronsToSinks()
     {
-        //if (!polytronsToSinksBindingDone)
-        //{
         BindPolytronsToSinks();
-        //polytronsToSinksBindingDone = true;
-        //}
-
         foreach (var sink in sinks)
         {
             PolytronSink sinkComponent = sink.GetComponent<PolytronSink>();
@@ -240,137 +195,6 @@ public class MetatronEngine : MonoBehaviour
             }
         }
     }
-
-#if PRIMO_TENTATIVO
-    void AttractPolytronsToSinks()
-    {
-        foreach (var polytron in polytrons)
-        {
-            if (boundPolytrons.Contains(polytron))
-            {
-                continue;
-            }
-
-            Rigidbody polytronRigidBodyComponent = polytron.GetComponent<Rigidbody>();
-            Polytron polytronComponent = polytron.GetComponent<Polytron>();
-            foreach (var sink in sinks)
-            {
-                PolytronSink sinkComponent = sink.GetComponent<PolytronSink>();
-
-                if (sinkComponent.boundPolytron != null)
-                {
-                    // Debug.Log("sink bound, skip");
-                    continue;
-                }
-
-                if (polytronComponent.recipeString != sinkComponent.attractedRecipe)
-                {
-                    continue;
-                }
-
-
-                (Vector3 attractionForce, Vector3 from1To2Versor, float from1To2Distance) = CalcSpringForce(polytron.transform.position, sink.transform.position, sinkComponent.weight, 0.5f);
-
-                if (from1To2Distance < 1f)
-                {
-                    // Debug.Log("sink bounded");
-                    sinkComponent.boundPolytron = polytronComponent;
-                    sink.GetComponent<MeshRenderer>().material.color = Color.red;
-                    boundPolytrons.Add(polytron);
-                    // polytronRigidBodyComponent.AddExplosionForce(100f, transform.position, 30f, 1f, ForceMode.Impulse);
-
-                    /*
-                                    foreach (var polytron2 in polytrons)
-                                        {
-                                            if (boundPolytrons.Contains(polytron2)) continue;
-                                            //     (Vector3 attractionForce2, Vector3 from1To2Versor2, float from1To2Distance2) = CalcSpringForce(polytron.transform.position, sink.transform.position, 1f, 5f);
-                                            if (Random.Range(0f, 1f) > 0.4f)
-                                            {
-                                                polytron2.GetComponent<Rigidbody>().AddExplosionForce(100f, transform.position, 30f, 1f, ForceMode.Impulse);
-                                            }
-                                        }
-                    */
-
-
-                }
-                else
-                {
-                    polytronRigidBodyComponent.AddForce(attractionForce);
-                }
-            }
-        }
-
-        // int unboundSinks = 0;
-        foreach (var sink in sinks)
-        {
-            PolytronSink sinkComponent = sink.GetComponent<PolytronSink>();
-            if (sinkComponent.boundPolytron != null)
-            {
-                (Vector3 attractionForce, Vector3 from1To2Versor, float from1To2Distance) = CalcSpringForce(sinkComponent.boundPolytron.transform.position, sink.transform.position, sinkComponent.weight * 5f, 0.01f);
-                sinkComponent.boundPolytron.GetComponent<Rigidbody>().AddForce(attractionForce);
-
-                /*
-                foreach (var polytron in polytrons)
-                {
-                    if (boundPolytrons.Contains(polytron)) continue;
-                    //     (Vector3 attractionForce2, Vector3 from1To2Versor2, float from1To2Distance2) = CalcSpringForce(polytron.transform.position, sink.transform.position, 1f, 5f);
-                    if (Random.Range(0f, 1f) > 0.8f)
-                    {
-                        polytron.GetComponent<Rigidbody>().AddExplosionForce(100f, transform.position, 30f, 1f, ForceMode.Impulse);
-                    }
-                }
-                */
-
-
-            }
-            else
-            {
-                // unboundSinks++;
-            }
-        }
-
-        /*
-                if (unboundSinks == 0)
-                {
-                    foreach (var polytron in polytrons)
-                    {
-                        if (!boundPolytrons.Contains(polytron))
-                        {
-                            polytron.GetComponent<Rigidbody>().AddForce(0, 1f, 0);
-                        }
-                    }
-                }
-        */
-
-        foreach (var polytron in polytrons)
-        {
-            if (boundPolytrons.Contains(polytron)) continue;
-            //     (Vector3 attractionForce2, Vector3 from1To2Versor2, float from1To2Distance2) = CalcSpringForce(polytron.transform.position, sink.transform.position, 1f, 5f);
-            /*                    
-                                if (Random.Range(0f, 1f) > 0.1f && (polytron.transform.position - transform.position).magnitude < 2f)
-                        {
-                            polytron.GetComponent<Rigidbody>().AddExplosionForce(100f, transform.position, 30f, 0f, ForceMode.Impulse);
-                        }
-                        */
-
-            if (Random.Range(0f, 1f) > 0.999)
-            {
-                var unboundSink = sinks.Select(s => s.GetComponent<PolytronSink>())
-                                      .FirstOrDefault(sinkComp => sinkComp.boundPolytron == null);
-
-                if (unboundSink != null)
-                {
-                    unboundSink.GetComponent<PolytronSink>().boundPolytron = polytron.GetComponent<Polytron>();
-                    unboundSink.GetComponent<MeshRenderer>().material.color = Color.red;
-                    boundPolytrons.Add(polytron);
-                }
-            }
-            
-        }
-    }
-#endif
-
-
 
     public (Vector3 attractionForce, Vector3 from1To2Versor, float from1To2Distance)
         CalcSpringForce(Vector3 obj1pos, Vector3 obj2pos, float attractionMultiplier, float equilibriumDistance)
@@ -386,7 +210,6 @@ public class MetatronEngine : MonoBehaviour
         return (attractionForce, from1To2Versor, from1To2Distance);
     }
 
-
     void BuildLevel(int levelNumber)
     {
 
@@ -394,22 +217,13 @@ public class MetatronEngine : MonoBehaviour
         // and set actualRingsCount, etc.
 
         StartCoroutine(BuildMetatronCoroutine(actualRingsCount));
-        StartCoroutine(BuildSinksAndTilesCoroutine(actualRingsCount));
+        StartCoroutine(BuildSinksCoroutine(actualRingsCount));
+        StartCoroutine(BuildTilesCoroutine(actualRingsCount));
         StartCoroutine(ResetPolytronsCoroutine());
 
     }
 
-    /*
-        IEnumerator BuildPavementCoroutine()
-        {
-            yield return BuildMetatronCoroutine(3);
-            // it works
-            // yield return new WaitForSeconds(4f);
-            // yield return BuildMetatronCoroutine(4);
-        }
-    */
-
-    IEnumerator BuildSinksAndTilesCoroutine(int ringsToBuild)
+    IEnumerator BuildSinksCoroutine(int ringsToBuild)
     {
         yield return new WaitForSeconds(1f);
         foreach (var hckv in gridCellsMap)
@@ -428,9 +242,19 @@ public class MetatronEngine : MonoBehaviour
                     sink.GetComponent<PolytronSink>().weight = 0.2f;
                     sink.GetComponent<PolytronSink>().hexCoord = hckv.Key;
                     hckv.Value.actualState = true;
-                    // yield return new WaitForSeconds(0.1f);
+                    yield return new WaitForSeconds(0.1f);
                 }
+            }
+        }
+    }
 
+    IEnumerator BuildTilesCoroutine(int ringsToBuild)
+    {
+        yield return new WaitForSeconds(1.2f);
+        foreach (var hckv in gridCellsMap)
+        {
+            if (hckv.Value.ring <= ringsToBuild)
+            {
                 float angleToCenter = hckv.Key.PolarAngle();
                 Quaternion tileRotation = Quaternion.Euler(0f, -angleToCenter * 360f / 6.28f, 0f);
 
@@ -438,12 +262,12 @@ public class MetatronEngine : MonoBehaviour
 
                 GameObject tile = PolytronsFactory.Instance.Create($"tile/{tileRecipe}", 1f);
                 tile.transform.localScale = new Vector3(1f, 0.01f, 1f);
-                tile.transform.position = hckv.Value.worldCoords + new Vector3(0, 0.01f, 0);
+                tile.transform.position = hckv.Value.worldCoords + new Vector3(0, 0.1f, 0);
                 tile.transform.localRotation = tileRotation;
                 tiles.Add(tile);
                 hckv.Value.tile = tile;
 
-                yield return new WaitForSeconds(0.1f);
+                yield return new WaitForSeconds(0.15f);
             }
         }
     }
@@ -456,10 +280,6 @@ public class MetatronEngine : MonoBehaviour
         {
             if (hckv.Value.ring == 12)
             {
-
-                // DrawCircle(hckv.Value.worldCoords, 1.73f, Color.gray, 0.01f);
-                // yield return new WaitForSeconds(0.1f);
-
                 string recipe = PolyhedronRecipeKabbalah.IntToOperatorsSequence(polytronIdx) + "C";
 
                 GameObject polytron = polytrons[polytronIdx];
@@ -475,36 +295,6 @@ public class MetatronEngine : MonoBehaviour
             }
         }
     }
-
-#if OBSOLETO
-    IEnumerator BuildPolytronsCoroutine_V1()
-    {
-        yield return new WaitForSeconds(0.5f);
-        foreach (var hc in gridCellsMap)
-        {
-            if (hc.Value.ring == 12)
-            {
-
-                DrawCircle(hc.Value.worldCoords, 1.73f, Color.gray, 0.01f);
-                yield return new WaitForSeconds(0.1f);
-
-                float angleToCenter = hc.Key.PolarAngle();
-                Quaternion polytronRotation = Quaternion.Euler(0f, -angleToCenter * 360f / 6.28f, 0f);
-
-                string recipe = "ttC";
-                if (hc.Value.idxInRing % 12 == 0) recipe = "lT";
-
-                GameObject polytron = PolytronsFactory.Instance.Create($"polytron/{recipe}", 0.4f);
-                polytron.transform.position = hc.Value.worldCoords + new Vector3(0, 1f, 0);
-                polytron.transform.localRotation = polytronRotation;
-                polytrons.Add(polytron);
-
-                yield return new WaitForSeconds(0.1f);
-
-            }
-        }
-    }
-#endif
 
     IEnumerator BuildMetatronCoroutine(int ringsToBuild)
     {
@@ -523,7 +313,6 @@ public class MetatronEngine : MonoBehaviour
                     DrawCircle(hcd, 1.73f, Color.gray, 0.01f);
                     yield return null;
                 }
-
             }
         }
 
@@ -679,6 +468,7 @@ public class MetatronEngine : MonoBehaviour
         }
     }
 
+    // inefficent, but only used in metatron build
     KeyValuePair<HexCoord, HexCellData>? FindCellByRingAndIdx(int ring, int idxInRing)
     {
         foreach (var kvp in gridCellsMap)
@@ -700,7 +490,6 @@ public class MetatronEngine : MonoBehaviour
             for (int i = 0; i < hexesInRing; i++)
             {
                 HexCoord hex = ring == 0 ? new HexCoord(0, 0) : HexCoord.AtPolar(ring, i);
-                // gridCellsList.Add(hex);
 
                 Vector2 hexPos2D = hex.Position() * 2f + center2D;
                 Vector3 position = new Vector3(hexPos2D.x, transform.position.y, hexPos2D.y);
@@ -713,12 +502,12 @@ public class MetatronEngine : MonoBehaviour
                     circle = CreateCircle(ring, i)
                 };
 
-                
-                                if (ring == 2 && i == 1)
-                                {
-                                    cellData.actualState = true;
-                                }
-                
+                // test
+                if (ring == 2 && i == 1)
+                {
+                    cellData.actualState = true;
+                }
+
                 if (IsMetatronCoord(ring, i))
                 {
                     metatronCellsList.Add(hex);
@@ -740,50 +529,12 @@ public class MetatronEngine : MonoBehaviour
         return false;
     }
 
-#if ORIGINALE
-    void DrawCircle(Vector3 pos, float radius, Color color, float lineWidth = 0.05f, int segments = 20)
-    {
-        var go = new GameObject("circle");
-        go.transform.SetParent(transform);
-
-        LineRenderer lr = go.AddComponent<LineRenderer>();
-        // lr.useWorldSpace = false;   // così resta relativo all'oggetto
-        lr.loop = true;             // chiude il cerchio
-        lr.startWidth = lineWidth;
-        lr.endWidth = lineWidth;
-
-        // Puoi cambiare materiale in Inspector (default = unlit/white)
-        lr.material = new Material(Shader.Find("Sprites/Default"));
-        // lr.material.color = color;
-        lr.startColor = lr.endColor = color;
-
-        lr.positionCount = segments;
-
-        for (int i = 0; i < segments; i++)
-        {
-            float angle = (float)i / segments * Mathf.PI * 2f;
-            float x = Mathf.Cos(angle) * radius;
-            float y = Mathf.Sin(angle) * radius;
-            lr.SetPosition(i, pos + new Vector3(x, 0f, y));
-        }
-    }
-#endif
-
-
     static Material sLineMat;
     static Material GetLineMat()
     {
         if (sLineMat == null) sLineMat = new Material(Shader.Find("Sprites/Default"));
         return sLineMat;
     }
-    // …
-    /// <summary>
-    // lr.sharedMaterial = GetLineMat();
-    /// </summary>
-    /// <param name="ring"></param>
-    /// <param name="idxInRing"></param>
-    /// <returns></returns>
-
 
     GameObject CreateCircle(int ring, int idxInRing)
     {
@@ -791,49 +542,20 @@ public class MetatronEngine : MonoBehaviour
         go.transform.SetParent(transform);
 
         LineRenderer lr = go.AddComponent<LineRenderer>();
-        // lr.useWorldSpace = false;   // così resta relativo all'oggetto
-        lr.loop = true;             // chiude il cerchio
-                                    //lr.startWidth = lineWidth;
-                                    //lr.endWidth = lineWidth;
-
-        // Puoi cambiare materiale in Inspector (default = unlit/white)
-        // lr.material = new Material(Shader.Find("Sprites/Default"));
+        lr.loop = true;
         lr.sharedMaterial = GetLineMat();
-        // lr.material.color = color;
-        // lr.startColor = lr.endColor = color;
-
         lr.positionCount = 0;
 
-        /*
-                for (int i = 0; i < segments; i++)
-                {
-                    float angle = (float)i / segments * Mathf.PI * 2f;
-                    float x = Mathf.Cos(angle) * radius;
-                    float y = Mathf.Sin(angle) * radius;
-                    lr.SetPosition(i, pos + new Vector3(x, 0f, y));
-                }
-                */
         return go;
     }
 
     void DrawCircle(HexCellData hcd, float radius, Color color, float lineWidth = 0.05f, int segments = 20)
     {
-        // var go = new GameObject("circle");
-        // go.transform.SetParent(transform);
-
         GameObject go = hcd.circle;
-
         LineRenderer lr = go.GetComponent<LineRenderer>();
-        // lr.useWorldSpace = false;   // così resta relativo all'oggetto
-        // lr.loop = true;             // chiude il cerchio
         lr.startWidth = lineWidth;
         lr.endWidth = lineWidth;
-
-        // Puoi cambiare materiale in Inspector (default = unlit/white)
-        // lr.material = new Material(Shader.Find("Sprites/Default"));
-        // lr.material.color = color;
         lr.startColor = lr.endColor = color;
-
         lr.positionCount = segments;
 
         for (int i = 0; i < segments; i++)
@@ -845,26 +567,20 @@ public class MetatronEngine : MonoBehaviour
         }
     }
 
-
-
     void DrawLine(Vector3 start, Vector3 end, Color color, float width = 0.05f)
     {
         var go = new GameObject("Line");
-        // GameObject go = Instantiate(GameObject, transform);
         go.transform.SetParent(transform);
         var lr = go.AddComponent<LineRenderer>();
 
-        // lr.useWorldSpace = true;
         lr.positionCount = 2;
         lr.SetPosition(0, start);
         lr.SetPosition(1, end);
 
         lr.startWidth = lr.endWidth = width;
-        // lr.material = new Material(Shader.Find("Sprites/Default"));
         lr.sharedMaterial = GetLineMat();
         lr.startColor = lr.endColor = color;
     }
-
 
     public void Evolve()
     {
@@ -886,21 +602,6 @@ public class MetatronEngine : MonoBehaviour
             bool alive = cellData.actualState;
             bool nextAlive = false;
 
-
-            /*
-                                    // Game of Life rules for hex grid
-                                    if (alive)
-                                    {
-                                        // this is simmetrical with the Metatron initial scheme
-                                        // nextAlive = (aliveNeighbors == 3 || aliveNeighbors == 4);
-                                        nextAlive = (aliveNeighbors == 3 || aliveNeighbors == 6);
-                                    }
-                                    else
-                                    {
-                                        nextAlive = (aliveNeighbors == 2);
-                                    }
-            */
-
             // rule for pattern breeder
             if (hckv.Value.ring % 2 == 0)
             {
@@ -912,13 +613,12 @@ public class MetatronEngine : MonoBehaviour
                 nextAlive = ((aliveNeighbors % 2) == 0);
             }
 
-
             cellData.nextState = nextAlive;
             cellData.aliveDeadCounter += cellData.nextState ? 1 : -1;
-
         }
 
-        UpdateSinks();
+        // UpdateSinks();
+        // in this point I can understand if the cell is born, dead, or remained alive or dead
 
         foreach (var hckv in gridCellsMap)
         {
@@ -926,9 +626,11 @@ public class MetatronEngine : MonoBehaviour
             hckv.Value.actualState = hckv.Value.nextState;
         }
 
+        //DetectFusionFission();
+
         UpdateTiles();
-
-
+        UpdateSinks();
+        // ResetFusionFission();
     }
 
     void UpdateTiles()
@@ -937,44 +639,26 @@ public class MetatronEngine : MonoBehaviour
         {
             if (hckv.Value.ring > actualRingsCount) continue;
 
-            /*
-            if (hckv.Value.sink != null)
-            {
-                RebuildTileMesh(hckv.Key, hckv.Value.sink.GetComponent<PolytronSink>().attractedRecipe);
-                continue;
-            }
-            */
-
-            /*
-                        bool state = hckv.Value.actualState;
-                        if (state)
-                        {
-                            // sink.GetComponent<MeshRenderer>().material.color = Color.white;
-                            RebuildTileMesh(hckv.Key, "ttC");
-                        }
-                        else
-                        {
-                            // sink.GetComponent<MeshRenderer>().material.color = Color.black;
-                            RebuildTileMesh(hckv.Key, "C");
-                        }
-            */
-
-            if (hckv.Value.ring == 1 /*&& hckv.Value.idxInRing == 1*/)
+            // test
+            if (hckv.Value.ring == 1)
             {
                 Debug.Log($"ring: {hckv.Value.ring}, idxInRing: {hckv.Value.idxInRing}, nextState: {hckv.Value.nextState}, aliveDeadCounter: {hckv.Value.aliveDeadCounter}");
             }
 
-            DrawRubedoNigredoCircle(hckv, 5f);
-            RebuildTileMesh(hckv.Key, PolyhedronRecipeKabbalah.IntToOperatorsSequence(10 + hckv.Value.aliveDeadCounter) + "C");
+            int fusionFissionThreshold = 5;
+            string tileBasePoly = "C";
+            int tileIntToOperatorsSequenceOffset = 15;
 
+            DrawRubedoNigredoCircle(hckv, fusionFissionThreshold);
+            RebuildTileMesh(hckv.Key, PolyhedronRecipeKabbalah.IntToOperatorsSequence(tileIntToOperatorsSequenceOffset + hckv.Value.aliveDeadCounter) + tileBasePoly);
         }
     }
 
 
-    void DrawRubedoNigredoCircle(KeyValuePair<HexCoord, HexCellData> hckv, float threshold)
+    void DrawRubedoNigredoCircle(KeyValuePair<HexCoord, HexCellData> hckv, int threshold)
     {
         float colorValue = hckv.Value.aliveDeadCounter;
-        float normalizedColorValue = (float)colorValue / threshold;
+        float normalizedColorValue = (float)colorValue / (float)threshold;
         bool thresholdReached = false;
         if (Math.Abs(normalizedColorValue) > 1f)
         {
@@ -998,9 +682,6 @@ public class MetatronEngine : MonoBehaviour
             color = Color.Lerp(Color.white, Color.red, normalizedColorValue);
         }
 
-        // color = Color.Lerp(Color.white, Color.red, 3.3f);
-        // color = Color.red;
-
         float lineWidth = thresholdReached ? 0.3f : 0.025f;
 
         if (hckv.Value.isOnMetatronPattern)
@@ -1009,16 +690,25 @@ public class MetatronEngine : MonoBehaviour
         }
         else
         {
-            //             DrawCircle(hckv.Value, 1.73f, color, 0.01f);
             DrawCircle(hckv.Value, 1.73f, color, lineWidth);
         }
-
-
-
     }
 
+    void UpdateSinks()
+    {
+        foreach (var sink in sinks)
+        {
+            PolytronSink sinkComponent = sink.GetComponent<PolytronSink>();
+
+            HexCellData sinkCellData = gridCellsMap[sinkComponent.hexCoord];
+            Debug.Assert(sinkCellData.sink == sink);
+        }
+    }
+    
 
 
+
+#if DACAPIRE
     void UpdateSinks()
     {
         foreach (var sink in sinks)
@@ -1089,5 +779,7 @@ public class MetatronEngine : MonoBehaviour
 
         }
     }
+#endif
+
 
 }
