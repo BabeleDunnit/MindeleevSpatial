@@ -5,6 +5,7 @@ using System.Linq;
 using UnityEngine;
 using Unity.VisualScripting;
 using System.Diagnostics.Tracing;
+using System;
 
 public class MetatronEngine : MonoBehaviour
 {
@@ -44,7 +45,7 @@ public class MetatronEngine : MonoBehaviour
     private List<GameObject> sinks = new();
     private List<GameObject> tiles = new();
 
-    int actualRingsCount = 3;
+    int actualRingsCount = 2;
 
     void Awake()
     {
@@ -433,7 +434,9 @@ public class MetatronEngine : MonoBehaviour
                 float angleToCenter = hckv.Key.PolarAngle();
                 Quaternion tileRotation = Quaternion.Euler(0f, -angleToCenter * 360f / 6.28f, 0f);
 
-                GameObject tile = PolytronsFactory.Instance.Create($"tile/{recipe}", 1f);
+                string tileRecipe = hckv.Value.actualState ? "ttC" : "C";
+
+                GameObject tile = PolytronsFactory.Instance.Create($"tile/{tileRecipe}", 1f);
                 tile.transform.localScale = new Vector3(1f, 0.01f, 1f);
                 tile.transform.position = hckv.Value.worldCoords + new Vector3(0, 0.01f, 0);
                 tile.transform.localRotation = tileRotation;
@@ -710,6 +713,12 @@ public class MetatronEngine : MonoBehaviour
                     circle = CreateCircle(ring, i)
                 };
 
+                
+                                if (ring == 2 && i == 1)
+                                {
+                                    cellData.actualState = true;
+                                }
+                
                 if (IsMetatronCoord(ring, i))
                 {
                     metatronCellsList.Add(hex);
@@ -760,6 +769,22 @@ public class MetatronEngine : MonoBehaviour
     }
 #endif
 
+
+    static Material sLineMat;
+    static Material GetLineMat()
+    {
+        if (sLineMat == null) sLineMat = new Material(Shader.Find("Sprites/Default"));
+        return sLineMat;
+    }
+    // …
+    /// <summary>
+    // lr.sharedMaterial = GetLineMat();
+    /// </summary>
+    /// <param name="ring"></param>
+    /// <param name="idxInRing"></param>
+    /// <returns></returns>
+
+
     GameObject CreateCircle(int ring, int idxInRing)
     {
         var go = new GameObject($"circle_{ring}_{idxInRing}");
@@ -768,11 +793,12 @@ public class MetatronEngine : MonoBehaviour
         LineRenderer lr = go.AddComponent<LineRenderer>();
         // lr.useWorldSpace = false;   // così resta relativo all'oggetto
         lr.loop = true;             // chiude il cerchio
-        //lr.startWidth = lineWidth;
-        //lr.endWidth = lineWidth;
+                                    //lr.startWidth = lineWidth;
+                                    //lr.endWidth = lineWidth;
 
         // Puoi cambiare materiale in Inspector (default = unlit/white)
-        lr.material = new Material(Shader.Find("Sprites/Default"));
+        // lr.material = new Material(Shader.Find("Sprites/Default"));
+        lr.sharedMaterial = GetLineMat();
         // lr.material.color = color;
         // lr.startColor = lr.endColor = color;
 
@@ -834,7 +860,8 @@ public class MetatronEngine : MonoBehaviour
         lr.SetPosition(1, end);
 
         lr.startWidth = lr.endWidth = width;
-        lr.material = new Material(Shader.Find("Sprites/Default"));
+        // lr.material = new Material(Shader.Find("Sprites/Default"));
+        lr.sharedMaterial = GetLineMat();
         lr.startColor = lr.endColor = color;
     }
 
@@ -937,20 +964,8 @@ public class MetatronEngine : MonoBehaviour
                 Debug.Log($"ring: {hckv.Value.ring}, idxInRing: {hckv.Value.idxInRing}, nextState: {hckv.Value.nextState}, aliveDeadCounter: {hckv.Value.aliveDeadCounter}");
             }
 
-            RebuildTileMesh(hckv.Key, PolyhedronRecipeKabbalah.IntToOperatorsSequence(10 + hckv.Value.aliveDeadCounter) + "C");
-
             DrawRubedoNigredoCircle(hckv, 5f);
-
-            /*
-                        if (hckv.Value.aliveDeadCounter > 5)
-                        {
-                            RebuildTileMesh(hckv.Key, "I");
-                        }
-                        else if (hckv.Value.aliveDeadCounter < -5)
-                        {
-                            RebuildTileMesh(hckv.Key, "O");
-                        }
-            */
+            RebuildTileMesh(hckv.Key, PolyhedronRecipeKabbalah.IntToOperatorsSequence(10 + hckv.Value.aliveDeadCounter) + "C");
 
         }
     }
@@ -959,7 +974,14 @@ public class MetatronEngine : MonoBehaviour
     void DrawRubedoNigredoCircle(KeyValuePair<HexCoord, HexCellData> hckv, float threshold)
     {
         float colorValue = hckv.Value.aliveDeadCounter;
-        float normalizedColorValue = (float) colorValue / threshold;
+        float normalizedColorValue = (float)colorValue / threshold;
+        bool thresholdReached = false;
+        if (Math.Abs(normalizedColorValue) > 1f)
+        {
+            thresholdReached = true;
+            hckv.Value.aliveDeadCounter = 0;
+        }
+
         normalizedColorValue = Mathf.Clamp(normalizedColorValue, -1f, 1f);
         Color color = Color.white;
         if (normalizedColorValue < 0f)
@@ -979,15 +1001,19 @@ public class MetatronEngine : MonoBehaviour
         // color = Color.Lerp(Color.white, Color.red, 3.3f);
         // color = Color.red;
 
+        float lineWidth = thresholdReached ? 0.3f : 0.025f;
 
         if (hckv.Value.isOnMetatronPattern)
         {
-            DrawCircle(hckv.Value, 1.73f, color, 0.025f);
+            DrawCircle(hckv.Value, 1.73f, color, lineWidth);
         }
         else
         {
-            DrawCircle(hckv.Value, 1.73f, color, 0.01f);
+            //             DrawCircle(hckv.Value, 1.73f, color, 0.01f);
+            DrawCircle(hckv.Value, 1.73f, color, lineWidth);
         }
+
+
 
     }
 
