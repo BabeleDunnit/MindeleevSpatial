@@ -26,6 +26,9 @@ public class MetatronEngine : MonoBehaviour
 
         public bool actualState = false;
         public bool nextState = false;
+
+        // each round it is alive, add +1. Each round it is dead, add -1.
+        public int aliveDeadCounter = 0;
     }
 
     // these HexCoord lists and maps contains ALL the cells, prebuilt, rings [0,12]
@@ -40,7 +43,7 @@ public class MetatronEngine : MonoBehaviour
     private List<GameObject> sinks = new();
     private List<GameObject> tiles = new();
 
-    int actualRingsCount = 4;
+    int actualRingsCount = 3;
 
     void Awake()
     {
@@ -185,6 +188,24 @@ public class MetatronEngine : MonoBehaviour
         GameObject tile = gridCellsMap[coord].tile;
         if (tile != null)
         {
+            // Debug.Log("Rebuilding tile");
+
+            // ok, funzionano ma sono distruttivi, è un asset e quindi viene salvato
+            // anche se è una copia
+            /*
+                        tile.GetComponent<PolyhedronGenerator>().palette.colors[0] = Color.red;
+                        tile.GetComponent<PolyhedronGenerator>().palette.colors[1] = Color.blue;
+                        tile.GetComponent<PolyhedronGenerator>().palette.colors.RemoveRange(2, tile.GetComponent<PolyhedronGenerator>().palette.colors.Count - 2);
+            */
+
+            /*
+                        PolyhedronPalette pp = new PolyhedronPalette();
+                        pp.colors.Add(Color.red);
+                        pp.colors.Add(Color.blue);
+                        tile.GetComponent<PolyhedronGenerator>().palette = pp;
+            */
+
+
             tile.GetComponent<PolyhedronGenerator>().recipeString = recipe;
             tile.GetComponent<PolyhedronGenerator>().RebuildMesh();
         }
@@ -708,13 +729,11 @@ public class MetatronEngine : MonoBehaviour
         return false;
     }
 
+#if ORIGINALE
     void DrawCircle(Vector3 pos, float radius, Color color, float lineWidth = 0.05f, int segments = 20)
     {
         var go = new GameObject("circle");
         go.transform.SetParent(transform);
-
-        //         var go = Instantiate(circlePrefab, pos, Quaternion.identity);
-        //         lr = GetComponent<LineRenderer>();
 
         LineRenderer lr = go.AddComponent<LineRenderer>();
         // lr.useWorldSpace = false;   // così resta relativo all'oggetto
@@ -724,14 +743,8 @@ public class MetatronEngine : MonoBehaviour
 
         // Puoi cambiare materiale in Inspector (default = unlit/white)
         lr.material = new Material(Shader.Find("Sprites/Default"));
-        lr.material.color = color;
-
-
-        /*
-                var cd = go.GetComponent<CircleRenderer>();
-                cd.radius = radius;
-                cd.DrawCircle();
-                */
+        // lr.material.color = color;
+        lr.startColor = lr.endColor = color;
 
         lr.positionCount = segments;
 
@@ -742,8 +755,63 @@ public class MetatronEngine : MonoBehaviour
             float y = Mathf.Sin(angle) * radius;
             lr.SetPosition(i, pos + new Vector3(x, 0f, y));
         }
-
     }
+#endif
+
+    void CreateCircle(Vector3 pos, float radius, Color color, float lineWidth = 0.05f, int segments = 20)
+    {
+        var go = new GameObject("circle");
+        go.transform.SetParent(transform);
+
+        LineRenderer lr = go.AddComponent<LineRenderer>();
+        // lr.useWorldSpace = false;   // così resta relativo all'oggetto
+        lr.loop = true;             // chiude il cerchio
+        lr.startWidth = lineWidth;
+        lr.endWidth = lineWidth;
+
+        // Puoi cambiare materiale in Inspector (default = unlit/white)
+        lr.material = new Material(Shader.Find("Sprites/Default"));
+        // lr.material.color = color;
+        lr.startColor = lr.endColor = color;
+
+        lr.positionCount = segments;
+
+        for (int i = 0; i < segments; i++)
+        {
+            float angle = (float)i / segments * Mathf.PI * 2f;
+            float x = Mathf.Cos(angle) * radius;
+            float y = Mathf.Sin(angle) * radius;
+            lr.SetPosition(i, pos + new Vector3(x, 0f, y));
+        }
+    }
+    void DrawCircle(Vector3 pos, float radius, Color color, float lineWidth = 0.05f, int segments = 20)
+    {
+        var go = new GameObject("circle");
+        go.transform.SetParent(transform);
+
+        LineRenderer lr = go.AddComponent<LineRenderer>();
+        // lr.useWorldSpace = false;   // così resta relativo all'oggetto
+        lr.loop = true;             // chiude il cerchio
+        lr.startWidth = lineWidth;
+        lr.endWidth = lineWidth;
+
+        // Puoi cambiare materiale in Inspector (default = unlit/white)
+        lr.material = new Material(Shader.Find("Sprites/Default"));
+        // lr.material.color = color;
+        lr.startColor = lr.endColor = color;
+
+        lr.positionCount = segments;
+
+        for (int i = 0; i < segments; i++)
+        {
+            float angle = (float)i / segments * Mathf.PI * 2f;
+            float x = Mathf.Cos(angle) * radius;
+            float y = Mathf.Sin(angle) * radius;
+            lr.SetPosition(i, pos + new Vector3(x, 0f, y));
+        }
+    }
+
+
 
     void DrawLine(Vector3 start, Vector3 end, Color color, float width = 0.05f)
     {
@@ -783,25 +851,36 @@ public class MetatronEngine : MonoBehaviour
             bool alive = cellData.actualState;
             bool nextAlive = false;
 
-            /*
 
-                        // Game of Life rules for hex grid
-                        if (alive)
-                        {
-                            // this is simmetrical with the Metatron initial scheme
-                            // nextAlive = (aliveNeighbors == 3 || aliveNeighbors == 4);
-                            nextAlive = (aliveNeighbors == 3 || aliveNeighbors == 6);
-                        }
-                        else
-                        {
-                            nextAlive = (aliveNeighbors == 2);
-                        }
+            /*
+                                    // Game of Life rules for hex grid
+                                    if (alive)
+                                    {
+                                        // this is simmetrical with the Metatron initial scheme
+                                        // nextAlive = (aliveNeighbors == 3 || aliveNeighbors == 4);
+                                        nextAlive = (aliveNeighbors == 3 || aliveNeighbors == 6);
+                                    }
+                                    else
+                                    {
+                                        nextAlive = (aliveNeighbors == 2);
+                                    }
             */
 
             // rule for pattern breeder
-            nextAlive = ((aliveNeighbors % 2) == 1) /* || cellData.ring == 0 */;
+            if (hckv.Value.ring % 2 == 0)
+            {
+                // this goes to zero
+                nextAlive = ((aliveNeighbors % 2) == 1);
+            }
+            else
+            {
+                nextAlive = ((aliveNeighbors % 2) == 0);
+            }
+
 
             cellData.nextState = nextAlive;
+            cellData.aliveDeadCounter += cellData.nextState ? 1 : -1;
+
         }
 
         UpdateSinks();
@@ -822,30 +901,92 @@ public class MetatronEngine : MonoBehaviour
         foreach (var hckv in gridCellsMap)
         {
             if (hckv.Value.ring > actualRingsCount) continue;
+
+            /*
             if (hckv.Value.sink != null)
             {
                 RebuildTileMesh(hckv.Key, hckv.Value.sink.GetComponent<PolytronSink>().attractedRecipe);
                 continue;
             }
+            */
 
-            bool state = hckv.Value.actualState;
-            if (state)
+            /*
+                        bool state = hckv.Value.actualState;
+                        if (state)
+                        {
+                            // sink.GetComponent<MeshRenderer>().material.color = Color.white;
+                            RebuildTileMesh(hckv.Key, "ttC");
+                        }
+                        else
+                        {
+                            // sink.GetComponent<MeshRenderer>().material.color = Color.black;
+                            RebuildTileMesh(hckv.Key, "C");
+                        }
+            */
+
+            if (hckv.Value.ring == 1 /*&& hckv.Value.idxInRing == 1*/)
             {
-                // sink.GetComponent<MeshRenderer>().material.color = Color.white;
-                RebuildTileMesh(hckv.Key, "ttC");
+                Debug.Log($"ring: {hckv.Value.ring}, idxInRing: {hckv.Value.idxInRing}, nextState: {hckv.Value.nextState}, aliveDeadCounter: {hckv.Value.aliveDeadCounter}");
             }
-            else
-            {
-                // sink.GetComponent<MeshRenderer>().material.color = Color.black;
-                RebuildTileMesh(hckv.Key, "C");
-            }
+
+            RebuildTileMesh(hckv.Key, PolyhedronRecipeKabbalah.IntToOperatorsSequence(10 + hckv.Value.aliveDeadCounter) + "C");
+
+            DrawRubedoNigredoCircle(hckv, 5f);
+
+            /*
+                        if (hckv.Value.aliveDeadCounter > 5)
+                        {
+                            RebuildTileMesh(hckv.Key, "I");
+                        }
+                        else if (hckv.Value.aliveDeadCounter < -5)
+                        {
+                            RebuildTileMesh(hckv.Key, "O");
+                        }
+            */
 
         }
     }
 
+
+    void DrawRubedoNigredoCircle(KeyValuePair<HexCoord, HexCellData> hckv, float threshold)
+    {
+        float colorValue = hckv.Value.aliveDeadCounter;
+        float normalizedColorValue = (float) colorValue / threshold;
+        normalizedColorValue = Mathf.Clamp(normalizedColorValue, -1f, 1f);
+        Color color = Color.white;
+        if (normalizedColorValue < 0f)
+        {
+            // da nero a bianco
+            // t = -1 → 0; t = 0 → 1
+            float u = normalizedColorValue + 1f; // mappa [-1,0] → [0,1]
+            color = Color.Lerp(Color.black, Color.white, u);
+        }
+        else
+        {
+            // da bianco a rosso
+            // t = 0 → 0; t = 1 → 1
+            color = Color.Lerp(Color.white, Color.red, normalizedColorValue);
+        }
+
+        // color = Color.Lerp(Color.white, Color.red, 3.3f);
+        color = Color.red;
+
+
+        if (hckv.Value.isOnMetatronPattern)
+        {
+            DrawCircle(hckv.Value.worldCoords, 1.73f, color, 0.025f);
+        }
+        else
+        {
+            DrawCircle(hckv.Value.worldCoords, 1.73f, color, 0.01f);
+        }
+
+    }
+
+
+
     void UpdateSinks()
     {
-
         foreach (var sink in sinks)
         {
             PolytronSink sinkComponent = sink.GetComponent<PolytronSink>();
@@ -855,6 +996,9 @@ public class MetatronEngine : MonoBehaviour
 
             if (sinkCellData.actualState == false && sinkCellData.nextState == true)
             {
+
+                // sinkCellData.aliveDeadCounter += 1;
+
                 Debug.Log("starting fusion");
                 // sink is "born", make a fusion
                 List<string> recipesForFusion = new();
@@ -875,14 +1019,27 @@ public class MetatronEngine : MonoBehaviour
 
                 string fusionRecipe = PolyhedronRecipeKabbalah.RecipeFusion(recipesForFusion);
                 Debug.Log($"fusion result: {fusionRecipe}");
-                sinkComponent.attractedRecipe = fusionRecipe;
+
+                // sinkComponent.attractedRecipe = fusionRecipe;
 
             }
 
             if (sinkCellData.actualState == true && sinkCellData.nextState == false)
             {
                 // sink is "dead", make a fission
+                // sinkCellData.aliveDeadCounter -= 1;
             }
+
+            /*
+                        if (sinkCellData.nextState == true)
+                        {
+                            sinkCellData.aliveDeadCounter += 1;
+                        }
+                        else
+                        {
+                            sinkCellData.aliveDeadCounter -= 1;
+                        }
+            */
 
 
             /*

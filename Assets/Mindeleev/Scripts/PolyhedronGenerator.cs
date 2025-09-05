@@ -23,6 +23,15 @@ public class PolyhedronGenerator : MonoBehaviour
         RebuildMesh();
     }
 
+    /*
+        public void SetPaletteColor(int colorIdx, Color c)
+        {
+            palette.colors[colorIdx] = c;
+        }
+    */
+
+    
+
     public void RebuildMesh()
     {
 
