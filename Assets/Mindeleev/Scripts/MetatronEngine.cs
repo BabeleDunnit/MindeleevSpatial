@@ -23,6 +23,7 @@ public class MetatronEngine : MonoBehaviour
         public GameObject sink;
         public GameObject tile;
         // public GameObject polytron;
+        public GameObject circle;
 
         public bool actualState = false;
         public bool nextState = false;
@@ -49,13 +50,13 @@ public class MetatronEngine : MonoBehaviour
     {
     }
 
-    void BuildPolytrons()
+    void Create72Polytrons()
     {
         foreach (var hckv in gridCellsMap)
         {
             if (hckv.Value.ring == 12)
             {
-                DrawCircle(hckv.Value.worldCoords, 1.73f, Color.gray, 0.01f);
+                DrawCircle(hckv.Value, 1.73f, Color.gray, 0.01f);
 
                 int polytronId = polytrons.Count;
 
@@ -74,8 +75,8 @@ public class MetatronEngine : MonoBehaviour
         // hide placeholder
         GetComponent<MeshRenderer>().enabled = false;
 
-        BuildHexGridDataStructure();
-        BuildPolytrons();
+        CreateHexGridDataStructure();
+        Create72Polytrons();
 
     }
 
@@ -472,7 +473,7 @@ public class MetatronEngine : MonoBehaviour
         }
     }
 
-
+#if OBSOLETO
     IEnumerator BuildPolytronsCoroutine_V1()
     {
         yield return new WaitForSeconds(0.5f);
@@ -500,7 +501,7 @@ public class MetatronEngine : MonoBehaviour
             }
         }
     }
-
+#endif
 
     IEnumerator BuildMetatronCoroutine(int ringsToBuild)
     {
@@ -511,12 +512,12 @@ public class MetatronEngine : MonoBehaviour
             {
                 if (hcd.isOnMetatronPattern)
                 {
-                    DrawCircle(hcd.worldCoords, 1.73f, Color.white, 0.025f);
+                    DrawCircle(hcd, 1.73f, Color.white, 0.025f);
                     yield return new WaitForSeconds(0.1f);
                 }
                 else
                 {
-                    DrawCircle(hcd.worldCoords, 1.73f, Color.gray, 0.01f);
+                    DrawCircle(hcd, 1.73f, Color.gray, 0.01f);
                     yield return null;
                 }
 
@@ -605,7 +606,7 @@ public class MetatronEngine : MonoBehaviour
         {
             if (hcd.isOnMetatronPattern && hcd.ring <= ringsToBuild)
             {
-                DrawCircle(hcd.worldCoords, 1.73f, Color.blue);
+                DrawCircle(hcd, 1.73f, Color.blue);
             }
         }
 
@@ -687,7 +688,7 @@ public class MetatronEngine : MonoBehaviour
         return null;
     }
 
-    void BuildHexGridDataStructure()
+    void CreateHexGridDataStructure()
     {
         Vector2 center2D = new Vector2(transform.position.x, transform.position.z);
         for (int ring = 0; ring <= maxRings; ring++)
@@ -705,7 +706,8 @@ public class MetatronEngine : MonoBehaviour
                 {
                     ring = ring,
                     idxInRing = i,
-                    worldCoords = position
+                    worldCoords = position,
+                    circle = CreateCircle(ring, i)
                 };
 
                 if (IsMetatronCoord(ring, i))
@@ -758,45 +760,51 @@ public class MetatronEngine : MonoBehaviour
     }
 #endif
 
-    void CreateCircle(Vector3 pos, float radius, Color color, float lineWidth = 0.05f, int segments = 20)
+    GameObject CreateCircle(int ring, int idxInRing)
     {
-        var go = new GameObject("circle");
+        var go = new GameObject($"circle_{ring}_{idxInRing}");
         go.transform.SetParent(transform);
 
         LineRenderer lr = go.AddComponent<LineRenderer>();
         // lr.useWorldSpace = false;   // così resta relativo all'oggetto
         lr.loop = true;             // chiude il cerchio
-        lr.startWidth = lineWidth;
-        lr.endWidth = lineWidth;
+        //lr.startWidth = lineWidth;
+        //lr.endWidth = lineWidth;
 
         // Puoi cambiare materiale in Inspector (default = unlit/white)
         lr.material = new Material(Shader.Find("Sprites/Default"));
         // lr.material.color = color;
-        lr.startColor = lr.endColor = color;
+        // lr.startColor = lr.endColor = color;
 
-        lr.positionCount = segments;
+        lr.positionCount = 0;
 
-        for (int i = 0; i < segments; i++)
-        {
-            float angle = (float)i / segments * Mathf.PI * 2f;
-            float x = Mathf.Cos(angle) * radius;
-            float y = Mathf.Sin(angle) * radius;
-            lr.SetPosition(i, pos + new Vector3(x, 0f, y));
-        }
+        /*
+                for (int i = 0; i < segments; i++)
+                {
+                    float angle = (float)i / segments * Mathf.PI * 2f;
+                    float x = Mathf.Cos(angle) * radius;
+                    float y = Mathf.Sin(angle) * radius;
+                    lr.SetPosition(i, pos + new Vector3(x, 0f, y));
+                }
+                */
+        return go;
     }
-    void DrawCircle(Vector3 pos, float radius, Color color, float lineWidth = 0.05f, int segments = 20)
-    {
-        var go = new GameObject("circle");
-        go.transform.SetParent(transform);
 
-        LineRenderer lr = go.AddComponent<LineRenderer>();
+    void DrawCircle(HexCellData hcd, float radius, Color color, float lineWidth = 0.05f, int segments = 20)
+    {
+        // var go = new GameObject("circle");
+        // go.transform.SetParent(transform);
+
+        GameObject go = hcd.circle;
+
+        LineRenderer lr = go.GetComponent<LineRenderer>();
         // lr.useWorldSpace = false;   // così resta relativo all'oggetto
-        lr.loop = true;             // chiude il cerchio
+        // lr.loop = true;             // chiude il cerchio
         lr.startWidth = lineWidth;
         lr.endWidth = lineWidth;
 
         // Puoi cambiare materiale in Inspector (default = unlit/white)
-        lr.material = new Material(Shader.Find("Sprites/Default"));
+        // lr.material = new Material(Shader.Find("Sprites/Default"));
         // lr.material.color = color;
         lr.startColor = lr.endColor = color;
 
@@ -807,7 +815,7 @@ public class MetatronEngine : MonoBehaviour
             float angle = (float)i / segments * Mathf.PI * 2f;
             float x = Mathf.Cos(angle) * radius;
             float y = Mathf.Sin(angle) * radius;
-            lr.SetPosition(i, pos + new Vector3(x, 0f, y));
+            lr.SetPosition(i, hcd.worldCoords + new Vector3(x, 0f, y));
         }
     }
 
@@ -969,16 +977,16 @@ public class MetatronEngine : MonoBehaviour
         }
 
         // color = Color.Lerp(Color.white, Color.red, 3.3f);
-        color = Color.red;
+        // color = Color.red;
 
 
         if (hckv.Value.isOnMetatronPattern)
         {
-            DrawCircle(hckv.Value.worldCoords, 1.73f, color, 0.025f);
+            DrawCircle(hckv.Value, 1.73f, color, 0.025f);
         }
         else
         {
-            DrawCircle(hckv.Value.worldCoords, 1.73f, color, 0.01f);
+            DrawCircle(hckv.Value, 1.73f, color, 0.01f);
         }
 
     }
