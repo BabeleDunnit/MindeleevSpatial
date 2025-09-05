@@ -46,6 +46,7 @@ public class MetatronEngine : MonoBehaviour
 
         // each round it is alive, add +1. Each round it is dead, add -1.
         public int aliveDeadCounter = 0;
+        internal bool fusionFissionThresholdReached;
     }
 
     // these HexCoord lists and maps contains ALL the cells, prebuilt, rings [0,12]
@@ -60,20 +61,23 @@ public class MetatronEngine : MonoBehaviour
     private List<GameObject> sinks = new();
     private List<GameObject> tiles = new();
 
-    int actualRingsCount = 2;
+    // int actualRingsCount = 3;
 
     struct LevelConfig
     {
         // we will start with 2
-        int actualRingsCount;
+        public int actualRingsCount;
 
-        int fusionFissionThreshold;
+        // public int fusionFissionThreshold;
 
-        int tileIntToOperatorsSequenceOffset;
+        public int tileIntToOperatorsSequenceOffset;
 
-        string tileBasePoly;
-
+        public string tileBasePoly;
+        internal int fusionThreshold;
+        internal int fissionThreshold;
     }
+
+    LevelConfig actualLevelConfig;
 
     void Awake()
     {
@@ -216,25 +220,32 @@ public class MetatronEngine : MonoBehaviour
         // the level number will determine the Metatron complexity
         // and set actualRingsCount, etc.
 
-        StartCoroutine(BuildMetatronCoroutine(actualRingsCount));
-        StartCoroutine(BuildSinksCoroutine(actualRingsCount));
-        StartCoroutine(BuildTilesCoroutine(actualRingsCount));
+        actualLevelConfig.actualRingsCount = 3;
+        actualLevelConfig.fusionThreshold = 7;
+        actualLevelConfig.fissionThreshold = 6;
+        actualLevelConfig.tileBasePoly = "C";
+        actualLevelConfig.tileIntToOperatorsSequenceOffset = 10;
+
+
+        StartCoroutine(BuildMetatronCoroutine());
+        StartCoroutine(BuildSinksCoroutine());
+        StartCoroutine(BuildTilesCoroutine());
         StartCoroutine(ResetPolytronsCoroutine());
 
     }
 
-    IEnumerator BuildSinksCoroutine(int ringsToBuild)
+    IEnumerator BuildSinksCoroutine()
     {
         yield return new WaitForSeconds(1f);
         foreach (var hckv in gridCellsMap)
         {
-            if (hckv.Value.ring <= ringsToBuild)
+            if (hckv.Value.ring <= actualLevelConfig.actualRingsCount)
             {
                 string recipe = "tC";
                 if (hckv.Value.isOnMetatronPattern)
                 {
-                    recipe = "ttC";
-                    if (hckv.Value.ring == 0 && hckv.Value.idxInRing == 0) recipe = "lI";
+                    //recipe = "ttC";
+                    //if (hckv.Value.ring == 0 && hckv.Value.idxInRing == 0) recipe = "lI";
                     GameObject sink = PolytronsFactory.Instance.Create($"sink/{recipe}", 0.3f);
                     sink.transform.position = new Vector3(hckv.Value.worldCoords.x, 1.0f, hckv.Value.worldCoords.z);
                     hckv.Value.sink = sink;
@@ -248,17 +259,21 @@ public class MetatronEngine : MonoBehaviour
         }
     }
 
-    IEnumerator BuildTilesCoroutine(int ringsToBuild)
+    IEnumerator BuildTilesCoroutine()
     {
         yield return new WaitForSeconds(1.2f);
         foreach (var hckv in gridCellsMap)
         {
-            if (hckv.Value.ring <= ringsToBuild)
+            if (hckv.Value.ring <= actualLevelConfig.actualRingsCount)
             {
                 float angleToCenter = hckv.Key.PolarAngle();
                 Quaternion tileRotation = Quaternion.Euler(0f, -angleToCenter * 360f / 6.28f, 0f);
 
-                string tileRecipe = hckv.Value.actualState ? "ttC" : "C";
+                // string tileRecipe = hckv.Value.actualState ? "ttC" : "C";
+                string tileRecipe = hckv.Value.actualState ?
+                    PolyhedronRecipeKabbalah.IntToOperatorsSequence(actualLevelConfig.tileIntToOperatorsSequenceOffset) + actualLevelConfig.tileBasePoly
+                    :
+                    PolyhedronRecipeKabbalah.IntToOperatorsSequence(actualLevelConfig.tileIntToOperatorsSequenceOffset - 1) + actualLevelConfig.tileBasePoly;
 
                 GameObject tile = PolytronsFactory.Instance.Create($"tile/{tileRecipe}", 1f);
                 tile.transform.localScale = new Vector3(1f, 0.01f, 1f);
@@ -296,12 +311,12 @@ public class MetatronEngine : MonoBehaviour
         }
     }
 
-    IEnumerator BuildMetatronCoroutine(int ringsToBuild)
+    IEnumerator BuildMetatronCoroutine()
     {
         // Draw circles
         foreach (HexCellData hcd in gridCellsMap.Values)
         {
-            if (hcd.ring <= ringsToBuild)
+            if (hcd.ring <= actualLevelConfig.actualRingsCount)
             {
                 if (hcd.isOnMetatronPattern)
                 {
@@ -319,7 +334,7 @@ public class MetatronEngine : MonoBehaviour
         yield return new WaitForSeconds(0.2f);
 
         // Draw hexagons
-        for (int r = 1; r <= ringsToBuild; r++)
+        for (int r = 1; r <= actualLevelConfig.actualRingsCount; r++)
         {
             for (int i = 0; i < 6; i++)
             {
@@ -336,10 +351,10 @@ public class MetatronEngine : MonoBehaviour
         // Draw central cross
         for (int i = 0; i < 3; i++)
         {
-            int idxInRing1 = (i * ringsToBuild);
-            int idxInRing2 = ((i + 3) * ringsToBuild);
-            KeyValuePair<HexCoord, HexCellData>? hc1 = FindCellByRingAndIdx(ringsToBuild, idxInRing1);
-            KeyValuePair<HexCoord, HexCellData>? hc2 = FindCellByRingAndIdx(ringsToBuild, idxInRing2);
+            int idxInRing1 = (i * actualLevelConfig.actualRingsCount);
+            int idxInRing2 = ((i + 3) * actualLevelConfig.actualRingsCount);
+            KeyValuePair<HexCoord, HexCellData>? hc1 = FindCellByRingAndIdx(actualLevelConfig.actualRingsCount, idxInRing1);
+            KeyValuePair<HexCoord, HexCellData>? hc2 = FindCellByRingAndIdx(actualLevelConfig.actualRingsCount, idxInRing2);
             DrawLine(hc1.Value.Value.worldCoords, hc2.Value.Value.worldCoords, Color.gray, 0.02f);
         }
 
@@ -350,7 +365,7 @@ public class MetatronEngine : MonoBehaviour
             // simplify.... :)
             // for (int r = ringsToBuild; r <= ringsToBuild; r++)
             //{
-            int r = ringsToBuild;
+            int r = actualLevelConfig.actualRingsCount;
             for (int i = 0; i < 2; i++)
             {
                 int idxInRing1 = (i * r);
@@ -370,7 +385,7 @@ public class MetatronEngine : MonoBehaviour
         //}
 
         // Draw isosceles triangles
-        for (int r = 2; r <= ringsToBuild; r++)
+        for (int r = 2; r <= actualLevelConfig.actualRingsCount; r++)
         {
             for (int i = 0; i < 6; i++)
             {
@@ -503,10 +518,12 @@ public class MetatronEngine : MonoBehaviour
                 };
 
                 // test
+                /*
                 if (ring == 2 && i == 1)
                 {
                     cellData.actualState = true;
                 }
+                */
 
                 if (IsMetatronCoord(ring, i))
                 {
@@ -587,7 +604,7 @@ public class MetatronEngine : MonoBehaviour
         // Compute next state
         foreach (var hckv in gridCellsMap)
         {
-            if (hckv.Value.ring > actualRingsCount) continue;
+            if (hckv.Value.ring > actualLevelConfig.actualRingsCount) continue;
 
             int aliveNeighbors = 0;
             for (int n = 0; n < 6; n++)
@@ -622,22 +639,36 @@ public class MetatronEngine : MonoBehaviour
 
         foreach (var hckv in gridCellsMap)
         {
-            if (hckv.Value.ring > actualRingsCount) continue;
+            if (hckv.Value.ring > actualLevelConfig.actualRingsCount) continue;
             hckv.Value.actualState = hckv.Value.nextState;
         }
 
-        //DetectFusionFission();
+        DetectFusionFission();
+        UpdateSinks();
+        ResetFusionFission();
 
         UpdateTiles();
-        UpdateSinks();
-        // ResetFusionFission();
+
     }
+
+    void DetectFusionFission()
+    {
+        foreach (var hckv in gridCellsMap)
+        {
+            if (hckv.Value.ring > actualLevelConfig.actualRingsCount) continue;
+
+            // int fusionFissionThreshold = 5;
+
+            DrawRubedoNigredoCircle(hckv);
+        }
+    }
+
 
     void UpdateTiles()
     {
         foreach (var hckv in gridCellsMap)
         {
-            if (hckv.Value.ring > actualRingsCount) continue;
+            if (hckv.Value.ring > actualLevelConfig.actualRingsCount) continue;
 
             // test
             if (hckv.Value.ring == 1)
@@ -645,25 +676,37 @@ public class MetatronEngine : MonoBehaviour
                 Debug.Log($"ring: {hckv.Value.ring}, idxInRing: {hckv.Value.idxInRing}, nextState: {hckv.Value.nextState}, aliveDeadCounter: {hckv.Value.aliveDeadCounter}");
             }
 
-            int fusionFissionThreshold = 5;
-            string tileBasePoly = "C";
-            int tileIntToOperatorsSequenceOffset = 15;
-
-            DrawRubedoNigredoCircle(hckv, fusionFissionThreshold);
-            RebuildTileMesh(hckv.Key, PolyhedronRecipeKabbalah.IntToOperatorsSequence(tileIntToOperatorsSequenceOffset + hckv.Value.aliveDeadCounter) + tileBasePoly);
+            RebuildTileMesh(hckv.Key, PolyhedronRecipeKabbalah.IntToOperatorsSequence(actualLevelConfig.tileIntToOperatorsSequenceOffset + hckv.Value.aliveDeadCounter) + actualLevelConfig.tileBasePoly);
         }
     }
 
 
-    void DrawRubedoNigredoCircle(KeyValuePair<HexCoord, HexCellData> hckv, int threshold)
+    void ResetFusionFission()
+    {
+        foreach (var hckv in gridCellsMap)
+        {
+            if (hckv.Value.ring > actualLevelConfig.actualRingsCount) continue;
+            if (hckv.Value.fusionFissionThresholdReached)
+            {
+                hckv.Value.aliveDeadCounter = 0;
+                hckv.Value.fusionFissionThresholdReached = false;
+            }
+        }
+    }
+
+    void DrawRubedoNigredoCircle(KeyValuePair<HexCoord, HexCellData> hckv)
     {
         float colorValue = hckv.Value.aliveDeadCounter;
-        float normalizedColorValue = (float)colorValue / (float)threshold;
-        bool thresholdReached = false;
+
+        float normalizedColorValue = colorValue > 0 ?
+            (float)colorValue / (float)actualLevelConfig.fusionThreshold
+            :
+            (float)colorValue / (float)actualLevelConfig.fissionThreshold;
+
         if (Math.Abs(normalizedColorValue) > 1f)
         {
-            thresholdReached = true;
-            hckv.Value.aliveDeadCounter = 0;
+            hckv.Value.fusionFissionThresholdReached = true;
+            // hckv.Value.aliveDeadCounter = 0;
         }
 
         normalizedColorValue = Mathf.Clamp(normalizedColorValue, -1f, 1f);
@@ -682,7 +725,7 @@ public class MetatronEngine : MonoBehaviour
             color = Color.Lerp(Color.white, Color.red, normalizedColorValue);
         }
 
-        float lineWidth = thresholdReached ? 0.3f : 0.025f;
+        float lineWidth = hckv.Value.fusionFissionThresholdReached ? 0.3f : 0.04f;
 
         if (hckv.Value.isOnMetatronPattern)
         {
@@ -690,7 +733,7 @@ public class MetatronEngine : MonoBehaviour
         }
         else
         {
-            DrawCircle(hckv.Value, 1.73f, color, lineWidth);
+            DrawCircle(hckv.Value, 1.73f, color, lineWidth - 0.015f);
         }
     }
 
