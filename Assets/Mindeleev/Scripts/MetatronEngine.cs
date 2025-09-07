@@ -46,6 +46,9 @@ public class MetatronEngine : MonoBehaviour
 
         // each round it is alive, add +1. Each round it is dead, add -1.
         public int aliveDeadCounter = 0;
+
+        // eliminare, non va        
+        public List<int> aliveDeadCounterHistory = new();
         internal bool fusionFissionThresholdReached;
     }
 
@@ -518,12 +521,10 @@ public class MetatronEngine : MonoBehaviour
                 };
 
                 // test
-                /*
                 if (ring == 2 && i == 1)
                 {
                     cellData.actualState = true;
                 }
-                */
 
                 if (IsMetatronCoord(ring, i))
                 {
@@ -627,11 +628,12 @@ public class MetatronEngine : MonoBehaviour
             }
             else
             {
-                nextAlive = ((aliveNeighbors % 2) == 0);
+                nextAlive = ((aliveNeighbors % 2) == 1);
             }
 
             cellData.nextState = nextAlive;
             cellData.aliveDeadCounter += cellData.nextState ? 1 : -1;
+            cellData.aliveDeadCounterHistory.Add(cellData.aliveDeadCounter);
         }
 
         // UpdateSinks();
@@ -689,11 +691,13 @@ public class MetatronEngine : MonoBehaviour
             if (hckv.Value.fusionFissionThresholdReached)
             {
                 hckv.Value.aliveDeadCounter = 0;
+                hckv.Value.aliveDeadCounterHistory.Clear();
                 hckv.Value.fusionFissionThresholdReached = false;
             }
         }
     }
 
+#if ORIGINAL
     void DrawRubedoNigredoCircle(KeyValuePair<HexCoord, HexCellData> hckv)
     {
         float colorValue = hckv.Value.aliveDeadCounter;
@@ -736,6 +740,60 @@ public class MetatronEngine : MonoBehaviour
             DrawCircle(hckv.Value, 1.73f, color, lineWidth - 0.015f);
         }
     }
+#endif
+    
+    void DrawRubedoNigredoCircle(KeyValuePair<HexCoord, HexCellData> hckv)
+    {
+
+        //for (int i = 2; i >= 0; i--)
+        //{
+            // if (hckv.Value.aliveDeadCounterHistory.Count < i + 1) continue;
+
+
+            float colorValue = hckv.Value.aliveDeadCounter;
+            // float colorValue = hckv.Value.aliveDeadCounterHistory[i];
+
+            float normalizedColorValue = colorValue > 0 ?
+                (float)colorValue / (float)actualLevelConfig.fusionThreshold
+                :
+                (float)colorValue / (float)actualLevelConfig.fissionThreshold;
+
+            if (Math.Abs(normalizedColorValue) > 1f)
+            {
+                hckv.Value.fusionFissionThresholdReached = true;
+                // hckv.Value.aliveDeadCounter = 0;
+            }
+
+            normalizedColorValue = Mathf.Clamp(normalizedColorValue, -1f, 1f);
+            Color color = Color.white;
+            if (normalizedColorValue < 0f)
+            {
+                // da nero a bianco
+                // t = -1 → 0; t = 0 → 1
+                float u = normalizedColorValue + 1f; // mappa [-1,0] → [0,1]
+                color = Color.Lerp(Color.black, Color.white, u);
+            }
+            else
+            {
+                // da bianco a rosso
+                // t = 0 → 0; t = 1 → 1
+                color = Color.Lerp(Color.white, Color.red, normalizedColorValue);
+            }
+
+            float lineWidth = hckv.Value.fusionFissionThresholdReached ? 0.3f : 0.04f;
+
+            if (hckv.Value.isOnMetatronPattern)
+            {
+                // DrawCircle(hckv.Value, 1.73f - i * 0.5f, color, lineWidth);
+                DrawCircle(hckv.Value, 1.73f, color, lineWidth);
+            }
+            else
+            {
+                DrawCircle(hckv.Value, 1.73f, color, lineWidth - 0.015f);
+            }
+        // }
+    }
+
 
     void UpdateSinks()
     {

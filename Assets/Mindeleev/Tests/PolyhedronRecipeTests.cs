@@ -5,6 +5,11 @@ using UnityEngine;
 using UnityEngine.TestTools;
 using System.Linq;
 
+using System.IO;
+using System.Text;
+using System.Globalization;
+
+
 public class PolyhedronRecipeTests
 {
 
@@ -680,4 +685,132 @@ public class PolyhedronRecipeTests
         result = PolyhedronRecipeKabbalah.RecipeFission("d", 0);
         Assert.AreEqual(0, result.Count);
     }
+
+    [Test]
+    public void Kabbalah_IntToRecipe_Complexity_CSV()
+    {
+
+        CsvTable csv = new();
+
+        csv.AddRow("idx", "OpSeq", "T", "C", "O", "D", "I");
+
+        List<List<float>> energies = new();
+        List<string> opSeqs = new();
+
+        for (int p = 0; p < 5; p++)
+        {
+            energies[p] = new();
+            for (int i = 0; i < 72; i++)
+            {
+                if (p == 0)
+                {
+                    opSeqs.Add(PolyhedronRecipeKabbalah.IntToOperatorsSequence(i));
+                }
+
+                string opSeq = opSeqs[i];
+
+                energies[p].Add(PolyhedronRecipeUtils.ComputeComplexity(PolyhedronRecipeParser.Parse(opSeq + "T")));
+            }
+        }
+
+        for (int i = 0; i < 72; i++)
+        {
+            string opSeq = PolyhedronRecipeKabbalah.IntToOperatorsSequence(i);
+            csv.AddRow(i, opSeq,
+                PolyhedronRecipeUtils.ComputeComplexity(PolyhedronRecipeParser.Parse(opSeq + "T")),
+                PolyhedronRecipeUtils.ComputeComplexity(PolyhedronRecipeParser.Parse(opSeq + "C")),
+                PolyhedronRecipeUtils.ComputeComplexity(PolyhedronRecipeParser.Parse(opSeq + "O")),
+                PolyhedronRecipeUtils.ComputeComplexity(PolyhedronRecipeParser.Parse(opSeq + "D")),
+                PolyhedronRecipeUtils.ComputeComplexity(PolyhedronRecipeParser.Parse(opSeq + "I"))
+                );
+        }
+
+        csv.Save("intToRecipeEnergyMapping.csv");
+
+    }
+
+
+    public class CsvTable
+    {
+        private readonly List<List<string>> rows = new List<List<string>>();
+
+        public void AddRow(params object[] values)
+        {
+            var row = new List<string>();
+            foreach (var v in values)
+                row.Add(v?.ToString() ?? "");
+            rows.Add(row);
+        }
+
+        public void Save(string fileName)
+        {
+            // string dir = Application.persistentDataPath;
+            string dir = ".";
+            string path = Path.Combine(dir, fileName);
+            Directory.CreateDirectory(dir);
+
+            using (var sw = new StreamWriter(path, false, new UTF8Encoding(false)))
+            {
+                foreach (var row in rows)
+                {
+                    for (int i = 0; i < row.Count; i++)
+                        row[i] = EscapeCsv(row[i]);
+                    sw.WriteLine(string.Join(",", row));
+                }
+            }
+
+            Debug.Log($"CSV salvato in: {path}");
+        }
+
+        private static string EscapeCsv(string s)
+        {
+            bool needQuotes = s.Contains(",") || s.Contains("\"") || s.Contains("\n") || s.Contains("\r");
+            if (s.Contains("\"")) s = s.Replace("\"", "\"\"");
+            return needQuotes ? $"\"{s}\"" : s;
+        }
+    }
+
+
+    /*
+        public static class CsvSaver
+        {
+            public static string SaveCsv(string fileName, string[][] rows)
+            {
+                // costruisci il percorso in persistentDataPath
+                // string dir = Application.persistentDataPath;
+                string dir = ".";
+                string path = Path.Combine(dir, fileName);
+
+                // assicura che la cartella esista
+                Directory.CreateDirectory(dir);
+
+                // scrivi il CSV in UTF-8
+                using (var sw = new StreamWriter(path, false, new UTF8Encoding(false)))
+                {
+                    foreach (var cols in rows)
+                    {
+                        // attento a virgole/virgolette
+                        for (int i = 0; i < cols.Length; i++)
+                            cols[i] = EscapeCsv(cols[i] ?? "");
+
+                        sw.WriteLine(string.Join(",", cols));
+                    }
+                }
+
+                Debug.Log($"CSV salvato in: {path}");
+                return path;
+            }
+
+            // Regola base CSV: se contiene virgola, " o newline → racchiudi tra doppi apici e raddoppia gli apici interni
+            static string EscapeCsv(string s)
+            {
+                bool needQuotes = s.Contains(",") || s.Contains("\"") || s.Contains("\n") || s.Contains("\r");
+                if (s.Contains("\"")) s = s.Replace("\"", "\"\"");
+                return needQuotes ? $"\"{s}\"" : s;
+            }
+        }
+        */
+    
+
+
 }
