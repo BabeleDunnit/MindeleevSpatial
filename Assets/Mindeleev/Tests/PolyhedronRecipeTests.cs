@@ -648,33 +648,33 @@ public class PolyhedronRecipeTests
     public void Kabbalah_RecipeFission_Basic()
     {
         // "adk" = a=1, d=0, k=2 => 1*36 + 0*6 + 2 = 38
-        var result = PolyhedronRecipeKabbalah.RecipeFission("adk", 3);
+        var result = PolyhedronRecipeKabbalah.RecipeFission("adkC", 3);
         // 38/3 = 12, remainder 2, so [13, 13, 12]
         Assert.AreEqual(3, result.Count);
-        Assert.AreEqual(PolyhedronRecipeKabbalah.IntToOperatorsSequence(13), result[0]);
-        Assert.AreEqual(PolyhedronRecipeKabbalah.IntToOperatorsSequence(13), result[1]);
-        Assert.AreEqual(PolyhedronRecipeKabbalah.IntToOperatorsSequence(12), result[2]);
+        Assert.AreEqual(PolyhedronRecipeKabbalah.IntToOperatorsSequence(13) + "C", result[0]);
+        Assert.AreEqual(PolyhedronRecipeKabbalah.IntToOperatorsSequence(13) + "C", result[1]);
+        Assert.AreEqual(PolyhedronRecipeKabbalah.IntToOperatorsSequence(12) + "C", result[2]);
     }
 
     [Test]
     public void Kabbalah_RecipeFission_Single()
     {
-        var result = PolyhedronRecipeKabbalah.RecipeFission("adk", 1);
+        var result = PolyhedronRecipeKabbalah.RecipeFission("adkI", 1);
         Assert.AreEqual(1, result.Count);
-        Assert.AreEqual("adk", result[0]);
+        Assert.AreEqual("adkI", result[0]);
     }
 
     [Test]
     public void Kabbalah_RecipeFission_MorePartsThanValue()
     {
-        var result = PolyhedronRecipeKabbalah.RecipeFission("a", 5); // "a" = 1
+        var result = PolyhedronRecipeKabbalah.RecipeFission("aC", 5); // "a" = 1
         // Should be: [1,0,0,0,0] => ["a","d","d","d","d"]
         Assert.AreEqual(5, result.Count);
-        Assert.AreEqual("a", result[0]);
-        Assert.AreEqual("d", result[1]);
-        Assert.AreEqual("d", result[2]);
-        Assert.AreEqual("d", result[3]);
-        Assert.AreEqual("d", result[4]);
+        Assert.AreEqual("aC", result[0]);
+        Assert.AreEqual("dC", result[1]);
+        Assert.AreEqual("dC", result[2]);
+        Assert.AreEqual("dC", result[3]);
+        Assert.AreEqual("dC", result[4]);
     }
 
     [Test]

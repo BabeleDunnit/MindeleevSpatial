@@ -51,6 +51,7 @@ public class MetatronEngine : MonoBehaviour
         // public List<int> aliveDeadCounterHistory = new();
         internal bool fusionFissionThresholdReached;
         internal int paused;
+        internal string nextTileRecipe;
     }
 
     // these HexCoord lists and maps contains ALL the cells, prebuilt, rings [0,12]
@@ -177,7 +178,7 @@ public class MetatronEngine : MonoBehaviour
     void RebuildTileMesh(HexCoord coord, string recipe)
     {
         GameObject tile = gridCellsMap[coord].tile;
-        if (tile != null)
+        if (tile != null && tile.GetComponent<PolyhedronGenerator>().recipeString != recipe)
         {
             tile.GetComponent<PolyhedronGenerator>().recipeString = recipe;
             tile.GetComponent<PolyhedronGenerator>().RebuildMesh();
@@ -667,10 +668,77 @@ public class MetatronEngine : MonoBehaviour
         {
             if (hckv.Value.ring > actualLevelConfig.actualRingsCount) continue;
 
-            // int fusionFissionThreshold = 5;
-
             DrawRubedoNigredoCircle(hckv);
+
+            if (hckv.Value.fusionFissionThresholdReached)
+            {
+                if (hckv.Value.aliveDeadCounter > 0)
+                {
+                    // we were incrementing the energy, so now we must execute a fission
+
+                    // count alive neighbors
+                    int aliveNeighbors = 0;
+                    for (int n = 0; n < 6; n++)
+                    {
+                        HexCoord neighbor = hckv.Key.Neighbor(n);
+                        if (gridCellsMap.ContainsKey(neighbor) && gridCellsMap[neighbor].ring <= actualLevelConfig.actualRingsCount)
+                        {
+                            //HexCellData neighborCellData = gridCellsMap[neighbor];
+                            //if (neighborCellData.actualState == true)
+                            //{
+                                aliveNeighbors++;
+                            //}
+                        }
+                    }
+
+                    string cellRecipe = hckv.Value.tile.GetComponent<PolyhedronGenerator>().recipeString;
+
+                    List<string> fissionRecipes = PolyhedronRecipeKabbalah.RecipeFission(cellRecipe, aliveNeighbors + 1);
+                    Debug.Log($"fission of cell at ring {hckv.Value.ring}, idxInRing {hckv.Value.idxInRing}, cell recipe: {cellRecipe}, aliveNeighbors: {aliveNeighbors}, recipes: {string.Join(", ", fissionRecipes)}");
+
+                    // hckv.Value.nextTileRecipe = fissionRecipes[0];
+                    hckv.Value.nextTileRecipe = "D";
+
+                    int aliveNeighborIdx = 1;
+                    for (int n = 0; n < 6; n++)
+                    {
+                        HexCoord neighbor = hckv.Key.Neighbor(n);
+                        if (gridCellsMap.ContainsKey(neighbor) && gridCellsMap[neighbor].ring <= actualLevelConfig.actualRingsCount)
+                        {
+                            HexCellData neighborCellData = gridCellsMap[neighbor];
+                            //if (neighborCellData.actualState == true)
+                            //{                                
+                            // neighborCellData.tile.GetComponent<PolyhedronGenerator>().recipeString = fissionRecipes[aliveNeighborIdx++] + "C";
+//                             neighborCellData.nextTileRecipe = fissionRecipes[aliveNeighborIdx++];
+                            neighborCellData.nextTileRecipe = "C";
+
+                            // neighborCellData.tile.GetComponent<PolyhedronGenerator>().recipeString = "C";
+                            //}
+                        }
+                    }
+
+                }
+                else
+                {
+                    // we were decrementing the energy, so now we must execute a fusion
+
+                }
+
+            }
         }
+
+        /*
+                foreach (var hckv in gridCellsMap)
+                {
+                    if (hckv.Value.ring > actualLevelConfig.actualRingsCount) continue;
+                    if (hckv.Value.nextTileRecipe != null)
+                    {
+                        // hckv.Value.tile.GetComponent<PolyhedronGenerator>().recipeString = hckv.Value.nextTileRecipe;
+                        // hckv.Value.nextTileRecipe = null;
+                    }
+               }
+               */
+       
     }
 
 
@@ -679,6 +747,7 @@ public class MetatronEngine : MonoBehaviour
         foreach (var hckv in gridCellsMap)
         {
             if (hckv.Value.ring > actualLevelConfig.actualRingsCount) continue;
+            // if (hckv.Value.paused > 0) continue;
 
             // test
             if (hckv.Value.ring == 1)
@@ -686,7 +755,18 @@ public class MetatronEngine : MonoBehaviour
                 Debug.Log($"ring: {hckv.Value.ring}, idxInRing: {hckv.Value.idxInRing}, nextState: {hckv.Value.nextState}, aliveDeadCounter: {hckv.Value.aliveDeadCounter}");
             }
 
-            RebuildTileMesh(hckv.Key, PolyhedronRecipeKabbalah.IntToOperatorsSequence(actualLevelConfig.tileIntToOperatorsSequenceOffset + hckv.Value.aliveDeadCounter) + actualLevelConfig.tileBasePoly);
+            // RebuildTileMesh(hckv.Key, PolyhedronRecipeKabbalah.IntToOperatorsSequence(actualLevelConfig.tileIntToOperatorsSequenceOffset + hckv.Value.aliveDeadCounter) + actualLevelConfig.tileBasePoly);
+            // RebuildTileMesh(hckv.Key, hckv.Value.tile.GetComponent<PolyhedronGenerator>().recipeString);
+
+            if (hckv.Value.nextTileRecipe != null)
+            {
+                RebuildTileMesh(hckv.Key, hckv.Value.nextTileRecipe);
+                hckv.Value.nextTileRecipe = null;
+            }
+            else
+            {
+                RebuildTileMesh(hckv.Key, PolyhedronRecipeKabbalah.IntToOperatorsSequence(actualLevelConfig.tileIntToOperatorsSequenceOffset + hckv.Value.aliveDeadCounter) + actualLevelConfig.tileBasePoly);
+            }
         }
     }
 
@@ -699,17 +779,16 @@ public class MetatronEngine : MonoBehaviour
             if (hckv.Value.fusionFissionThresholdReached)
             {
                 hckv.Value.aliveDeadCounter = 0;
-                // hckv.Value.aliveDeadCounterHistory.Clear();
                 hckv.Value.fusionFissionThresholdReached = false;
                 hckv.Value.actualState = false;
-                hckv.Value.paused = actualLevelConfig.actualRingsCount - hckv.Value.ring + 2;
+                hckv.Value.paused = (actualLevelConfig.actualRingsCount - hckv.Value.ring + 2) * 3;
             }
         }
     }
 
-#if ORIGINAL
     void DrawRubedoNigredoCircle(KeyValuePair<HexCoord, HexCellData> hckv)
     {
+
         float colorValue = hckv.Value.aliveDeadCounter;
 
         float normalizedColorValue = colorValue > 0 ?
@@ -720,7 +799,6 @@ public class MetatronEngine : MonoBehaviour
         if (Math.Abs(normalizedColorValue) > 1f)
         {
             hckv.Value.fusionFissionThresholdReached = true;
-            // hckv.Value.aliveDeadCounter = 0;
         }
 
         normalizedColorValue = Mathf.Clamp(normalizedColorValue, -1f, 1f);
@@ -743,65 +821,13 @@ public class MetatronEngine : MonoBehaviour
 
         if (hckv.Value.isOnMetatronPattern)
         {
+            // DrawCircle(hckv.Value, 1.73f - i * 0.5f, color, lineWidth);
             DrawCircle(hckv.Value, 1.73f, color, lineWidth);
         }
         else
         {
             DrawCircle(hckv.Value, 1.73f, color, lineWidth - 0.015f);
         }
-    }
-#endif
-    
-    void DrawRubedoNigredoCircle(KeyValuePair<HexCoord, HexCellData> hckv)
-    {
-
-        //for (int i = 2; i >= 0; i--)
-        //{
-            // if (hckv.Value.aliveDeadCounterHistory.Count < i + 1) continue;
-
-
-            float colorValue = hckv.Value.aliveDeadCounter;
-            // float colorValue = hckv.Value.aliveDeadCounterHistory[i];
-
-            float normalizedColorValue = colorValue > 0 ?
-                (float)colorValue / (float)actualLevelConfig.fusionThreshold
-                :
-                (float)colorValue / (float)actualLevelConfig.fissionThreshold;
-
-            if (Math.Abs(normalizedColorValue) > 1f)
-            {
-                hckv.Value.fusionFissionThresholdReached = true;
-                // hckv.Value.aliveDeadCounter = 0;
-            }
-
-            normalizedColorValue = Mathf.Clamp(normalizedColorValue, -1f, 1f);
-            Color color = Color.white;
-            if (normalizedColorValue < 0f)
-            {
-                // da nero a bianco
-                // t = -1 → 0; t = 0 → 1
-                float u = normalizedColorValue + 1f; // mappa [-1,0] → [0,1]
-                color = Color.Lerp(Color.black, Color.white, u);
-            }
-            else
-            {
-                // da bianco a rosso
-                // t = 0 → 0; t = 1 → 1
-                color = Color.Lerp(Color.white, Color.red, normalizedColorValue);
-            }
-
-            float lineWidth = hckv.Value.fusionFissionThresholdReached ? 0.3f : 0.04f;
-
-            if (hckv.Value.isOnMetatronPattern)
-            {
-                // DrawCircle(hckv.Value, 1.73f - i * 0.5f, color, lineWidth);
-                DrawCircle(hckv.Value, 1.73f, color, lineWidth);
-            }
-            else
-            {
-                DrawCircle(hckv.Value, 1.73f, color, lineWidth - 0.015f);
-            }
-        // }
     }
 
 
@@ -815,7 +841,7 @@ public class MetatronEngine : MonoBehaviour
             Debug.Assert(sinkCellData.sink == sink);
         }
     }
-    
+
 
 
 
