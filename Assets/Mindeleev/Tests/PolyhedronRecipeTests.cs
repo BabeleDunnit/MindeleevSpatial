@@ -8,6 +8,7 @@ using System.Linq;
 using System.IO;
 using System.Text;
 using System.Globalization;
+using System;
 
 
 public class PolyhedronRecipeTests
@@ -691,15 +692,19 @@ public class PolyhedronRecipeTests
     {
 
         CsvTable csv = new();
-
         csv.AddRow("idx", "OpSeq", "T", "C", "O", "D", "I");
 
-        List<List<float>> energies = new();
+        List<Dictionary<int, float>> energies = new List<Dictionary<int,float>>();
         List<string> opSeqs = new();
+        List<string> polys = new List<string>
+        {
+            "T", "C", "O", "D", "I"
+        };
 
         for (int p = 0; p < 5; p++)
         {
-            energies[p] = new();
+            Dictionary<int, float> energiesList = new();
+
             for (int i = 0; i < 72; i++)
             {
                 if (p == 0)
@@ -709,23 +714,59 @@ public class PolyhedronRecipeTests
 
                 string opSeq = opSeqs[i];
 
-                energies[p].Add(PolyhedronRecipeUtils.ComputeComplexity(PolyhedronRecipeParser.Parse(opSeq + "T")));
+                energiesList.Add(i, PolyhedronRecipeUtils.ComputeComplexity(PolyhedronRecipeParser.Parse(opSeq + polys[p])));
             }
+            energies.Add(energiesList);
         }
 
         for (int i = 0; i < 72; i++)
         {
-            string opSeq = PolyhedronRecipeKabbalah.IntToOperatorsSequence(i);
+            string opSeq = opSeqs[i];
             csv.AddRow(i, opSeq,
-                PolyhedronRecipeUtils.ComputeComplexity(PolyhedronRecipeParser.Parse(opSeq + "T")),
-                PolyhedronRecipeUtils.ComputeComplexity(PolyhedronRecipeParser.Parse(opSeq + "C")),
-                PolyhedronRecipeUtils.ComputeComplexity(PolyhedronRecipeParser.Parse(opSeq + "O")),
-                PolyhedronRecipeUtils.ComputeComplexity(PolyhedronRecipeParser.Parse(opSeq + "D")),
-                PolyhedronRecipeUtils.ComputeComplexity(PolyhedronRecipeParser.Parse(opSeq + "I"))
+                energies[0][i],
+                energies[1][i],
+                energies[2][i],
+                energies[3][i],
+                energies[4][i]
                 );
         }
 
-        csv.Save("intToRecipeEnergyMapping.csv");
+
+        // now sort by energy
+
+        CsvTable csv2 = new();
+        csv2.AddRow("T", "C", "O", "D", "I", "opSeq");
+        List<List<int>> idxs = new List<List<int>>();
+
+        for (int p = 0; p < 5; p++)
+        {
+            energies[p] = energies[p].OrderBy(kv => kv.Value).ToDictionary(kv => kv.Key, kv => kv.Value);
+            List<int> newidxs = energies[p].OrderBy(kv => kv.Value).Select(kv => kv.Key).ToList();
+            idxs.Add(newidxs);
+        }
+
+        for (int i = 0; i < 72; i++)
+        {
+            
+            bool equals = true;
+            for (int p = 1; p < 5; p++)
+            {
+                if (idxs[0][i] != idxs[p][i]) equals = false;
+            }
+
+            string recipe = equals ? PolyhedronRecipeKabbalah.IntToOperatorsSequence(i) : "";
+
+            csv2.AddRow(
+                idxs[0][i],
+                idxs[1][i],
+                idxs[2][i],
+                idxs[3][i],
+                idxs[4][i],
+                recipe
+            );
+        }
+
+        csv2.Save("SortIdxByEnergy.csv");
 
     }
 
@@ -810,7 +851,7 @@ public class PolyhedronRecipeTests
             }
         }
         */
-    
+
 
 
 }

@@ -318,9 +318,9 @@ public static class PolyhedronRecipeBuilder
             int facesSidesFilter = Convert.ToInt32(token.Parameter("facesSidesFilter"));
 
             // introduce an upper bound complexity control
-            if (current.Item1.Length > 100)
+            if (current.Item1.Length > 500)
             {
-                Debug.LogWarning("We have hit a polyhedron complexity upper bound, stopping generation");
+                Debug.LogWarning($"Polyhedron complexity upper bound hit, stopping generation - recipe: {recipe.ToString()}, vertices: {current.Item1.Length}");
                 break;
             }
 
