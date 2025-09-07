@@ -48,8 +48,9 @@ public class MetatronEngine : MonoBehaviour
         public int aliveDeadCounter = 0;
 
         // eliminare, non va        
-        public List<int> aliveDeadCounterHistory = new();
+        // public List<int> aliveDeadCounterHistory = new();
         internal bool fusionFissionThresholdReached;
+        internal int paused;
     }
 
     // these HexCoord lists and maps contains ALL the cells, prebuilt, rings [0,12]
@@ -521,10 +522,12 @@ public class MetatronEngine : MonoBehaviour
                 };
 
                 // test
+                /*
                 if (ring == 2 && i == 1)
                 {
                     cellData.actualState = true;
                 }
+*/
 
                 if (IsMetatronCoord(ring, i))
                 {
@@ -606,6 +609,11 @@ public class MetatronEngine : MonoBehaviour
         foreach (var hckv in gridCellsMap)
         {
             if (hckv.Value.ring > actualLevelConfig.actualRingsCount) continue;
+            if (hckv.Value.paused > 0)
+            {
+                hckv.Value.paused--;
+                continue;
+            }
 
             int aliveNeighbors = 0;
             for (int n = 0; n < 6; n++)
@@ -633,7 +641,7 @@ public class MetatronEngine : MonoBehaviour
 
             cellData.nextState = nextAlive;
             cellData.aliveDeadCounter += cellData.nextState ? 1 : -1;
-            cellData.aliveDeadCounterHistory.Add(cellData.aliveDeadCounter);
+            // cellData.aliveDeadCounterHistory.Add(cellData.aliveDeadCounter);
         }
 
         // UpdateSinks();
@@ -691,8 +699,10 @@ public class MetatronEngine : MonoBehaviour
             if (hckv.Value.fusionFissionThresholdReached)
             {
                 hckv.Value.aliveDeadCounter = 0;
-                hckv.Value.aliveDeadCounterHistory.Clear();
+                // hckv.Value.aliveDeadCounterHistory.Clear();
                 hckv.Value.fusionFissionThresholdReached = false;
+                hckv.Value.actualState = false;
+                hckv.Value.paused = actualLevelConfig.actualRingsCount - hckv.Value.ring + 2;
             }
         }
     }
