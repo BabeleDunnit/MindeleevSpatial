@@ -13,6 +13,9 @@ public class PolyhedronGenerator : MonoBehaviour
      * ----------------------------------------------------------------*/
     public string recipeString = "C"; // default Cube
     public PolyhedronPalette palette;
+    
+    // TBD
+    public List<PolyhedronPalette> palettesDict;
     private bool showVertexIndices = false;
     public Material polyhedronMaterial; // Add this field
     public PolyhedronRecipe Recipe { get; set; }

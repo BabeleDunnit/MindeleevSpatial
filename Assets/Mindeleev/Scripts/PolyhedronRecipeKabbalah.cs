@@ -1,6 +1,13 @@
 using System;
 using System.Collections.Generic;
+// using System.Diagnostics;
 using System.Linq;
+
+using System.Collections;
+// using System.Collections.Generic;
+using UnityEngine;
+// using SpatialSys.UnitySDK;
+
 
 /// <summary>
 /// Implements kabbalah-like symbolic algebra for polyhedron recipes.
@@ -160,6 +167,18 @@ public static class PolyhedronRecipeKabbalah
         if (string.IsNullOrEmpty(recipe) || outRecipesCount <= 0)
             return result;
 
+        /*
+                int baseIdx = recipe.Length - 1;
+                    while (baseIdx >= 0 && !char.IsUpper(recipe[baseIdx]))
+                        baseIdx--;
+                    if (baseIdx < 0) continue;
+                    char basePoly = recipe[baseIdx];
+        */
+        int baseIdx = recipe.Length - 1;
+        char basePoly = recipe[baseIdx];
+        Debug.Assert(char.IsUpper(basePoly));
+
+
         int value = RecipeToInt(recipe, false);
         int baseValue = value / outRecipesCount;
         int remainder = value % outRecipesCount;
@@ -167,8 +186,9 @@ public static class PolyhedronRecipeKabbalah
         for (int i = 0; i < outRecipesCount; i++)
         {
             int thisVal = baseValue + (i < remainder ? 1 : 0);
-            result.Add(IntToOperatorsSequence(thisVal));
+            result.Add(IntToOperatorsSequence(thisVal) + basePoly);
         }
+
         return result;
     }
 }

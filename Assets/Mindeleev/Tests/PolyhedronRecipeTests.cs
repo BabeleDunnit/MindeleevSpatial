@@ -5,6 +5,12 @@ using UnityEngine;
 using UnityEngine.TestTools;
 using System.Linq;
 
+using System.IO;
+using System.Text;
+using System.Globalization;
+using System;
+
+
 public class PolyhedronRecipeTests
 {
 
@@ -642,33 +648,33 @@ public class PolyhedronRecipeTests
     public void Kabbalah_RecipeFission_Basic()
     {
         // "adk" = a=1, d=0, k=2 => 1*36 + 0*6 + 2 = 38
-        var result = PolyhedronRecipeKabbalah.RecipeFission("adk", 3);
+        var result = PolyhedronRecipeKabbalah.RecipeFission("adkC", 3);
         // 38/3 = 12, remainder 2, so [13, 13, 12]
         Assert.AreEqual(3, result.Count);
-        Assert.AreEqual(PolyhedronRecipeKabbalah.IntToOperatorsSequence(13), result[0]);
-        Assert.AreEqual(PolyhedronRecipeKabbalah.IntToOperatorsSequence(13), result[1]);
-        Assert.AreEqual(PolyhedronRecipeKabbalah.IntToOperatorsSequence(12), result[2]);
+        Assert.AreEqual(PolyhedronRecipeKabbalah.IntToOperatorsSequence(13) + "C", result[0]);
+        Assert.AreEqual(PolyhedronRecipeKabbalah.IntToOperatorsSequence(13) + "C", result[1]);
+        Assert.AreEqual(PolyhedronRecipeKabbalah.IntToOperatorsSequence(12) + "C", result[2]);
     }
 
     [Test]
     public void Kabbalah_RecipeFission_Single()
     {
-        var result = PolyhedronRecipeKabbalah.RecipeFission("adk", 1);
+        var result = PolyhedronRecipeKabbalah.RecipeFission("adkI", 1);
         Assert.AreEqual(1, result.Count);
-        Assert.AreEqual("adk", result[0]);
+        Assert.AreEqual("adkI", result[0]);
     }
 
     [Test]
     public void Kabbalah_RecipeFission_MorePartsThanValue()
     {
-        var result = PolyhedronRecipeKabbalah.RecipeFission("a", 5); // "a" = 1
+        var result = PolyhedronRecipeKabbalah.RecipeFission("aC", 5); // "a" = 1
         // Should be: [1,0,0,0,0] => ["a","d","d","d","d"]
         Assert.AreEqual(5, result.Count);
-        Assert.AreEqual("a", result[0]);
-        Assert.AreEqual("d", result[1]);
-        Assert.AreEqual("d", result[2]);
-        Assert.AreEqual("d", result[3]);
-        Assert.AreEqual("d", result[4]);
+        Assert.AreEqual("aC", result[0]);
+        Assert.AreEqual("dC", result[1]);
+        Assert.AreEqual("dC", result[2]);
+        Assert.AreEqual("dC", result[3]);
+        Assert.AreEqual("dC", result[4]);
     }
 
     [Test]
@@ -680,4 +686,172 @@ public class PolyhedronRecipeTests
         result = PolyhedronRecipeKabbalah.RecipeFission("d", 0);
         Assert.AreEqual(0, result.Count);
     }
+
+    [Test]
+    public void Kabbalah_IntToRecipe_Complexity_CSV()
+    {
+
+        CsvTable csv = new();
+        csv.AddRow("idx", "OpSeq", "T", "C", "O", "D", "I");
+
+        List<Dictionary<int, float>> energies = new List<Dictionary<int,float>>();
+        List<string> opSeqs = new();
+        List<string> polys = new List<string>
+        {
+            "T", "C", "O", "D", "I"
+        };
+
+        for (int p = 0; p < 5; p++)
+        {
+            Dictionary<int, float> energiesList = new();
+
+            for (int i = 0; i < 72; i++)
+            {
+                if (p == 0)
+                {
+                    opSeqs.Add(PolyhedronRecipeKabbalah.IntToOperatorsSequence(i));
+                }
+
+                string opSeq = opSeqs[i];
+
+                energiesList.Add(i, PolyhedronRecipeUtils.ComputeComplexity(PolyhedronRecipeParser.Parse(opSeq + polys[p])));
+            }
+            energies.Add(energiesList);
+        }
+
+        for (int i = 0; i < 72; i++)
+        {
+            string opSeq = opSeqs[i];
+            csv.AddRow(i, opSeq,
+                energies[0][i],
+                energies[1][i],
+                energies[2][i],
+                energies[3][i],
+                energies[4][i]
+                );
+        }
+
+
+        // now sort by energy
+
+        CsvTable csv2 = new();
+        csv2.AddRow("T", "C", "O", "D", "I", "opSeq");
+        List<List<int>> idxs = new List<List<int>>();
+
+        for (int p = 0; p < 5; p++)
+        {
+            energies[p] = energies[p].OrderBy(kv => kv.Value).ToDictionary(kv => kv.Key, kv => kv.Value);
+            List<int> newidxs = energies[p].OrderBy(kv => kv.Value).Select(kv => kv.Key).ToList();
+            idxs.Add(newidxs);
+        }
+
+        for (int i = 0; i < 72; i++)
+        {
+            
+            bool equals = true;
+            for (int p = 1; p < 5; p++)
+            {
+                if (idxs[0][i] != idxs[p][i]) equals = false;
+            }
+
+            string recipe = equals ? PolyhedronRecipeKabbalah.IntToOperatorsSequence(i) : "";
+
+            csv2.AddRow(
+                idxs[0][i],
+                idxs[1][i],
+                idxs[2][i],
+                idxs[3][i],
+                idxs[4][i],
+                recipe
+            );
+        }
+
+        csv2.Save("SortIdxByEnergy.csv");
+
+    }
+
+
+    public class CsvTable
+    {
+        private readonly List<List<string>> rows = new List<List<string>>();
+
+        public void AddRow(params object[] values)
+        {
+            var row = new List<string>();
+            foreach (var v in values)
+                row.Add(v?.ToString() ?? "");
+            rows.Add(row);
+        }
+
+        public void Save(string fileName)
+        {
+            // string dir = Application.persistentDataPath;
+            string dir = ".";
+            string path = Path.Combine(dir, fileName);
+            Directory.CreateDirectory(dir);
+
+            using (var sw = new StreamWriter(path, false, new UTF8Encoding(false)))
+            {
+                foreach (var row in rows)
+                {
+                    for (int i = 0; i < row.Count; i++)
+                        row[i] = EscapeCsv(row[i]);
+                    sw.WriteLine(string.Join(",", row));
+                }
+            }
+
+            Debug.Log($"CSV salvato in: {path}");
+        }
+
+        private static string EscapeCsv(string s)
+        {
+            bool needQuotes = s.Contains(",") || s.Contains("\"") || s.Contains("\n") || s.Contains("\r");
+            if (s.Contains("\"")) s = s.Replace("\"", "\"\"");
+            return needQuotes ? $"\"{s}\"" : s;
+        }
+    }
+
+
+    /*
+        public static class CsvSaver
+        {
+            public static string SaveCsv(string fileName, string[][] rows)
+            {
+                // costruisci il percorso in persistentDataPath
+                // string dir = Application.persistentDataPath;
+                string dir = ".";
+                string path = Path.Combine(dir, fileName);
+
+                // assicura che la cartella esista
+                Directory.CreateDirectory(dir);
+
+                // scrivi il CSV in UTF-8
+                using (var sw = new StreamWriter(path, false, new UTF8Encoding(false)))
+                {
+                    foreach (var cols in rows)
+                    {
+                        // attento a virgole/virgolette
+                        for (int i = 0; i < cols.Length; i++)
+                            cols[i] = EscapeCsv(cols[i] ?? "");
+
+                        sw.WriteLine(string.Join(",", cols));
+                    }
+                }
+
+                Debug.Log($"CSV salvato in: {path}");
+                return path;
+            }
+
+            // Regola base CSV: se contiene virgola, " o newline → racchiudi tra doppi apici e raddoppia gli apici interni
+            static string EscapeCsv(string s)
+            {
+                bool needQuotes = s.Contains(",") || s.Contains("\"") || s.Contains("\n") || s.Contains("\r");
+                if (s.Contains("\"")) s = s.Replace("\"", "\"\"");
+                return needQuotes ? $"\"{s}\"" : s;
+            }
+        }
+        */
+
+
+
 }
