@@ -158,7 +158,6 @@ public class PolytronsFactory : MonoBehaviour
 
                     return tile;
                 }
-                break;
 
                 default:
                     break;

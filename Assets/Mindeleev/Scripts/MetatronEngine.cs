@@ -32,26 +32,30 @@ public class MetatronEngine : MonoBehaviour
 
     public class HexCellData
     {
-        public int ring;
-        public int idxInRing;
-        public Vector3 worldCoords;
-        public bool isOnMetatronPattern;
-        public GameObject sink;
-        public GameObject tile;
+        internal int ring;
+        internal int idxInRing;
+        internal Vector3 worldCoords;
+        internal bool isOnMetatronPattern;
+        internal GameObject sink;
+        internal GameObject tile;
         // public GameObject polytron;
-        public GameObject circle;
+        internal GameObject circle;
 
-        public bool actualState = false;
-        public bool nextState = false;
+        internal bool actualState = false;
+        internal bool nextState = false;
 
         // each round it is alive, add +1. Each round it is dead, add -1.
-        public int aliveDeadCounter = 0;
+        internal int aliveDeadCounter = 0;
 
         // eliminare, non va        
         // public List<int> aliveDeadCounterHistory = new();
         internal bool fusionFissionThresholdReached;
         internal int paused;
         internal string nextTileRecipe;
+
+        // initially set to LevelConfig same value, and then decremented at each fission
+        internal int tileIntToOperatorsSequenceOffset;
+
     }
 
     // these HexCoord lists and maps contains ALL the cells, prebuilt, rings [0,12]
@@ -225,11 +229,11 @@ public class MetatronEngine : MonoBehaviour
         // the level number will determine the Metatron complexity
         // and set actualRingsCount, etc.
 
-        actualLevelConfig.actualRingsCount = 3;
-        actualLevelConfig.fusionThreshold = 7;
-        actualLevelConfig.fissionThreshold = 6;
+        actualLevelConfig.actualRingsCount = 2;
+        actualLevelConfig.fusionThreshold = 3;
+        actualLevelConfig.fissionThreshold = 3;
         actualLevelConfig.tileBasePoly = "C";
-        actualLevelConfig.tileIntToOperatorsSequenceOffset = 10;
+        actualLevelConfig.tileIntToOperatorsSequenceOffset = 5;
 
 
         StartCoroutine(BuildMetatronCoroutine());
@@ -286,6 +290,7 @@ public class MetatronEngine : MonoBehaviour
                 tile.transform.localRotation = tileRotation;
                 tiles.Add(tile);
                 hckv.Value.tile = tile;
+                hckv.Value.tileIntToOperatorsSequenceOffset = actualLevelConfig.tileIntToOperatorsSequenceOffset;
 
                 yield return new WaitForSeconds(0.15f);
             }
@@ -522,13 +527,12 @@ public class MetatronEngine : MonoBehaviour
                     circle = CreateCircle(ring, i)
                 };
 
-                // test
-                /*
+                // test                
                 if (ring == 2 && i == 1)
                 {
                     cellData.actualState = true;
                 }
-*/
+
 
                 if (IsMetatronCoord(ring, i))
                 {
@@ -585,7 +589,7 @@ public class MetatronEngine : MonoBehaviour
             float angle = (float)i / segments * Mathf.PI * 2f;
             float x = Mathf.Cos(angle) * radius;
             float y = Mathf.Sin(angle) * radius;
-            lr.SetPosition(i, hcd.worldCoords + new Vector3(x, 0f, y));
+            lr.SetPosition(i, hcd.worldCoords + new Vector3(x, 0.1f, y));
         }
     }
 
@@ -662,6 +666,7 @@ public class MetatronEngine : MonoBehaviour
 
     }
 
+
     void DetectFusionFission()
     {
         foreach (var hckv in gridCellsMap)
@@ -686,7 +691,7 @@ public class MetatronEngine : MonoBehaviour
                             //HexCellData neighborCellData = gridCellsMap[neighbor];
                             //if (neighborCellData.actualState == true)
                             //{
-                                aliveNeighbors++;
+                            aliveNeighbors++;
                             //}
                         }
                     }
@@ -696,31 +701,60 @@ public class MetatronEngine : MonoBehaviour
                     List<string> fissionRecipes = PolyhedronRecipeKabbalah.RecipeFission(cellRecipe, aliveNeighbors + 1);
                     Debug.Log($"fission of cell at ring {hckv.Value.ring}, idxInRing {hckv.Value.idxInRing}, cell recipe: {cellRecipe}, aliveNeighbors: {aliveNeighbors}, recipes: {string.Join(", ", fissionRecipes)}");
 
-                    // hckv.Value.nextTileRecipe = fissionRecipes[0];
-                    hckv.Value.nextTileRecipe = "D";
+                    hckv.Value.nextTileRecipe = fissionRecipes[0];
+                    // hckv.Value.nextTileRecipe = "D";
 
-                    int aliveNeighborIdx = 1;
-                    for (int n = 0; n < 6; n++)
+                    if (hckv.Value.tileIntToOperatorsSequenceOffset > 2)
                     {
-                        HexCoord neighbor = hckv.Key.Neighbor(n);
-                        if (gridCellsMap.ContainsKey(neighbor) && gridCellsMap[neighbor].ring <= actualLevelConfig.actualRingsCount)
-                        {
-                            HexCellData neighborCellData = gridCellsMap[neighbor];
-                            //if (neighborCellData.actualState == true)
-                            //{                                
-                            // neighborCellData.tile.GetComponent<PolyhedronGenerator>().recipeString = fissionRecipes[aliveNeighborIdx++] + "C";
-//                             neighborCellData.nextTileRecipe = fissionRecipes[aliveNeighborIdx++];
-                            neighborCellData.nextTileRecipe = "C";
-
-                            // neighborCellData.tile.GetComponent<PolyhedronGenerator>().recipeString = "C";
-                            //}
-                        }
+                        hckv.Value.tileIntToOperatorsSequenceOffset--;
                     }
+
+                    // I cannot set the others cells recipes, i can set only mine...
+                    /*
+                                        int aliveNeighborIdx = 1;
+                                        for (int n = 0; n < 6; n++)
+                                        {
+                                            HexCoord neighbor = hckv.Key.Neighbor(n);
+                                            if (gridCellsMap.ContainsKey(neighbor) && gridCellsMap[neighbor].ring <= actualLevelConfig.actualRingsCount)
+                                            {
+                                                HexCellData neighborCellData = gridCellsMap[neighbor];
+                                                //if (neighborCellData.actualState == true)
+                                                //{                                
+                                                // neighborCellData.tile.GetComponent<PolyhedronGenerator>().recipeString = fissionRecipes[aliveNeighborIdx++] + "C";
+                    //                             neighborCellData.nextTileRecipe = fissionRecipes[aliveNeighborIdx++];
+                                                neighborCellData.nextTileRecipe = "C";
+
+                                                // neighborCellData.tile.GetComponent<PolyhedronGenerator>().recipeString = "C";
+                                                //}
+                                            }
+                                        }
+                                        */
+
 
                 }
                 else
                 {
                     // we were decrementing the energy, so now we must execute a fusion
+
+                    Debug.Log("starting fusion");
+                    // sink is "born", make a fusion
+                    List<string> recipesForFusion = new();
+                    for (int n = 0; n < 6; n++)
+                    {
+                        HexCoord neighbor = hckv.Key.Neighbor(n);
+
+                        if (gridCellsMap.ContainsKey(neighbor) && gridCellsMap[neighbor].ring <= actualLevelConfig.actualRingsCount)
+                        {
+                            HexCellData neighborCellData = gridCellsMap[neighbor];
+                            recipesForFusion.Add(neighborCellData.tile.GetComponent<PolyhedronGenerator>().recipeString);
+                        }
+                    }
+                    Debug.Log($"fusion recipes: {string.Join(", ", recipesForFusion)}");
+
+                    string fusionRecipe = PolyhedronRecipeKabbalah.RecipeFusion(recipesForFusion);
+                    Debug.Log($"fusion result: {fusionRecipe}");
+                    hckv.Value.nextTileRecipe = fusionRecipe;
+
 
                 }
 
@@ -738,7 +772,7 @@ public class MetatronEngine : MonoBehaviour
                     }
                }
                */
-       
+
     }
 
 
@@ -765,7 +799,7 @@ public class MetatronEngine : MonoBehaviour
             }
             else
             {
-                RebuildTileMesh(hckv.Key, PolyhedronRecipeKabbalah.IntToOperatorsSequence(actualLevelConfig.tileIntToOperatorsSequenceOffset + hckv.Value.aliveDeadCounter) + actualLevelConfig.tileBasePoly);
+                RebuildTileMesh(hckv.Key, PolyhedronRecipeKabbalah.IntToOperatorsSequence(hckv.Value.tileIntToOperatorsSequenceOffset + hckv.Value.aliveDeadCounter) + actualLevelConfig.tileBasePoly);
             }
         }
     }
@@ -817,7 +851,7 @@ public class MetatronEngine : MonoBehaviour
             color = Color.Lerp(Color.white, Color.red, normalizedColorValue);
         }
 
-        float lineWidth = hckv.Value.fusionFissionThresholdReached ? 0.3f : 0.04f;
+        float lineWidth = hckv.Value.fusionFissionThresholdReached ? 0.2f : 0.04f;
 
         if (hckv.Value.isOnMetatronPattern)
         {
