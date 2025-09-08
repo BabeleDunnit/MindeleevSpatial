@@ -38,7 +38,12 @@ public class MetatronEngine : MonoBehaviour
         internal bool isOnMetatronPattern;
         internal GameObject sink;
         internal GameObject tile;
-        // public GameObject polytron;
+
+        // probably for debugging, we will use only sinks
+        public GameObject polytron;
+
+
+
         internal GameObject circle;
 
         internal bool actualState = false;
@@ -191,8 +196,9 @@ public class MetatronEngine : MonoBehaviour
 
     void RebuildPolytronMesh(GameObject p, string recipe)
     {
-        p.GetComponent<PolyhedronGenerator>().recipeString = recipe;
-        p.GetComponent<PolyhedronGenerator>().RebuildMesh();
+        p.GetComponent<Polytron>().recipeString = recipe;
+        p.GetComponent<Polytron>().RebuildMesh();
+        p.name = $"Polytron_{recipe}";
     }
 
     void AttractPolytronsToSinks()
@@ -241,6 +247,14 @@ public class MetatronEngine : MonoBehaviour
         StartCoroutine(BuildTilesCoroutine());
         StartCoroutine(ResetPolytronsCoroutine());
 
+    }
+
+    void AfterTilesCreation()
+    {
+        AddPolytronDebug(FindCellByRingAndIdx(2, 1).Value.Value);
+        AddPolytronDebug(FindCellByRingAndIdx(0, 0).Value.Value);
+        AddPolytronDebug(FindCellByRingAndIdx(1, 0).Value.Value);
+        AddPolytronDebug(FindCellByRingAndIdx(2, 0).Value.Value);
     }
 
     IEnumerator BuildSinksCoroutine()
@@ -295,6 +309,8 @@ public class MetatronEngine : MonoBehaviour
                 yield return new WaitForSeconds(0.15f);
             }
         }
+
+        AfterTilesCreation();
     }
 
     IEnumerator ResetPolytronsCoroutine()
@@ -530,7 +546,9 @@ public class MetatronEngine : MonoBehaviour
                 // test                
                 if (ring == 2 && i == 1)
                 {
-                    cellData.actualState = true;
+                    // cellData.actualState = true;
+
+                    // AddPolytronDebug(cellData);
                 }
 
 
@@ -543,6 +561,22 @@ public class MetatronEngine : MonoBehaviour
                 gridCellsMap[hex] = cellData;
             }
         }
+    }
+
+    private void AddPolytronDebug(HexCellData cellData)
+    {
+        cellData.actualState = true;
+
+        // this is wrong, only to test visuals:
+        string tileRecipe = cellData.tile.GetComponent<PolyhedronGenerator>().recipeString;
+        GameObject polytron = PolytronsFactory.Instance.Create($"polytron/{tileRecipe}", 0.4f);
+        polytron.transform.position = cellData.worldCoords + new Vector3(0, 1f, 0);
+        float angleToCenter = new HexCoord(cellData.ring, cellData.idxInRing).PolarAngle();
+        Quaternion polytronRotation = Quaternion.Euler(0f, -angleToCenter * 360f / 6.28f, 0f);
+        polytron.transform.localRotation = polytronRotation;
+        cellData.polytron = polytron;
+        // polytrons.Add(polytron);
+
     }
 
     bool IsMetatronCoord(int ring, int idxInRing)
@@ -801,6 +835,16 @@ public class MetatronEngine : MonoBehaviour
             {
                 RebuildTileMesh(hckv.Key, PolyhedronRecipeKabbalah.IntToOperatorsSequence(hckv.Value.tileIntToOperatorsSequenceOffset + hckv.Value.aliveDeadCounter) + actualLevelConfig.tileBasePoly);
             }
+
+            if (hckv.Value.polytron != null)
+            {
+                /*
+                hckv.Value.polytron.GetComponent<Polytron>().recipeString = hckv.Value.tile.GetComponent<PolyhedronGenerator>().recipeString;
+                hckv.Value.polytron.GetComponent<Polytron>().RebuildMesh();
+                */
+                RebuildPolytronMesh(hckv.Value.polytron, hckv.Value.tile.GetComponent<PolyhedronGenerator>().recipeString);
+            }
+
         }
     }
 
