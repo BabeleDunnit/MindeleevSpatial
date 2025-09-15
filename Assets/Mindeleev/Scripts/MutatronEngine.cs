@@ -1,15 +1,20 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using System.Linq;
 
 public class MutatronEngine : MonoBehaviour
 {
 
     int maxRings = 12;
+
+    // all the 12 rings, prebuilt
     private Dictionary<HexCoord, HexCellData> gridCellsMap = new Dictionary<HexCoord, HexCellData>();
 
     // the 72 polytrons
     private List<GameObject> polytrons = new();
+
+    int evolveCount = 0;
 
     public class HexCellData
     {
@@ -21,12 +26,19 @@ public class MutatronEngine : MonoBehaviour
         internal GameObject tile;
         public GameObject polytron;
         internal GameObject circle;
+
+        // the Polytronic Number also represents a quantified energy level in some way.
+        internal int polytronicNumber;
+        internal int nextPolytronicNumberAccumulator;
+        internal Range<int> fusionRange;
+        internal string tileBasePolyhedron;
     }
 
     struct LevelConfig
     {
         // we will start with 2
         public int actualRingsCount;
+        internal int energyQuantumExchanged;
     }
 
     LevelConfig actualLevelConfig;
@@ -122,7 +134,7 @@ public class MutatronEngine : MonoBehaviour
         }
     }
 
-        bool IsMetatronCoord(int ring, int idxInRing)
+    bool IsMetatronCoord(int ring, int idxInRing)
     {
         if (ring == 0 || ring == 1) return true;
         for (int i = 2; i < 10; i++)
@@ -180,7 +192,7 @@ public class MutatronEngine : MonoBehaviour
         lr.startColor = lr.endColor = color;
     }
 
-    IEnumerator BuildMetatronCoroutine()
+    IEnumerator DrawMetatronGraphicsCoroutine()
     {
         // Draw circles
         foreach (HexCellData hcd in gridCellsMap.Values)
@@ -275,20 +287,180 @@ public class MutatronEngine : MonoBehaviour
         }
     }
 
+    void PrintDebugStats(string header)
+    {
+        string msg = header + " Stats: \n";
+        int totalQuantizedEnergy = 0;
+        Dictionary<HexCellData, int> energyCellsMap = new();
+        foreach (var hckv in gridCellsMap)
+        {
+            if (hckv.Value.ring <= actualLevelConfig.actualRingsCount)
+            {
+                totalQuantizedEnergy += hckv.Value.polytronicNumber;
+                energyCellsMap.Add(hckv.Value, hckv.Value.polytronicNumber);
+            }
+        }
+
+        var energyCellsList = new Dictionary<HexCellData, int>(energyCellsMap.OrderBy(kvp => kvp.Value).Reverse()).ToList();
+        foreach (var kvp in energyCellsMap)
+        {
+            // msg += $"Cell (ring={kvp.Key.ring}, idxInRing={kvp.Key.idxInRing}) has polytronic number = {kvp.Value}\n";
+        }
+        
+
+        msg += $"total quantized energy: {totalQuantizedEnergy}, most energy: {energyCellsList[0]}";
+
+        Debug.Log(msg);
+
+    }
+
+    void InitializeCellsForCurrentLevel()
+    {
+        foreach (var hckv in gridCellsMap)
+        {
+            if (hckv.Value.ring <= actualLevelConfig.actualRingsCount)
+            {
+                // must change based on actualLevelConfig
+                hckv.Value.polytronicNumber = hckv.Value.ring;
+                hckv.Value.nextPolytronicNumberAccumulator = 0;
+                hckv.Value.fusionRange = new Range<int>(2, 6);
+                hckv.Value.tileBasePolyhedron = "C";
+            }
+        }
+
+        PrintDebugStats("End of InitializeCellsForCurrentLevel");
+    }
+
+    IEnumerator BuildInitialTilesCoroutine()
+    {
+        yield return new WaitForSeconds(1.2f);
+        foreach (var hckv in gridCellsMap)
+        {
+            if (hckv.Value.ring <= actualLevelConfig.actualRingsCount)
+            {
+                float angleToCenter = hckv.Key.PolarAngle();
+                Quaternion tileRotation = Quaternion.Euler(0f, -angleToCenter * 360f / 6.28f, 0f);
+
+                // string tileRecipe = hckv.Value.actualState ? "ttC" : "C";
+                string tileRecipe = PolyhedronRecipeKabbalah.IntToOperatorsSequence(hckv.Value.polytronicNumber) + hckv.Value.tileBasePolyhedron;
+
+                GameObject tile = PolytronsFactory.Instance.Create($"tile/{tileRecipe}", 1f);
+                tile.transform.localScale = new Vector3(1f, 0.01f, 1f);
+                tile.transform.position = hckv.Value.worldCoords + new Vector3(0, 0.1f, 0);
+                tile.transform.localRotation = tileRotation;
+                //                 tiles.Add(tile);
+                hckv.Value.tile = tile;
+                //                 hckv.Value.tileIntToOperatorsSequenceOffset = actualLevelConfig.tileIntToOperatorsSequenceOffset;
+
+                yield return new WaitForSeconds(0.15f);
+            }
+        }
+
+        //         AfterTilesCreation();
+    }
+
+
     void BuildLevel(int levelNumber)
     {
 
         // the level number will determine the Metatron complexity
         // and set actualRingsCount, etc.
 
-        actualLevelConfig.actualRingsCount = 2;
 
-        StartCoroutine(BuildMetatronCoroutine());
+        actualLevelConfig.actualRingsCount = 2;
+        actualLevelConfig.energyQuantumExchanged = 2;
+
+        StartCoroutine(DrawMetatronGraphicsCoroutine());
+        InitializeCellsForCurrentLevel();
         // StartCoroutine(BuildSinksCoroutine());
-        // StartCoroutine(BuildTilesCoroutine());
+        StartCoroutine(BuildInitialTilesCoroutine());
         // StartCoroutine(ResetPolytronsCoroutine());
 
+        evolveCount = 0;
+
+
+
     }
+
+    void Evolve()
+    {
+        // the idea: for each cell, count how many neighbors have a polytronicNumber higher than the one of the cell.
+        // if the number of neighbors lies in the fusionRange, we have a fusion, and a quantum of energy moves from the polytronicNumber
+        // of all the neighbors to the cell. 
+        foreach (var hckv in gridCellsMap)
+        {
+            if (hckv.Value.ring > actualLevelConfig.actualRingsCount) continue;
+
+            HexCellData cellData = hckv.Value;
+
+            List<HexCellData> neighborsWithHigherPolytronicNumber = new();
+            for (int n = 0; n < 6; n++)
+            {
+                HexCoord neighbor = hckv.Key.Neighbor(n);
+                HexCellData neighborCellData = gridCellsMap[neighbor];
+                if (neighborCellData.ring > actualLevelConfig.actualRingsCount) continue;
+
+                if (neighborCellData.polytronicNumber > cellData.polytronicNumber)
+                {
+                    neighborsWithHigherPolytronicNumber.Add(neighborCellData);
+                }
+            }
+
+            if (cellData.fusionRange.Contains(neighborsWithHigherPolytronicNumber.Count))
+            {
+                // we have a fusion. The neighbors release one quantum of energy
+                cellData.nextPolytronicNumberAccumulator += (neighborsWithHigherPolytronicNumber.Count * actualLevelConfig.energyQuantumExchanged);
+                foreach (var neighborCellData in neighborsWithHigherPolytronicNumber) { neighborCellData.nextPolytronicNumberAccumulator -= actualLevelConfig.energyQuantumExchanged; }
+            }
+            else
+            {
+                cellData.nextPolytronicNumberAccumulator--;
+            }
+        }
+
+        foreach (var hckv in gridCellsMap)
+        {
+            if (hckv.Value.ring > actualLevelConfig.actualRingsCount) continue;
+
+            HexCellData cellData = hckv.Value;
+            cellData.polytronicNumber += cellData.nextPolytronicNumberAccumulator;
+            // if (cellData.polytronicNumber < 0) cellData.polytronicNumber = 0;
+            cellData.nextPolytronicNumberAccumulator = 0;
+        }
+
+        UpdateTiles();
+
+        evolveCount++;
+
+        PrintDebugStats($"End of Evolve() call #{evolveCount}");
+
+    }
+
+    void RebuildTileMesh(HexCoord coord, string recipe)
+    {
+        GameObject tile = gridCellsMap[coord].tile;
+        if (tile != null && tile.GetComponent<PolyhedronGenerator>().recipeString != recipe)
+        {
+            tile.GetComponent<PolyhedronGenerator>().recipeString = recipe;
+            tile.GetComponent<PolyhedronGenerator>().RebuildMesh();
+        }
+    }
+
+    void UpdateTiles()
+    {
+        foreach (var hckv in gridCellsMap)
+        {
+            if (hckv.Value.ring > actualLevelConfig.actualRingsCount) continue;
+
+            HexCellData cellData = hckv.Value;
+
+            string tileRecipe = PolyhedronRecipeKabbalah.IntToOperatorsSequence(hckv.Value.polytronicNumber) + hckv.Value.tileBasePolyhedron;
+
+            RebuildTileMesh(hckv.Key, tileRecipe);
+
+        }
+    }
+
 
 
     void Update()
@@ -303,12 +475,11 @@ public class MutatronEngine : MonoBehaviour
                 {
                     actualBehaviour = Behaviour.AttractPolytronsToSinks;
                 }
-
-                if (Input.GetKeyDown(KeyCode.E))
-                {
-                    Evolve();
-                }
-        */
+*/
+        if (Input.GetKeyDown(KeyCode.E))
+        {
+            Evolve();
+        }
 
     }
 }
