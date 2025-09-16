@@ -570,6 +570,18 @@ public class MutatronEngine : MonoBehaviour
         }
     }
 
+    void SendUnboundPolytronsHome()
+    {
+        var unboundPolytrons = polytrons.Where(p => p.GetComponent<Polytron>().boundSink == null).ToList();
+        var unboundSinksOnExternalRing = gridCellsMap.Where(hckv => hckv.Value.ring == 12 && hckv.Value.sink.GetComponent<PolytronSink>().boundPolytron == null).ToList();
+        Debug.Assert(unboundSinksOnExternalRing.Count >= unboundPolytrons.Count);
+        for (int i = 0; i < unboundPolytrons.Count; i++)
+        {
+            BindPolytronToSink(unboundPolytrons[i].GetComponent<Polytron>(), unboundSinksOnExternalRing[i]);
+        }
+
+    }
+
     void Evolve()
     {
         // the idea: for each cell, count how many neighbors have a polytronicNumber higher than the one of the cell.
@@ -636,6 +648,8 @@ public class MutatronEngine : MonoBehaviour
         UnbindNonMatchingPolytrons();
 
         SetPolytronsSinks();
+
+        SendUnboundPolytronsHome();
 
         evolveCount++;
 
