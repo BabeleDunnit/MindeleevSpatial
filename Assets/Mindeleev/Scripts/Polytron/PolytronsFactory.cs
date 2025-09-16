@@ -56,20 +56,21 @@ public class PolytronsFactory : MonoBehaviour
             CreateLabel(poly, recipe
                 + " "
                 + PolyhedronRecipeUtils.ComputeComplexity(PolyhedronRecipeParser.Parse(recipe)),
-                Vector3.zero);
+                Vector3.down * 1.5f);
 
             createdPolytrons.Add(poly);
         }
     }
 
-    private static void CreateLabel(GameObject parent, string recipe, Vector3 position)
+    public static void CreateLabel(GameObject parent, string s, Vector3 position)
     {
-        GameObject label = new GameObject($"Label_{recipe}");
+        GameObject label = new GameObject($"Label_{s}");
         label.transform.parent = parent.transform;
-        label.transform.localPosition = Vector3.down * 1.5f;
+        // label.transform.localPosition = Vector3.down * 1.5f;
+        label.transform.localPosition = position;
 
         TextMeshPro tmpText = label.AddComponent<TextMeshPro>();
-        tmpText.text = recipe;
+        tmpText.text = s;
         tmpText.fontSize = 3;
         tmpText.alignment = TextAlignmentOptions.Center;
         tmpText.color = Color.white;
@@ -98,76 +99,69 @@ public class PolytronsFactory : MonoBehaviour
         }
 
         switch (kind)
-            {
-                case "polytron":
+        {
+            case "polytron":
+                {
+                    GameObject poly = Instantiate(polytronPrefab, Vector3.zero, Quaternion.identity, transform);
+
+                    poly.transform.localScale = Vector3.one * localUniformScale;
+
+                    var waveAnim = poly.GetComponent<WaveAnimation>();
+                    if (waveAnim != null)
                     {
-                        GameObject poly = Instantiate(polytronPrefab, Vector3.zero, Quaternion.identity, transform);
-
-                        poly.transform.localScale = Vector3.one * localUniformScale;
-
-                        var waveAnim = poly.GetComponent<WaveAnimation>();
-                        if (waveAnim != null)
-                        {
-                            waveAnim.animationName = WaveAnimation.AnimationType.Breathe;
-                            waveAnim.SetReferenceTransform(poly.transform.localScale);
-                        }
-
-                        var polytronComponent = poly.GetComponent<Polytron>();
-                        if (polytronComponent != null)
-                        {
-                            polytronComponent.recipeString = recipe;
-                        }
-
-                        poly.name = $"{kind}_{recipe}";
-                        // poly.transform. = new Vector3(0.003f, 0.003f, 0.003f);
-
-                        /*
-                                            CreateLabel(poly, recipe
-                                                + " "
-                                                + PolyhedronRecipeUtils.ComputeComplexity(PolyhedronRecipeParser.Parse(recipe)),
-                                                Vector3.zero);
-                        */
-
-                        createdPolytrons.Add(poly);
-
-                        return poly;
-
+                        waveAnim.animationName = WaveAnimation.AnimationType.Breathe;
+                        waveAnim.SetReferenceTransform(poly.transform.localScale);
                     }
-                // break;
-                case "sink":
+
+                    var polytronComponent = poly.GetComponent<Polytron>();
+                    if (polytronComponent != null)
                     {
-                        GameObject sink = Instantiate(sinkPrefab, Vector3.zero, Quaternion.identity, transform);
-                        sink.transform.localScale = Vector3.one * localUniformScale;
-                        createdSinks.Add(sink);
-                        sink.name = "sink";
+                        polytronComponent.recipeString = recipe;
+                    }
+
+                    poly.name = $"{kind}_{recipe}";
+                    // poly.transform. = new Vector3(0.003f, 0.003f, 0.003f);
+
+                    /*
+                                        CreateLabel(poly, recipe
+                                            + " "
+                                            + PolyhedronRecipeUtils.ComputeComplexity(PolyhedronRecipeParser.Parse(recipe)),
+                                            Vector3.zero);
+                    */
+
+                    createdPolytrons.Add(poly);
+
+                    return poly;
+
+                }
+            // break;
+            case "sink":
+                {
+                    GameObject sink = Instantiate(sinkPrefab, Vector3.zero, Quaternion.identity, transform);
+                    sink.transform.localScale = Vector3.one * localUniformScale;
+                    createdSinks.Add(sink);
+                    sink.name = "sink";
                     sink.GetComponent<PolytronSink>().attractedRecipe = recipe;
 
-                        return sink;
+                    return sink;
 
-                    }
+                }
             // break;
 
-                case "tile":
+            case "tile":
                 {
                     GameObject tile = Instantiate(tilePrefab, Vector3.zero, Quaternion.identity, transform);
                     tile.transform.localScale = Vector3.one * localUniformScale;
 
-                        var pg = tile.GetComponent<PolyhedronGenerator>();
-                            pg.recipeString = recipe;
-
+                    var pg = tile.GetComponent<PolyhedronGenerator>();
+                    pg.recipeString = recipe;
 
                     return tile;
                 }
 
-                default:
-                    break;
-            }
-
-        /*
-                    Vector3 polytronPosition = new Vector3(
-                        transform.position.x, transform.position.y, transform.position.z
-                    );
-        */
+            default:
+                break;
+        }
 
         return null;
     }

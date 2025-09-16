@@ -86,7 +86,7 @@ public class MutatronEngine : MonoBehaviour
 
     void AfterTilesCreation()
     {
-        SetPolytronsSinks();
+        UpdatePolytronsSinks();
     }
 
     void Start()
@@ -99,6 +99,10 @@ public class MutatronEngine : MonoBehaviour
 
     }
 
+
+    // questo non dovrebbe farlo uno per uno, altrimenti può essere che ci sia un polytrone che matcha 
+    // ma arriva il suo turno troppo tardi per essere scelto
+    // dovrebbe fare un giro globale prima di updatare i sink
     int polyCount = 0;
     Polytron ChoosePolytronToAssignToSink(KeyValuePair<HexCoord, HexCellData> hckv)
     {
@@ -115,13 +119,12 @@ public class MutatronEngine : MonoBehaviour
             return matchingRecipePolytrons[0].GetComponent<Polytron>();
         }
 
-
         if (polyCount >= 72) polyCount = 0;
         return polytrons[polyCount++].GetComponent<Polytron>();
     }
 
     // this is called to update the positions of the polytrons after each evolution round
-    void SetPolytronsSinks()
+    void UpdatePolytronsSinks()
     {
         foreach (var hckv in gridCellsMap)
         {
@@ -528,9 +531,7 @@ public class MutatronEngine : MonoBehaviour
                 tile.transform.localScale = new Vector3(1f, 0.01f, 1f);
                 tile.transform.position = hckv.Value.worldCoords + new Vector3(0, 0.1f, 0);
                 tile.transform.localRotation = tileRotation;
-                //                 tiles.Add(tile);
                 hckv.Value.tile = tile;
-                //                 hckv.Value.tileIntToOperatorsSequenceOffset = actualLevelConfig.tileIntToOperatorsSequenceOffset;
 
                 yield return new WaitForSeconds(0.15f);
             }
@@ -636,9 +637,9 @@ public class MutatronEngine : MonoBehaviour
 
         UnbindNonMatchingPolytrons();
 
-        SetPolytronsSinks();
+        UpdatePolytronsSinks();
 
-        SendUnboundPolytronsHome();
+        // SendUnboundPolytronsHome();
 
         evolveCount++;
 
@@ -653,6 +654,8 @@ public class MutatronEngine : MonoBehaviour
         {
             tile.GetComponent<PolyhedronGenerator>().recipeString = recipe;
             tile.GetComponent<PolyhedronGenerator>().RebuildMesh();
+
+            PolytronsFactory.CreateLabel(tile, tile.GetComponent<PolyhedronGenerator>().recipeString, Vector3.up * 10.5f);
         }
     }
 
