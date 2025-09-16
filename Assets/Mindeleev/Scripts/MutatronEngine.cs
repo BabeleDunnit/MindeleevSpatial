@@ -82,6 +82,10 @@ public class MutatronEngine : MonoBehaviour
         evolveCount = 0;
     }
 
+    void AfterTilesCreation()
+    {
+        SetPolytronsSinks();
+    }
 
     void Start()
     {
@@ -92,6 +96,94 @@ public class MutatronEngine : MonoBehaviour
         Create72Polytrons();
 
     }
+
+    int polyCount = 0;
+    Polytron ChoosePolytronToAssignToSink()
+    {
+        if (polyCount >= 72) polyCount = 0;
+        return polytrons[polyCount++].GetComponent<Polytron>();
+    }
+
+    // this is called to update the positions of the polytrons after each evolution round
+    void SetPolytronsSinks()
+    {
+        foreach (var hckv in gridCellsMap)
+        {
+            if (hckv.Value.ring > actualLevelConfig.actualRingsCount) continue;
+
+            /*
+                        if (hckv.Value.ring == 0)
+                        {
+                            hckv.Value.sink.GetComponent<PolytronSink>().boundPolytron = polytrons[0].GetComponent<Polytron>();
+                          }
+                          */
+
+            if (hckv.Value.isOnMetatronPattern)
+            {
+                Polytron p = ChoosePolytronToAssignToSink();
+                // hckv.Value.sink.GetComponent<PolytronSink>().boundPolytron = polytrons[0].GetComponent<Polytron>();
+                BindPolytronToSink(p, hckv);
+                string tileRecipe = hckv.Value.tile.GetComponent<PolyhedronGenerator>().recipeString;
+                RebuildPolytronMesh(p, tileRecipe);
+            }
+        }
+    }
+
+    void RebuildPolytronMesh(Polytron p, string recipe)
+    {
+        p.GetComponent<Polytron>().recipeString = recipe;
+        p.GetComponent<Polytron>().RebuildMesh();
+        p.name = $"Polytron_{recipe}";
+    }
+
+
+    void UnbindPolytron(Polytron p)
+    {
+        foreach (var sink in gridCellsMap.Where(hckv => hckv.Value.sink.GetComponent<PolytronSink>().boundPolytron == p).Select(kv => kv.Value.sink.GetComponent<PolytronSink>()))
+        {
+            sink.boundPolytron = null;
+        }
+    }
+
+    void BindPolytronToSink(Polytron p, KeyValuePair<HexCoord, HexCellData> hckv)
+    {
+        UnbindPolytron(p);
+        hckv.Value.sink.GetComponent<PolytronSink>().boundPolytron = p;
+    }
+
+
+    /*
+        void AttractPolytronsToSinks()
+        {
+            // BindPolytronsToSinks();
+            foreach (var sink in sinks)
+            {
+                PolytronSink sinkComponent = sink.GetComponent<PolytronSink>();
+                if (sinkComponent.boundPolytron != null)
+                {
+                    (Vector3 attractionForce, Vector3 from1To2Versor, float from1To2Distance) = CalcSpringForce(sinkComponent.boundPolytron.transform.position, sink.transform.position, sinkComponent.weight * 5f, 0.01f);
+                    sinkComponent.boundPolytron.GetComponent<Rigidbody>().AddForce(attractionForce);
+                }
+            }
+        }
+    */
+
+    void AttractPolytronsToSinks()
+    {
+        foreach (var hckv in gridCellsMap)
+        {
+            // if (hckv.Value.ring > actualLevelConfig.actualRingsCount) continue;
+
+            PolytronSink sink = hckv.Value.sink.GetComponent<PolytronSink>();
+            if (sink && sink.boundPolytron)
+            {
+                (Vector3 attractionForce, Vector3 from1To2Versor, float from1To2Distance) = CalcSpringForce(sink.boundPolytron.transform.position, sink.transform.position, sink.weight * 5f, 0.01f);
+                sink.boundPolytron.GetComponent<Rigidbody>().AddForce(attractionForce);
+            }
+
+        }
+    }
+
 
     void Create72Polytrons()
     {
@@ -110,6 +202,9 @@ public class MutatronEngine : MonoBehaviour
                 // polytron.transform.localRotation = polytronRotation;
                 polytron.name = $"Polytron_{polytronId}";
                 polytrons.Add(polytron);
+
+                // bind the polytron to his cell
+                hckv.Value.sink.GetComponent<PolytronSink>().boundPolytron = polytron.GetComponent<Polytron>();
             }
         }
     }
@@ -132,7 +227,33 @@ public class MutatronEngine : MonoBehaviour
         }
     }
 
+/*
+    IEnumerator BuildSinksCoroutine()
+    {
+        yield return new WaitForSeconds(1f);
+        foreach (var hckv in gridCellsMap)
+        {
+            if (hckv.Value.ring <= actualLevelConfig.actualRingsCount)
+            {
+                string recipe = "tC";
+                if (hckv.Value.isOnMetatronPattern)
+                {
+                    //recipe = "ttC";
+                    //if (hckv.Value.ring == 0 && hckv.Value.idxInRing == 0) recipe = "lI";
+                    GameObject sink = PolytronsFactory.Instance.Create($"sink/{recipe}", 0.3f);
+                    sink.transform.position = new Vector3(hckv.Value.worldCoords.x, 1.0f, hckv.Value.worldCoords.z);
+                    hckv.Value.sink = sink;
+                    sinks.Add(sink);
+                    sink.GetComponent<PolytronSink>().weight = 0.2f;
+                    sink.GetComponent<PolytronSink>().hexCoord = hckv.Key;
+                    hckv.Value.actualState = true;
+                    yield return new WaitForSeconds(0.1f);
+                }
+            }
+        }
+    }
 
+*/
     void CreateHexGridDataStructure()
     {
         Vector2 center2D = new Vector2(transform.position.x, transform.position.z);
@@ -162,6 +283,7 @@ public class MutatronEngine : MonoBehaviour
                     // AddPolytronDebug(cellData);
                 }
 
+                // cellData.sink = CreateSink()
 
                 if (IsMetatronCoord(ring, i))
                 {
@@ -172,6 +294,24 @@ public class MutatronEngine : MonoBehaviour
                 gridCellsMap[hex] = cellData;
             }
         }
+
+        foreach (var hckv in gridCellsMap)
+        {
+            CreateSink(hckv);
+        }
+    }
+
+    void CreateSink(KeyValuePair<HexCoord, HexCellData> hckv)
+    {
+        string recipe = "tC";
+        GameObject sink = PolytronsFactory.Instance.Create($"sink/{recipe}", 0.3f);
+        sink.transform.position = new Vector3(hckv.Value.worldCoords.x, 1.0f, hckv.Value.worldCoords.z);
+        hckv.Value.sink = sink;
+        // sinks.Add(sink);
+        sink.GetComponent<PolytronSink>().weight = 0.2f;
+        sink.GetComponent<PolytronSink>().hexCoord = hckv.Key;
+//         sink.GetComponent<MeshRenderer>().material.color = Color.red;
+        sink.GetComponent<MeshRenderer>().enabled = false;
     }
 
     bool IsMetatronCoord(int ring, int idxInRing)
@@ -347,7 +487,7 @@ public class MutatronEngine : MonoBehaviour
         {
             // msg += $"Cell (ring={kvp.Key.ring}, idxInRing={kvp.Key.idxInRing}) has polytronic number = {kvp.Value}\n";
         }
-        
+
 
         msg += $"total quantized energy: {totalQuantizedEnergy}, most energy: {energyCellsList[0]}";
 
@@ -380,7 +520,7 @@ public class MutatronEngine : MonoBehaviour
             }
         }
 
-        //         AfterTilesCreation();
+        AfterTilesCreation();
     }
 
 
@@ -421,7 +561,7 @@ public class MutatronEngine : MonoBehaviour
                             cellData.nextPolytronicNumberAccumulator--;
                         }
                         */
-            
+
 
             if (neighborsWithHigherPolytronicNumber.Count % 2 == 0)
             {
@@ -447,6 +587,8 @@ public class MutatronEngine : MonoBehaviour
         }
 
         UpdateTiles();
+
+        SetPolytronsSinks();
 
         evolveCount++;
 
@@ -480,6 +622,10 @@ public class MutatronEngine : MonoBehaviour
     }
 
 
+    void FixedUpdate()
+    {
+        AttractPolytronsToSinks();
+    }
 
     void Update()
     {
@@ -500,4 +646,20 @@ public class MutatronEngine : MonoBehaviour
         }
 
     }
+
+    public (Vector3 attractionForce, Vector3 from1To2Versor, float from1To2Distance)
+    CalcSpringForce(Vector3 obj1pos, Vector3 obj2pos, float attractionMultiplier, float equilibriumDistance)
+    {
+        Vector3 from1to2Vector = obj2pos - obj1pos;
+        float from1To2Distance = from1to2Vector.magnitude;
+
+        float distanceFromEquilibrium = from1To2Distance - equilibriumDistance;
+
+        Vector3 from1To2Versor = from1to2Vector.normalized;
+        Vector3 attractionForce = from1To2Versor * distanceFromEquilibrium * attractionMultiplier;
+
+        return (attractionForce, from1To2Versor, from1To2Distance);
+    }
+
+
 }
