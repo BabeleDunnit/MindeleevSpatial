@@ -43,6 +43,46 @@ public class MutatronEngine : MonoBehaviour
 
     LevelConfig actualLevelConfig;
 
+    void InitializeCellsForCurrentLevel()
+    {
+        foreach (var hckv in gridCellsMap)
+        {
+            if (hckv.Value.ring <= actualLevelConfig.actualRingsCount)
+            {
+                // must change based on actualLevelConfig
+                hckv.Value.polytronicNumber = hckv.Value.ring;
+                hckv.Value.nextPolytronicNumberAccumulator = 0;
+                hckv.Value.fusionRange = new Range<int>(0, 6);
+                hckv.Value.tileBasePolyhedron = "C";
+            }
+        }
+
+        //FindCellByRingAndIdx(2, 2).Value.Value.polytronicNumber = 17;
+        //FindCellByRingAndIdx(2, 3).Value.Value.polytronicNumber = 17;
+
+        PrintDebugStats("End of InitializeCellsForCurrentLevel");
+    }
+
+    void BuildLevel(int levelNumber)
+    {
+
+        // the level number will determine the Metatron complexity
+        // and set actualRingsCount, etc.
+
+
+        actualLevelConfig.actualRingsCount = 3;
+        actualLevelConfig.energyQuantumExchanged = 1;
+
+        StartCoroutine(DrawMetatronGraphicsCoroutine());
+        InitializeCellsForCurrentLevel();
+        // StartCoroutine(BuildSinksCoroutine());
+        StartCoroutine(BuildInitialTilesCoroutine());
+        // StartCoroutine(ResetPolytronsCoroutine());
+
+        evolveCount = 0;
+    }
+
+
     void Start()
     {
         // hide placeholder
@@ -177,6 +217,7 @@ public class MutatronEngine : MonoBehaviour
         }
         return null;
     }
+
     void DrawLine(Vector3 start, Vector3 end, Color color, float width = 0.05f)
     {
         var go = new GameObject("Line");
@@ -314,23 +355,6 @@ public class MutatronEngine : MonoBehaviour
 
     }
 
-    void InitializeCellsForCurrentLevel()
-    {
-        foreach (var hckv in gridCellsMap)
-        {
-            if (hckv.Value.ring <= actualLevelConfig.actualRingsCount)
-            {
-                // must change based on actualLevelConfig
-                hckv.Value.polytronicNumber = hckv.Value.ring;
-                hckv.Value.nextPolytronicNumberAccumulator = 0;
-                hckv.Value.fusionRange = new Range<int>(2, 6);
-                hckv.Value.tileBasePolyhedron = "C";
-            }
-        }
-
-        PrintDebugStats("End of InitializeCellsForCurrentLevel");
-    }
-
     IEnumerator BuildInitialTilesCoroutine()
     {
         yield return new WaitForSeconds(1.2f);
@@ -360,27 +384,6 @@ public class MutatronEngine : MonoBehaviour
     }
 
 
-    void BuildLevel(int levelNumber)
-    {
-
-        // the level number will determine the Metatron complexity
-        // and set actualRingsCount, etc.
-
-
-        actualLevelConfig.actualRingsCount = 2;
-        actualLevelConfig.energyQuantumExchanged = 2;
-
-        StartCoroutine(DrawMetatronGraphicsCoroutine());
-        InitializeCellsForCurrentLevel();
-        // StartCoroutine(BuildSinksCoroutine());
-        StartCoroutine(BuildInitialTilesCoroutine());
-        // StartCoroutine(ResetPolytronsCoroutine());
-
-        evolveCount = 0;
-
-
-
-    }
 
     void Evolve()
     {
@@ -406,16 +409,31 @@ public class MutatronEngine : MonoBehaviour
                 }
             }
 
-            if (cellData.fusionRange.Contains(neighborsWithHigherPolytronicNumber.Count))
+            /*
+                        if (cellData.fusionRange.Contains(neighborsWithHigherPolytronicNumber.Count))
+                        {
+                            // we have a fusion. The neighbors release one quantum of energy
+                            cellData.nextPolytronicNumberAccumulator += (neighborsWithHigherPolytronicNumber.Count * actualLevelConfig.energyQuantumExchanged);
+                            foreach (var neighborCellData in neighborsWithHigherPolytronicNumber) { neighborCellData.nextPolytronicNumberAccumulator -= actualLevelConfig.energyQuantumExchanged; }
+                        }
+                        else
+                        {
+                            cellData.nextPolytronicNumberAccumulator--;
+                        }
+                        */
+            
+
+            if (neighborsWithHigherPolytronicNumber.Count % 2 == 0)
             {
                 // we have a fusion. The neighbors release one quantum of energy
-                cellData.nextPolytronicNumberAccumulator += (neighborsWithHigherPolytronicNumber.Count * actualLevelConfig.energyQuantumExchanged);
-                foreach (var neighborCellData in neighborsWithHigherPolytronicNumber) { neighborCellData.nextPolytronicNumberAccumulator -= actualLevelConfig.energyQuantumExchanged; }
+                cellData.nextPolytronicNumberAccumulator += (neighborsWithHigherPolytronicNumber.Count * 2);
+                foreach (var neighborCellData in neighborsWithHigherPolytronicNumber) { neighborCellData.nextPolytronicNumberAccumulator -= 1; }
             }
             else
             {
                 cellData.nextPolytronicNumberAccumulator--;
             }
+
         }
 
         foreach (var hckv in gridCellsMap)
