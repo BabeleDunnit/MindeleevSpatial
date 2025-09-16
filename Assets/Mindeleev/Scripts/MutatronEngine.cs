@@ -72,7 +72,7 @@ public class MutatronEngine : MonoBehaviour
         // and set actualRingsCount, etc.
 
 
-        actualLevelConfig.actualRingsCount = 3;
+        actualLevelConfig.actualRingsCount = 4; // max con 72 polytroni se riempi tutto: 4
         actualLevelConfig.energyQuantumExchanged = 1;
 
         StartCoroutine(DrawMetatronGraphicsCoroutine());
@@ -105,20 +105,8 @@ public class MutatronEngine : MonoBehaviour
 
         PolytronSink sink = hckv.Value.sink.GetComponent<PolytronSink>();
         Debug.Assert(sink);
-        // PolytronSink sink = hckv.Value.sink;
-        // string sinkRecipe = sink.GetComponent<PolyhedronGenerator>().recipeString;
 
-        // PolytronSink sink = hckv.Value.sink.GetComponent<PolytronSink>();
         string tileRecipe = hckv.Value.tile.GetComponent<PolyhedronGenerator>().recipeString;
-
-
-        /*
-                if (!hckv.Value.sinkUpdated)
-                {
-
-
-                }
-        */
 
         // is there any unbound polytron already with the sinkRecipe?
         var matchingRecipePolytrons = polytrons.Where(p => p.GetComponent<Polytron>().recipeString == tileRecipe && p.GetComponent<Polytron>().boundSink == null).ToList();
@@ -139,14 +127,7 @@ public class MutatronEngine : MonoBehaviour
         {
             if (hckv.Value.ring > actualLevelConfig.actualRingsCount) continue;
 
-            /*
-                        if (hckv.Value.ring == 0)
-                        {
-                            hckv.Value.sink.GetComponent<PolytronSink>().boundPolytron = polytrons[0].GetComponent<Polytron>();
-                          }
-                          */
-
-            if (hckv.Value.isOnMetatronPattern)
+            if (/*hckv.Value.isOnMetatronPattern && */ hckv.Value.sink.GetComponent<PolytronSink>().boundPolytron == null)
             {
                 Polytron p = ChoosePolytronToAssignToSink(hckv);
                 // hckv.Value.sink.GetComponent<PolytronSink>().boundPolytron = polytrons[0].GetComponent<Polytron>();
@@ -564,10 +545,12 @@ public class MutatronEngine : MonoBehaviour
         {
             if (hckv.Value.ring > actualLevelConfig.actualRingsCount) continue;
 
-            Polytron polytronBoundToSink = hckv.Value.sink.GetComponent<PolytronSink>().boundPolytron;
+            PolytronSink sink = hckv.Value.sink.GetComponent<PolytronSink>();
+            Polytron polytronBoundToSink = sink.boundPolytron;
+
             if (polytronBoundToSink && polytronBoundToSink.GetComponent<Polytron>().recipeString != hckv.Value.tile.GetComponent<PolyhedronGenerator>().recipeString)
             {
-                hckv.Value.sink.GetComponent<PolytronSink>().boundPolytron.GetComponent<Polytron>().boundSink = null;
+                sink.boundPolytron.boundSink = null;
                 hckv.Value.sink.GetComponent<PolytronSink>().boundPolytron = null;
             }
         }
@@ -577,7 +560,10 @@ public class MutatronEngine : MonoBehaviour
     {
         var unboundPolytrons = polytrons.Where(p => p.GetComponent<Polytron>().boundSink == null).ToList();
         var unboundSinksOnExternalRing = gridCellsMap.Where(hckv => hckv.Value.ring == 12 && hckv.Value.sink.GetComponent<PolytronSink>().boundPolytron == null).ToList();
+
         Debug.Assert(unboundSinksOnExternalRing.Count >= unboundPolytrons.Count);
+        Debug.Log($"unboundPolytrons: {unboundPolytrons.Count}, unboundSinksOnExternalRing: {unboundSinksOnExternalRing.Count}");
+
         for (int i = 0; i < unboundPolytrons.Count; i++)
         {
             BindPolytronToSink(unboundPolytrons[i].GetComponent<Polytron>(), unboundSinksOnExternalRing[i]);
