@@ -176,10 +176,13 @@ public class MutatronEngine : MonoBehaviour
 
     void BindPolytronToSink(Polytron p, KeyValuePair<HexCoord, HexCellData> hckv)
     {
-        if(p.boundSink) p.boundSink.boundPolytron = null;
-//         p.boundSink?.boundPolytron = null;
-        p.boundSink = hckv.Value.sink.GetComponent<PolytronSink>();
-        hckv.Value.sink.GetComponent<PolytronSink>().boundPolytron = p;
+        // if the polytron is alread bound to an old sink, reset the bound polytron of that sink
+        if (p.boundSink) p.boundSink.boundPolytron = null;
+
+        // now bound the polytron to this sink
+        PolytronSink sinkOfThisCell = hckv.Value.sink.GetComponent<PolytronSink>();
+        p.boundSink = sinkOfThisCell;
+        sinkOfThisCell.boundPolytron = p;
     }
 
 
