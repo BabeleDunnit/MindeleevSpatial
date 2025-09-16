@@ -22,7 +22,7 @@ public class MutatronEngine : MonoBehaviour
         internal int idxInRing;
         internal Vector3 worldCoords;
         internal bool isOnMetatronPattern;
-        internal GameObject sink;
+        internal PolytronSink sink;
         internal GameObject tile;
         public GameObject polytron;
         internal GameObject circle;
@@ -107,7 +107,7 @@ public class MutatronEngine : MonoBehaviour
     Polytron ChoosePolytronToAssignToSink(KeyValuePair<HexCoord, HexCellData> hckv)
     {
 
-        PolytronSink sink = hckv.Value.sink.GetComponent<PolytronSink>();
+        PolytronSink sink = hckv.Value.sink;
         Debug.Assert(sink);
 
         string tileRecipe = hckv.Value.tile.GetComponent<PolyhedronGenerator>().recipeString;
@@ -130,7 +130,7 @@ public class MutatronEngine : MonoBehaviour
         {
             if (hckv.Value.ring > actualLevelConfig.actualRingsCount) continue;
 
-            if (/*hckv.Value.isOnMetatronPattern && */ hckv.Value.sink.GetComponent<PolytronSink>().boundPolytron == null)
+            if (/*hckv.Value.isOnMetatronPattern && */ hckv.Value.sink.boundPolytron == null)
             {
                 Polytron p = ChoosePolytronToAssignToSink(hckv);
                 // hckv.Value.sink.GetComponent<PolytronSink>().boundPolytron = polytrons[0].GetComponent<Polytron>();
@@ -148,43 +148,16 @@ public class MutatronEngine : MonoBehaviour
         p.name = $"Polytron_{recipe}";
     }
 
-    /*
-        void UnbindPolytron(Polytron p)
-        {
-            foreach (var sink in gridCellsMap.Where(hckv => hckv.Value.sink.GetComponent<PolytronSink>().boundPolytron == p).Select(kv => kv.Value.sink.GetComponent<PolytronSink>()))
-            {
-                sink.boundPolytron = null;
-            }
-        }
-    */
-
     void BindPolytronToSink(Polytron p, KeyValuePair<HexCoord, HexCellData> hckv)
     {
         // if the polytron is alread bound to an old sink, reset the bound polytron of that sink
         if (p.boundSink) p.boundSink.boundPolytron = null;
 
         // now bound the polytron to this sink
-        PolytronSink sinkOfThisCell = hckv.Value.sink.GetComponent<PolytronSink>();
+        PolytronSink sinkOfThisCell = hckv.Value.sink;
         p.boundSink = sinkOfThisCell;
         sinkOfThisCell.boundPolytron = p;
     }
-
-
-    /*
-        void AttractPolytronsToSinks()
-        {
-            // BindPolytronsToSinks();
-            foreach (var sink in sinks)
-            {
-                PolytronSink sinkComponent = sink.GetComponent<PolytronSink>();
-                if (sinkComponent.boundPolytron != null)
-                {
-                    (Vector3 attractionForce, Vector3 from1To2Versor, float from1To2Distance) = CalcSpringForce(sinkComponent.boundPolytron.transform.position, sink.transform.position, sinkComponent.weight * 5f, 0.01f);
-                    sinkComponent.boundPolytron.GetComponent<Rigidbody>().AddForce(attractionForce);
-                }
-            }
-        }
-    */
 
     void AttractPolytronsToSinks()
     {
@@ -192,7 +165,7 @@ public class MutatronEngine : MonoBehaviour
         {
             // if (hckv.Value.ring > actualLevelConfig.actualRingsCount) continue;
 
-            PolytronSink sink = hckv.Value.sink.GetComponent<PolytronSink>();
+            PolytronSink sink = hckv.Value.sink;
             if (sink && sink.boundPolytron)
             {
                 (Vector3 attractionForce, Vector3 from1To2Versor, float from1To2Distance) = CalcSpringForce(sink.boundPolytron.transform.position, sink.transform.position, sink.weight * 5f, 0.01f);
@@ -246,33 +219,6 @@ public class MutatronEngine : MonoBehaviour
         }
     }
 
-/*
-    IEnumerator BuildSinksCoroutine()
-    {
-        yield return new WaitForSeconds(1f);
-        foreach (var hckv in gridCellsMap)
-        {
-            if (hckv.Value.ring <= actualLevelConfig.actualRingsCount)
-            {
-                string recipe = "tC";
-                if (hckv.Value.isOnMetatronPattern)
-                {
-                    //recipe = "ttC";
-                    //if (hckv.Value.ring == 0 && hckv.Value.idxInRing == 0) recipe = "lI";
-                    GameObject sink = PolytronsFactory.Instance.Create($"sink/{recipe}", 0.3f);
-                    sink.transform.position = new Vector3(hckv.Value.worldCoords.x, 1.0f, hckv.Value.worldCoords.z);
-                    hckv.Value.sink = sink;
-                    sinks.Add(sink);
-                    sink.GetComponent<PolytronSink>().weight = 0.2f;
-                    sink.GetComponent<PolytronSink>().hexCoord = hckv.Key;
-                    hckv.Value.actualState = true;
-                    yield return new WaitForSeconds(0.1f);
-                }
-            }
-        }
-    }
-
-*/
     void CreateHexGridDataStructure()
     {
         Vector2 center2D = new Vector2(transform.position.x, transform.position.z);
@@ -325,12 +271,12 @@ public class MutatronEngine : MonoBehaviour
         string recipe = "tC";
         GameObject sink = PolytronsFactory.Instance.Create($"sink/{recipe}", 0.3f);
         sink.transform.position = new Vector3(hckv.Value.worldCoords.x, 1.0f, hckv.Value.worldCoords.z);
-        hckv.Value.sink = sink;
+        hckv.Value.sink = sink.GetComponent<PolytronSink>();
         // sinks.Add(sink);
-        sink.GetComponent<PolytronSink>().weight = 0.2f;
-        sink.GetComponent<PolytronSink>().hexCoord = hckv.Key;
+        hckv.Value.sink.weight = 0.2f;
+        hckv.Value.sink.hexCoord = hckv.Key;
 //         sink.GetComponent<MeshRenderer>().material.color = Color.red;
-        sink.GetComponent<MeshRenderer>().enabled = false;
+        hckv.Value.sink.GetComponent<MeshRenderer>().enabled = false;
     }
 
     bool IsMetatronCoord(int ring, int idxInRing)
@@ -546,13 +492,13 @@ public class MutatronEngine : MonoBehaviour
         {
             if (hckv.Value.ring > actualLevelConfig.actualRingsCount) continue;
 
-            PolytronSink sink = hckv.Value.sink.GetComponent<PolytronSink>();
+            PolytronSink sink = hckv.Value.sink;
             Polytron polytronBoundToSink = sink.boundPolytron;
 
             if (polytronBoundToSink && polytronBoundToSink.GetComponent<Polytron>().recipeString != hckv.Value.tile.GetComponent<PolyhedronGenerator>().recipeString)
             {
                 sink.boundPolytron.boundSink = null;
-                hckv.Value.sink.GetComponent<PolytronSink>().boundPolytron = null;
+                hckv.Value.sink.boundPolytron = null;
             }
         }
     }
@@ -560,7 +506,7 @@ public class MutatronEngine : MonoBehaviour
     void SendUnboundPolytronsHome()
     {
         var unboundPolytrons = polytrons.Where(p => p.GetComponent<Polytron>().boundSink == null).ToList();
-        var unboundSinksOnExternalRing = gridCellsMap.Where(hckv => hckv.Value.ring == 12 && hckv.Value.sink.GetComponent<PolytronSink>().boundPolytron == null).ToList();
+        var unboundSinksOnExternalRing = gridCellsMap.Where(hckv => hckv.Value.ring == 12 && hckv.Value.sink.boundPolytron == null).ToList();
 
         Debug.Assert(unboundSinksOnExternalRing.Count >= unboundPolytrons.Count);
         Debug.Log($"unboundPolytrons: {unboundPolytrons.Count}, unboundSinksOnExternalRing: {unboundSinksOnExternalRing.Count}");
@@ -639,7 +585,7 @@ public class MutatronEngine : MonoBehaviour
 
         UpdatePolytronsSinks();
 
-        // SendUnboundPolytronsHome();
+        SendUnboundPolytronsHome();
 
         evolveCount++;
 
