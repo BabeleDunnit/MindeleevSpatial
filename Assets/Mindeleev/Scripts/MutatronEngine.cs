@@ -27,6 +27,8 @@ public class MutatronEngine : MonoBehaviour
         public GameObject polytron;
         internal GameObject circle;
 
+        internal bool sinkUpdated = false;
+
         // the Polytronic Number also represents a quantified energy level in some way.
         internal int polytronicNumber;
         internal int nextPolytronicNumberAccumulator;
@@ -98,8 +100,34 @@ public class MutatronEngine : MonoBehaviour
     }
 
     int polyCount = 0;
-    Polytron ChoosePolytronToAssignToSink()
+    Polytron ChoosePolytronToAssignToSink(KeyValuePair<HexCoord, HexCellData> hckv)
     {
+
+        PolytronSink sink = hckv.Value.sink.GetComponent<PolytronSink>();
+        Debug.Assert(sink);
+        // PolytronSink sink = hckv.Value.sink;
+        // string sinkRecipe = sink.GetComponent<PolyhedronGenerator>().recipeString;
+
+        // PolytronSink sink = hckv.Value.sink.GetComponent<PolytronSink>();
+        string tileRecipe = hckv.Value.tile.GetComponent<PolyhedronGenerator>().recipeString;
+
+
+        /*
+                if (!hckv.Value.sinkUpdated)
+                {
+
+
+                }
+        */
+
+        // is there any unbound polytron already with the sinkRecipe?
+        var matchingRecipePolytrons = polytrons.Where(p => p.GetComponent<Polytron>().recipeString == tileRecipe && p.GetComponent<Polytron>().boundSink == null).ToList();
+        if (matchingRecipePolytrons.Count > 0)
+        {
+            return matchingRecipePolytrons[0].GetComponent<Polytron>();
+        }
+
+
         if (polyCount >= 72) polyCount = 0;
         return polytrons[polyCount++].GetComponent<Polytron>();
     }
@@ -120,7 +148,7 @@ public class MutatronEngine : MonoBehaviour
 
             if (hckv.Value.isOnMetatronPattern)
             {
-                Polytron p = ChoosePolytronToAssignToSink();
+                Polytron p = ChoosePolytronToAssignToSink(hckv);
                 // hckv.Value.sink.GetComponent<PolytronSink>().boundPolytron = polytrons[0].GetComponent<Polytron>();
                 BindPolytronToSink(p, hckv);
                 string tileRecipe = hckv.Value.tile.GetComponent<PolyhedronGenerator>().recipeString;
@@ -136,18 +164,21 @@ public class MutatronEngine : MonoBehaviour
         p.name = $"Polytron_{recipe}";
     }
 
-
-    void UnbindPolytron(Polytron p)
-    {
-        foreach (var sink in gridCellsMap.Where(hckv => hckv.Value.sink.GetComponent<PolytronSink>().boundPolytron == p).Select(kv => kv.Value.sink.GetComponent<PolytronSink>()))
+    /*
+        void UnbindPolytron(Polytron p)
         {
-            sink.boundPolytron = null;
+            foreach (var sink in gridCellsMap.Where(hckv => hckv.Value.sink.GetComponent<PolytronSink>().boundPolytron == p).Select(kv => kv.Value.sink.GetComponent<PolytronSink>()))
+            {
+                sink.boundPolytron = null;
+            }
         }
-    }
+    */
 
     void BindPolytronToSink(Polytron p, KeyValuePair<HexCoord, HexCellData> hckv)
     {
-        UnbindPolytron(p);
+        if(p.boundSink) p.boundSink.boundPolytron = null;
+//         p.boundSink?.boundPolytron = null;
+        p.boundSink = hckv.Value.sink.GetComponent<PolytronSink>();
         hckv.Value.sink.GetComponent<PolytronSink>().boundPolytron = p;
     }
 
@@ -204,7 +235,8 @@ public class MutatronEngine : MonoBehaviour
                 polytrons.Add(polytron);
 
                 // bind the polytron to his cell
-                hckv.Value.sink.GetComponent<PolytronSink>().boundPolytron = polytron.GetComponent<Polytron>();
+                // hckv.Value.sink.GetComponent<PolytronSink>().boundPolytron = polytron.GetComponent<Polytron>();
+                BindPolytronToSink(polytron.GetComponent<Polytron>(), hckv);
             }
         }
     }
@@ -523,7 +555,20 @@ public class MutatronEngine : MonoBehaviour
         AfterTilesCreation();
     }
 
+    void UnbindNonMatchingPolytrons()
+    {
+        foreach (var hckv in gridCellsMap)
+        {
+            if (hckv.Value.ring > actualLevelConfig.actualRingsCount) continue;
 
+            Polytron polytronBoundToSink = hckv.Value.sink.GetComponent<PolytronSink>().boundPolytron;
+            if (polytronBoundToSink && polytronBoundToSink.GetComponent<Polytron>().recipeString != hckv.Value.tile.GetComponent<PolyhedronGenerator>().recipeString)
+            {
+                hckv.Value.sink.GetComponent<PolytronSink>().boundPolytron.GetComponent<Polytron>().boundSink = null;
+                hckv.Value.sink.GetComponent<PolytronSink>().boundPolytron = null;
+            }
+        }
+    }
 
     void Evolve()
     {
@@ -587,6 +632,8 @@ public class MutatronEngine : MonoBehaviour
         }
 
         UpdateTiles();
+
+        UnbindNonMatchingPolytrons();
 
         SetPolytronsSinks();
 

@@ -31,6 +31,7 @@ public class Polytron : PolyhedronGenerator,
 
     public Rigidbody RigidBody { get; set; }
 
+    public PolytronSink boundSink;
 
     public void OnPointerDown(PointerEventData eventData)
     {
