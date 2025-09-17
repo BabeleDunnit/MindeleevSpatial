@@ -2,6 +2,7 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using System.Linq;
+using Unity.VisualScripting;
 
 public class MutatronEngine : MonoBehaviour
 {
@@ -23,7 +24,7 @@ public class MutatronEngine : MonoBehaviour
         internal Vector3 worldCoords;
         internal bool isOnMetatronPattern;
         internal PolytronSink sink;
-        internal GameObject tile;
+        internal PolyhedronGenerator tile;
         public GameObject polytron;
         internal GameObject circle;
 
@@ -110,7 +111,7 @@ public class MutatronEngine : MonoBehaviour
         PolytronSink sink = hckv.Value.sink;
         Debug.Assert(sink);
 
-        string tileRecipe = hckv.Value.tile.GetComponent<PolyhedronGenerator>().recipeString;
+        string tileRecipe = hckv.Value.tile.recipeString;
 
         // is there any unbound polytron already with the sinkRecipe?
         var matchingRecipePolytrons = polytrons.Where(p => p.recipeString == tileRecipe && p.boundSink == null).ToList();
@@ -126,6 +127,18 @@ public class MutatronEngine : MonoBehaviour
     // this is called to update the positions of the polytrons after each evolution round
     void UpdatePolytronsSinks()
     {
+
+        // I must detect if any polytron can be recycled. I must do this globally, not one by one,
+        // because I could claim an unbound polytron which could be recycled to be used as new
+        // depending from the scan of the sequence of cells.
+        // so, first I must collect all the tile recipes actually present on the Mutatron
+//         var tilesRecipes = gridCellsMap.Where(c => c.Value.ring <= actualLevelConfig.actualRingsCount).Select(c => c.Value.tile.GetComponent)
+
+
+        // is there any unbound polytron already with the sinkRecipe?
+        // var matchingRecipePolytrons = polytrons.Where(p => p.recipeString == tileRecipe && p.boundSink == null).ToList();
+
+
         foreach (var hckv in gridCellsMap)
         {
             if (hckv.Value.ring > actualLevelConfig.actualRingsCount) continue;
@@ -135,7 +148,7 @@ public class MutatronEngine : MonoBehaviour
                 Polytron p = ChoosePolytronToAssignToSink(hckv);
                 // hckv.Value.sink.GetComponent<PolytronSink>().boundPolytron = polytrons[0].GetComponent<Polytron>();
                 BindPolytronToSink(p, hckv);
-                string tileRecipe = hckv.Value.tile.GetComponent<PolyhedronGenerator>().recipeString;
+                string tileRecipe = hckv.Value.tile.recipeString;
                 RebuildPolytronMesh(p, tileRecipe);
             }
         }
@@ -477,7 +490,7 @@ public class MutatronEngine : MonoBehaviour
                 tile.transform.localScale = new Vector3(1f, 0.01f, 1f);
                 tile.transform.position = hckv.Value.worldCoords + new Vector3(0, 0.1f, 0);
                 tile.transform.localRotation = tileRotation;
-                hckv.Value.tile = tile;
+                hckv.Value.tile = tile.GetComponent<PolyhedronGenerator>();
 
                 yield return new WaitForSeconds(0.15f);
             }
@@ -495,7 +508,7 @@ public class MutatronEngine : MonoBehaviour
             PolytronSink sink = hckv.Value.sink;
             Polytron polytronBoundToSink = sink.boundPolytron;
 
-            if (polytronBoundToSink && polytronBoundToSink.recipeString != hckv.Value.tile.GetComponent<PolyhedronGenerator>().recipeString)
+            if (polytronBoundToSink && polytronBoundToSink.recipeString != hckv.Value.tile.recipeString)
             {
                 sink.boundPolytron.boundSink = null;
                 hckv.Value.sink.boundPolytron = null;
@@ -595,13 +608,13 @@ public class MutatronEngine : MonoBehaviour
 
     void RebuildTileMesh(HexCoord coord, string recipe)
     {
-        GameObject tile = gridCellsMap[coord].tile;
-        if (tile != null && tile.GetComponent<PolyhedronGenerator>().recipeString != recipe)
+        PolyhedronGenerator tile = gridCellsMap[coord].tile;
+        if (tile != null && tile.recipeString != recipe)
         {
-            tile.GetComponent<PolyhedronGenerator>().recipeString = recipe;
-            tile.GetComponent<PolyhedronGenerator>().RebuildMesh();
+            tile.recipeString = recipe;
+            tile.RebuildMesh();
 
-            PolytronsFactory.CreateLabel(tile, tile.GetComponent<PolyhedronGenerator>().recipeString, Vector3.up * 10.5f);
+            PolytronsFactory.CreateLabel(tile.gameObject, tile.recipeString, Vector3.up * 10.5f);
         }
     }
 
