@@ -124,24 +124,25 @@ public class MutatronEngine : MonoBehaviour
         return polytrons[polyCount++];
     }
 
-    Polytron FindUnboundPolytron()
+    Polytron FindPolytronToBind()
     {
-        var toReturn = polytrons.Where(p => p.boundSink == null);
+        var toReturn = polytrons.Where(p => p.boundSink != null && gridCellsMap[p.boundSink.hexCoord].ring == 12);
+        // var toReturn = polytrons.Where(p => p.boundSink == null);
 
         if (toReturn.Count() == 0)
         {
-            toReturn = polytrons.Where(p => gridCellsMap[p.boundSink.hexCoord].ring == 12);
+            toReturn = polytrons.Where(p => p.boundSink == null);
         }
-
+        
         return toReturn.First();
     }
-
 
     // this is called to update the positions of the polytrons after each evolution round
     void UpdatePolytronsSinks()
     {
         // when we call this, we have unbind all the polytrons from their non-matching tiles.
-        // Maybe some tiles with a bound polytron did not change and were obviously left untouched
+        // So there are many polytrons already on the mutatron, but they are not bound to any sink.
+        // Other are bound to some tiles that did not change and were obviously left untouched.
 
         // I must detect if any polytron can be recycled. I must do this globally, not one by one,
         // because I could claim an unbound polytron which could be recycled to be used as new
@@ -157,6 +158,7 @@ public class MutatronEngine : MonoBehaviour
         var matchingRecipeUnboundPolytrons = polytrons.Where(p => tilesRecipes.Contains(p.recipeString) && p.boundSink == null);
         Debug.Log($"[UpdatePolytronsSinks] unbound polytrons with matching recipe: {matchingRecipeUnboundPolytrons.Count()}");
 
+        int rebuiltPolytrons = 0;
         int movedPolytrons = 0;
         // now for each unbound polytron with a recipe matching at least one tile try to bind the polytron
         foreach (var matchingRecipeUnboundPolytron in matchingRecipeUnboundPolytrons)
@@ -173,24 +175,23 @@ public class MutatronEngine : MonoBehaviour
                 }
             }
         }
-
+        
         // maybe not all the matchingRecipeUnboundPolytrons have been bind, because maybe there were not
-        // enough matching sinks. Let us send them home to relax
+        // enough matching sinks. Let us send them home to relax at the END of the ring 12
         foreach (var pp in matchingRecipeUnboundPolytrons.Where(p => p.boundSink == null))
         {
             var unboundSinkOnExternalRing = gridCellsMap.Where(hckv => hckv.Value.ring == 12 && hckv.Value.sink.boundPolytron == null).Last();
             BindPolytronToSink(pp, unboundSinkOnExternalRing);
         }
-
-        // now I can proceed to bind the remaining polytrons
-        int rebuiltPolytrons = 0;
+        
+        // now I can proceed to bind and rebuild the remaining polytrons and sinks
         foreach (var hckv in gridCellsMap)
         {
             if (hckv.Value.ring > actualLevelConfig.actualRingsCount) continue;
 
-            if (/*hckv.Value.isOnMetatronPattern && */ hckv.Value.sink.boundPolytron == null)
+            if (hckv.Value.sink.boundPolytron == null)
             {
-                Polytron p = FindUnboundPolytron();
+                Polytron p = FindPolytronToBind();
                 BindPolytronToSink(p, hckv);
                 string tileRecipe = hckv.Value.tile.recipeString;
                 RebuildPolytronMesh(p, tileRecipe);
