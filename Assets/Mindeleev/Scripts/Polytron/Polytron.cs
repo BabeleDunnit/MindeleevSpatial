@@ -35,17 +35,18 @@ public class Polytron : PolyhedronGenerator,
 
     public void OnPointerDown(PointerEventData eventData)
     {
-        Debug.Log($"[PointerEvent] Down on {gameObject.name}");
+        // Debug.Log($"[PointerEvent] Down on {gameObject.name}");
     }
 
     public void OnPointerUp(PointerEventData eventData)
     {
-        Debug.Log($"[PointerEvent] Up on {gameObject.name}");
+        // Debug.Log($"[PointerEvent] Up on {gameObject.name}");
     }
 
     public void OnBeginDrag(PointerEventData eventData)
     {
-        Debug.Log($"[PointerEvent] BeginDrag on {gameObject.name}");
+        // Debug.Log($"[PointerEvent] BeginDrag on {gameObject.name}");
+
         Outline o = GetComponent<Outline>();
         o.outlineColor = Color.blue;
         o.outlineWidth = 0.5f;
@@ -58,12 +59,13 @@ public class Polytron : PolyhedronGenerator,
 
     public void OnDrag(PointerEventData eventData)
     {
-        Debug.Log($"[PointerEvent] Drag on {gameObject.name}");
+        // Debug.Log($"[PointerEvent] Drag on {gameObject.name}");
     }
 
     public void OnEndDrag(PointerEventData eventData)
     {
-        Debug.Log($"[PointerEvent] EndDrag on {gameObject.name}");
+        // Debug.Log($"[PointerEvent] EndDrag on {gameObject.name}");
+
         Outline o = GetComponent<Outline>();
         o.outlineColor = Color.magenta;
         o.DisableOutline();
@@ -75,17 +77,18 @@ public class Polytron : PolyhedronGenerator,
 
     public void OnDrop(PointerEventData eventData)
     {
-        Debug.Log($"[PointerEvent] Drop on {gameObject.name}");
+        // Debug.Log($"[PointerEvent] Drop on {gameObject.name}");
     }
 
     public void OnScroll(PointerEventData eventData)
     {
-        Debug.Log($"[PointerEvent] Scroll on {gameObject.name}, delta: {eventData.scrollDelta}");
+        // Debug.Log($"[PointerEvent] Scroll on {gameObject.name}, delta: {eventData.scrollDelta}");
     }
 
     public void OnPointerEnter(PointerEventData eventData)
     {
-        Debug.Log("Pointer over object");
+        // Debug.Log("Pointer over object");
+
         Outline o = GetComponent<Outline>();
         o.outlineColor = Color.yellow;
         o.EnableOutline();
@@ -96,7 +99,8 @@ public class Polytron : PolyhedronGenerator,
 
     public void OnPointerExit(PointerEventData eventData)
     {
-        Debug.Log("Pointer left object");
+        // Debug.Log("Pointer left object");
+
         Outline o = GetComponent<Outline>();
         o.DisableOutline();
 
@@ -110,7 +114,8 @@ public class Polytron : PolyhedronGenerator,
         o.outlineColor = Color.green;
         o.DisableOutline();
         o.EnableOutline();
-        Debug.Log("[Polytron.OnPointerClick()] Object clicked!");
+
+        // Debug.Log("[Polytron.OnPointerClick()] Object clicked!");
 
         GameObject engineObj = GameObject.Find("HexCellularAutomata");
         if (engineObj != null)
@@ -191,26 +196,4 @@ public class Polytron : PolyhedronGenerator,
             transform.position = mouseWorld + offset;
         }
     }
-
-
-    /*
-        void OnEnable()
-        {
-            Engine.Register(this);
-        }
-    */
-
-    /*
-        void OnDisable()
-        {
-            Engine.Unregister(this);
-        }
-
-        void OnDestroy()
-        {
-            Engine.Unregister(this);
-        }
-
-        */
-
 }

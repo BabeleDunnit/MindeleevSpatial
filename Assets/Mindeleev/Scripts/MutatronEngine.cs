@@ -124,34 +124,81 @@ public class MutatronEngine : MonoBehaviour
         return polytrons[polyCount++];
     }
 
+    Polytron FindUnboundPolytron()
+    {
+        var toReturn = polytrons.Where(p => p.boundSink == null);
+
+        if (toReturn.Count() == 0)
+        {
+            toReturn = polytrons.Where(p => gridCellsMap[p.boundSink.hexCoord].ring == 12);
+        }
+
+        return toReturn.First();
+    }
+
+
     // this is called to update the positions of the polytrons after each evolution round
     void UpdatePolytronsSinks()
     {
+        // when we call this, we have unbind all the polytrons from their non-matching tiles.
+        // Maybe some tiles with a bound polytron did not change and were obviously left untouched
 
         // I must detect if any polytron can be recycled. I must do this globally, not one by one,
         // because I could claim an unbound polytron which could be recycled to be used as new
         // depending from the scan of the sequence of cells.
         // so, first I must collect all the tile recipes actually present on the Mutatron
-//         var tilesRecipes = gridCellsMap.Where(c => c.Value.ring <= actualLevelConfig.actualRingsCount).Select(c => c.Value.tile.GetComponent)
+        var tilesRecipes = gridCellsMap
+            .Where(c => c.Value.ring <= actualLevelConfig.actualRingsCount)
+            .Select(c => c.Value.tile.recipeString)
+            .ToList();
 
+        // now collect all the unbound polytrons which are already set on a tile recipe which did not change 
+        // (but chaged place) and bind them
+        var matchingRecipeUnboundPolytrons = polytrons.Where(p => tilesRecipes.Contains(p.recipeString) && p.boundSink == null);
+        Debug.Log($"[UpdatePolytronsSinks] unbound polytrons with matching recipe: {matchingRecipeUnboundPolytrons.Count()}");
 
-        // is there any unbound polytron already with the sinkRecipe?
-        // var matchingRecipePolytrons = polytrons.Where(p => p.recipeString == tileRecipe && p.boundSink == null).ToList();
+        int movedPolytrons = 0;
+        // now for each unbound polytron with a recipe matching at least one tile try to bind the polytron
+        foreach (var matchingRecipeUnboundPolytron in matchingRecipeUnboundPolytrons)
+        {
+            foreach (var hckv in gridCellsMap)
+            {
+                if (hckv.Value.ring > actualLevelConfig.actualRingsCount) continue;
 
+                if (hckv.Value.sink.boundPolytron == null && hckv.Value.tile.recipeString == matchingRecipeUnboundPolytron.recipeString)
+                {
+                    BindPolytronToSink(matchingRecipeUnboundPolytron, hckv);
+                    movedPolytrons++;
+                    break;
+                }
+            }
+        }
 
+        // maybe not all the matchingRecipeUnboundPolytrons have been bind, because maybe there were not
+        // enough matching sinks. Let us send them home to relax
+        foreach (var pp in matchingRecipeUnboundPolytrons.Where(p => p.boundSink == null))
+        {
+            var unboundSinkOnExternalRing = gridCellsMap.Where(hckv => hckv.Value.ring == 12 && hckv.Value.sink.boundPolytron == null).Last();
+            BindPolytronToSink(pp, unboundSinkOnExternalRing);
+        }
+
+        // now I can proceed to bind the remaining polytrons
+        int rebuiltPolytrons = 0;
         foreach (var hckv in gridCellsMap)
         {
             if (hckv.Value.ring > actualLevelConfig.actualRingsCount) continue;
 
             if (/*hckv.Value.isOnMetatronPattern && */ hckv.Value.sink.boundPolytron == null)
             {
-                Polytron p = ChoosePolytronToAssignToSink(hckv);
-                // hckv.Value.sink.GetComponent<PolytronSink>().boundPolytron = polytrons[0].GetComponent<Polytron>();
+                Polytron p = FindUnboundPolytron();
                 BindPolytronToSink(p, hckv);
                 string tileRecipe = hckv.Value.tile.recipeString;
                 RebuildPolytronMesh(p, tileRecipe);
+                rebuiltPolytrons++;
             }
         }
+
+        Debug.Log($"[UpdatePolytronsSinks] moved: {movedPolytrons}, rebuilt: {rebuiltPolytrons}");
     }
 
     void RebuildPolytronMesh(Polytron p, string recipe)
@@ -288,7 +335,7 @@ public class MutatronEngine : MonoBehaviour
         // sinks.Add(sink);
         hckv.Value.sink.weight = 0.2f;
         hckv.Value.sink.hexCoord = hckv.Key;
-//         sink.GetComponent<MeshRenderer>().material.color = Color.red;
+        //         sink.GetComponent<MeshRenderer>().material.color = Color.red;
         hckv.Value.sink.GetComponent<MeshRenderer>().enabled = false;
     }
 
@@ -501,6 +548,7 @@ public class MutatronEngine : MonoBehaviour
 
     void UnbindNonMatchingPolytrons()
     {
+        int polytronsThatWillNotMove = 0;
         foreach (var hckv in gridCellsMap)
         {
             if (hckv.Value.ring > actualLevelConfig.actualRingsCount) continue;
@@ -513,7 +561,13 @@ public class MutatronEngine : MonoBehaviour
                 sink.boundPolytron.boundSink = null;
                 hckv.Value.sink.boundPolytron = null;
             }
+            else
+            {
+                polytronsThatWillNotMove++;
+            }
         }
+
+        Debug.Log($"[UnbindNonMatchingPolytrons] polytronsThatWillNotMove: {polytronsThatWillNotMove}");
     }
 
     void SendUnboundPolytronsHome()
