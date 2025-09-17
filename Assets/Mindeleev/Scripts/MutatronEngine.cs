@@ -69,18 +69,20 @@ public class MutatronEngine : MonoBehaviour
     void BuildLevel(int levelNumber)
     {
 
+        Debug.Log($"Building level {levelNumber}");
+
         // the level number will determine the Metatron complexity
         // and set actualRingsCount, etc.
 
 
-        actualLevelConfig.actualRingsCount = 4; // max con 72 polytroni se riempi tutto: 4
+        actualLevelConfig.actualRingsCount = 4 - levelNumber; // max con 72 polytroni se riempi tutto: 4
         actualLevelConfig.energyQuantumExchanged = 1;
+
+        ResetLevel();
 
         StartCoroutine(DrawMetatronGraphicsCoroutine());
         InitializeCellsForCurrentLevel();
-        // StartCoroutine(BuildSinksCoroutine());
-        StartCoroutine(BuildInitialTilesCoroutine());
-        // StartCoroutine(ResetPolytronsCoroutine());
+        StartCoroutine(BuildTilesCoroutine());
 
         evolveCount = 0;
     }
@@ -97,7 +99,6 @@ public class MutatronEngine : MonoBehaviour
 
         CreateHexGridDataStructure();
         Create72Polytrons();
-
     }
 
 
@@ -133,8 +134,8 @@ public class MutatronEngine : MonoBehaviour
         {
             toReturn = polytrons.Where(p => p.boundSink == null);
         }
-        
-        return toReturn.First();
+
+        return toReturn.FirstOrDefault();
     }
 
     // this is called to update the positions of the polytrons after each evolution round
@@ -175,7 +176,7 @@ public class MutatronEngine : MonoBehaviour
                 }
             }
         }
-        
+
         // maybe not all the matchingRecipeUnboundPolytrons have been bind, because maybe there were not
         // enough matching sinks. Let us send them home to relax at the END of the ring 12
         foreach (var pp in matchingRecipeUnboundPolytrons.Where(p => p.boundSink == null))
@@ -183,7 +184,7 @@ public class MutatronEngine : MonoBehaviour
             var unboundSinkOnExternalRing = gridCellsMap.Where(hckv => hckv.Value.ring == 12 && hckv.Value.sink.boundPolytron == null).Last();
             BindPolytronToSink(pp, unboundSinkOnExternalRing);
         }
-        
+
         // now I can proceed to bind and rebuild the remaining polytrons and sinks
         foreach (var hckv in gridCellsMap)
         {
@@ -192,10 +193,14 @@ public class MutatronEngine : MonoBehaviour
             if (hckv.Value.sink.boundPolytron == null)
             {
                 Polytron p = FindPolytronToBind();
-                BindPolytronToSink(p, hckv);
-                string tileRecipe = hckv.Value.tile.recipeString;
-                RebuildPolytronMesh(p, tileRecipe);
-                rebuiltPolytrons++;
+                // Debug.Assert(p);
+                if (p)
+                {
+                    BindPolytronToSink(p, hckv);
+                    string tileRecipe = hckv.Value.tile.recipeString;
+                    RebuildPolytronMesh(p, tileRecipe);
+                    rebuiltPolytrons++;
+                }
             }
         }
 
@@ -235,7 +240,6 @@ public class MutatronEngine : MonoBehaviour
 
         }
     }
-
 
     void Create72Polytrons()
     {
@@ -387,6 +391,7 @@ public class MutatronEngine : MonoBehaviour
     void DrawLine(Vector3 start, Vector3 end, Color color, float width = 0.05f)
     {
         var go = new GameObject("Line");
+        go.tag = "Line";
         go.transform.SetParent(transform);
         var lr = go.AddComponent<LineRenderer>();
 
@@ -397,6 +402,43 @@ public class MutatronEngine : MonoBehaviour
         lr.startWidth = lr.endWidth = width;
         lr.sharedMaterial = GetLineMat();
         lr.startColor = lr.endColor = color;
+    }
+
+    void ResetLevel()
+    {
+        foreach (HexCellData hcd in gridCellsMap.Values)
+        {
+            if (hcd.circle)
+            {
+                GameObject.Destroy(hcd.circle);
+            }
+
+            hcd.circle = CreateCircle(hcd.ring, hcd.idxInRing);
+
+            if (hcd.tile)
+            {
+                hcd.tile.GetComponent<MeshRenderer>().enabled = false;
+            }
+        }
+
+
+        GameObject[] all = GameObject.FindObjectsOfType<GameObject>();
+        var lines = all.Where(go => go.name == "Line").ToArray();
+        foreach (var line in lines)
+        {
+            GameObject.Destroy(line);
+        }
+
+        /*
+                foreach (var line in GameObject.FindGameObjectsWithTag("Line"))
+                {
+                                        GameObject.Destroy(line);
+                }
+        */
+
+
+
+        // CreateHexGridDataStructure();
     }
 
     IEnumerator DrawMetatronGraphicsCoroutine()
@@ -521,7 +563,7 @@ public class MutatronEngine : MonoBehaviour
 
     }
 
-    IEnumerator BuildInitialTilesCoroutine()
+    IEnumerator BuildTilesCoroutine()
     {
         yield return new WaitForSeconds(1.2f);
         foreach (var hckv in gridCellsMap)
@@ -535,6 +577,7 @@ public class MutatronEngine : MonoBehaviour
                 string tileRecipe = PolyhedronRecipeKabbalah.IntToOperatorsSequence(hckv.Value.polytronicNumber) + hckv.Value.tileBasePolyhedron;
 
                 GameObject tile = PolytronsFactory.Instance.Create($"tile/{tileRecipe}", 1f);
+                tile.tag = "Tile";
                 tile.transform.localScale = new Vector3(1f, 0.01f, 1f);
                 tile.transform.position = hckv.Value.worldCoords + new Vector3(0, 0.1f, 0);
                 tile.transform.localRotation = tileRotation;
@@ -669,7 +712,7 @@ public class MutatronEngine : MonoBehaviour
             tile.recipeString = recipe;
             tile.RebuildMesh();
 
-            PolytronsFactory.CreateLabel(tile.gameObject, tile.recipeString, Vector3.up * 10.5f);
+            // PolytronsFactory.CreateLabel(tile.gameObject, tile.recipeString, Vector3.up * 10.5f);
         }
     }
 
@@ -694,24 +737,18 @@ public class MutatronEngine : MonoBehaviour
         AttractPolytronsToSinks();
     }
 
+    int levelCount = 0;
     void Update()
     {
         if (Input.GetKeyDown(KeyCode.M))
         {
-            BuildLevel(0);
+            BuildLevel(levelCount++);
         }
 
-        /*
-                if (Input.GetKeyDown(KeyCode.X))
-                {
-                    actualBehaviour = Behaviour.AttractPolytronsToSinks;
-                }
-*/
         if (Input.GetKeyDown(KeyCode.E))
         {
             Evolve();
         }
-
     }
 
     public (Vector3 attractionForce, Vector3 from1To2Versor, float from1To2Distance)
