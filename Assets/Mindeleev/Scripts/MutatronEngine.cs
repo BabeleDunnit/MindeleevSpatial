@@ -449,6 +449,8 @@ public class MutatronEngine : MonoBehaviour
 
     IEnumerator DrawMetatronGraphicsCoroutine()
     {
+        yield return new WaitForSeconds(5.0f);
+
         // Draw circles
         foreach (HexCellData hcd in gridCellsMap.Values)
         {
@@ -511,11 +513,11 @@ public class MutatronEngine : MonoBehaviour
                 KeyValuePair<HexCoord, HexCellData>? hc2 = FindCellByRingAndIdx(r, idxInRing2);
                 KeyValuePair<HexCoord, HexCellData>? hc3 = FindCellByRingAndIdx(r, idxInRing3);
                 DrawLine(hc1.Value.Value.worldCoords, hc2.Value.Value.worldCoords, Color.white, 0.045f);
-                yield return new WaitForSeconds(0.1f);
+                yield return new WaitForSeconds(0.05f);
                 DrawLine(hc2.Value.Value.worldCoords, hc3.Value.Value.worldCoords, Color.white, 0.045f);
-                yield return new WaitForSeconds(0.1f);
+                yield return new WaitForSeconds(0.05f);
                 DrawLine(hc3.Value.Value.worldCoords, hc1.Value.Value.worldCoords, Color.white, 0.045f);
-                yield return new WaitForSeconds(0.1f);
+                yield return new WaitForSeconds(0.05f);
             }
         }
         //}
@@ -536,7 +538,7 @@ public class MutatronEngine : MonoBehaviour
                     DrawLine(hc1.Value.Value.worldCoords, hc2.Value.Value.worldCoords, Color.gray, 0.01f);
                     DrawLine(hc2.Value.Value.worldCoords, hc3.Value.Value.worldCoords, Color.gray, 0.01f);
                     DrawLine(hc3.Value.Value.worldCoords, hc1.Value.Value.worldCoords, Color.gray, 0.01f);
-                    yield return new WaitForSeconds(0.1f);
+                    yield return new WaitForSeconds(0.05f);
                 }
             }
         }
@@ -571,7 +573,7 @@ public class MutatronEngine : MonoBehaviour
 
     IEnumerator BuildTilesCoroutine()
     {
-        yield return new WaitForSeconds(1.2f);
+        yield return new WaitForSeconds(5.5f);
         foreach (var hckv in gridCellsMap)
         {
             if (hckv.Value.ring <= actualLevelConfig.actualRingsCount)
