@@ -610,8 +610,9 @@ public class MutatronEngine : MonoBehaviour
 
             if (polytronBoundToSink && polytronBoundToSink.recipeString != hckv.Value.tile.recipeString)
             {
-                sink.boundPolytron.boundSink = null;
-                hckv.Value.sink.boundPolytron = null;
+                polytronBoundToSink.boundSink = null;
+                sink.boundPolytron = null;
+                // polytronBoundToSink.NextPalette();
             }
             else
             {

@@ -13,8 +13,8 @@ public class PolyhedronGenerator : MonoBehaviour
     public string recipeString = "C"; // default Cube
 
     [Header("Palettes")]
-    public List<PolyhedronPalette> palettes = new List<PolyhedronPalette>(); // Assign 10 palettes in Inspector
-    [SerializeField] private int currentPaletteIndex = 0;
+    public List<PolyhedronPalette> palettes = new List<PolyhedronPalette>();
+    private int currentPaletteIndex = 0;
 
     private bool showVertexIndices = false;
     public Material polyhedronMaterial; // Add this field
@@ -34,6 +34,7 @@ public class PolyhedronGenerator : MonoBehaviour
         Recipe = PolyhedronRecipeParser.Parse(recipeString);
 
         var palette = GetCurrentPalette();
+        Debug.Log($"[RebuildMesh] palette: {palette}, currentPaletteIndex: {currentPaletteIndex}");
         var polyData = PolyhedronRecipeBuilder.Build(Recipe, palette.colors.Count);
         var polyFinalData = Polyhedronisme.ApplyFlatShade(polyData);
         filter.mesh = Polyhedronisme.BuildMesh(polyFinalData, palette);
@@ -47,14 +48,6 @@ public class PolyhedronGenerator : MonoBehaviour
 
     PolyhedronPalette GetCurrentPalette()
     {
-        /*
-        if (sephirothPalettes == null || sephirothPalettes.Count == 0)
-        {
-            Debug.LogWarning("No palettes assigned, using default palette.");
-            return palette;
-        }
-        */
-
         if (currentPaletteIndex < 0 || currentPaletteIndex >= palettes.Count)
             currentPaletteIndex = 0;
         return palettes[currentPaletteIndex];
@@ -64,6 +57,7 @@ public class PolyhedronGenerator : MonoBehaviour
     {
         if (palettes == null || palettes.Count == 0) return;
         currentPaletteIndex = Mathf.Clamp(index, 0, palettes.Count - 1);
+        Debug.Log($"[SetPalette] currentPaletteIndex: {currentPaletteIndex}");
         RebuildMesh();
     }
 
@@ -71,6 +65,7 @@ public class PolyhedronGenerator : MonoBehaviour
     {
         if (palettes == null || palettes.Count == 0) return;
         currentPaletteIndex = (currentPaletteIndex + 1) % palettes.Count;
+        Debug.Log($"[NextPalette] currentPaletteIndex: {currentPaletteIndex}");
         RebuildMesh();
     }
 
