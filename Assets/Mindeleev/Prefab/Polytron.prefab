@@ -102,7 +102,20 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   recipeString: C
-  palette: {fileID: 11400000, guid: 805b5f8cee0194db6b7bf253c04642ca, type: 2}
+  palettes:
+  - {fileID: 11400000, guid: ffc60212218fc49178733b73fb85d961, type: 2}
+  - {fileID: 11400000, guid: 966d9d3f4012f4bd1ad73f87253ebb47, type: 2}
+  - {fileID: 11400000, guid: 1531be8998b2b47819745305a60f47da, type: 2}
+  - {fileID: 11400000, guid: b115ac828397f4f57beae783ccdb7af1, type: 2}
+  - {fileID: 11400000, guid: b4f0d57b1193b45a5a434419f8794664, type: 2}
+  - {fileID: 11400000, guid: 44462c999d4c2434db81c14047f0068d, type: 2}
+  - {fileID: 11400000, guid: d9442efa5bdbf420b9b64e155ccbee71, type: 2}
+  - {fileID: 11400000, guid: 79a8fe538ab8c42b2a30879dc6ab71f7, type: 2}
+  - {fileID: 11400000, guid: e349ff9d865e94f78b2d2b4254c9fdee, type: 2}
+  - {fileID: 11400000, guid: 81151ba2f992b4882827ac173080d926, type: 2}
+  - {fileID: 11400000, guid: 81151ba2f992b4882827ac173080d926, type: 2}
+  - {fileID: 11400000, guid: 805b5f8cee0194db6b7bf253c04642ca, type: 2}
+  currentPaletteIndex: 8
   polyhedronMaterial: {fileID: 2100000, guid: 7f629499ce79c49db9e376336efd191b, type: 2}
 --- !u!54 &-8432150149311953576
 Rigidbody:

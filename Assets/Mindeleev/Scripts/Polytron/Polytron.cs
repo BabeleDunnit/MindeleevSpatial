@@ -24,14 +24,9 @@ public class Polytron : PolyhedronGenerator,
 
     public int Id { get; set; }
 
-    // this is a strategy to encapsulate data and type of polytron behaviour (spring/mass, particleLife, etc)
-    // the PolytronEngine will switch on this to execute the relative algorithm
-    //     public PolytronPhysics Physics { get; set; }
-    // public PolytronBehaviour Behaviour { get; set; }
-
     public Rigidbody RigidBody { get; set; }
 
-    public PolytronSink boundSink;
+    internal PolytronSink boundSink;
 
     public void OnPointerDown(PointerEventData eventData)
     {
@@ -54,7 +49,6 @@ public class Polytron : PolyhedronGenerator,
         o.EnableOutline();
 
         BeginDrag();
-
     }
 
     public void OnDrag(PointerEventData eventData)
