@@ -2,7 +2,7 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using System.Linq;
-using Unity.VisualScripting;
+using System;
 
 public class MutatronEngine : MonoBehaviour
 {
@@ -66,6 +66,20 @@ public class MutatronEngine : MonoBehaviour
         PrintDebugStats("End of InitializeCellsForCurrentLevel");
     }
 
+    void SendAllPolytronsHome()
+    {
+        foreach (var polytron in polytrons)
+        {
+            if (polytron.boundSink)
+            {
+                polytron.boundSink.boundPolytron = null;
+                polytron.boundSink = null;
+            }
+        }
+
+        SendUnboundPolytronsHome();
+    }
+
     void BuildLevel(int levelNumber)
     {
 
@@ -78,10 +92,12 @@ public class MutatronEngine : MonoBehaviour
         actualLevelConfig.actualRingsCount = 4 - levelNumber; // max con 72 polytroni se riempi tutto: 4
         actualLevelConfig.energyQuantumExchanged = 1;
 
-        ResetLevel();
+        ResetLevelGraphics();
+        SendAllPolytronsHome();
+        InitializeCellsForCurrentLevel();
+        
 
         StartCoroutine(DrawMetatronGraphicsCoroutine());
-        InitializeCellsForCurrentLevel();
         StartCoroutine(BuildTilesCoroutine());
 
         evolveCount = 0;
@@ -404,7 +420,7 @@ public class MutatronEngine : MonoBehaviour
         lr.startColor = lr.endColor = color;
     }
 
-    void ResetLevel()
+    void ResetLevelGraphics()
     {
         foreach (HexCellData hcd in gridCellsMap.Values)
         {
@@ -418,9 +434,9 @@ public class MutatronEngine : MonoBehaviour
             if (hcd.tile)
             {
                 hcd.tile.GetComponent<MeshRenderer>().enabled = false;
+                GameObject.Destroy(hcd.tile);
             }
         }
-
 
         GameObject[] all = GameObject.FindObjectsOfType<GameObject>();
         var lines = all.Where(go => go.name == "Line").ToArray();
@@ -429,16 +445,6 @@ public class MutatronEngine : MonoBehaviour
             GameObject.Destroy(line);
         }
 
-        /*
-                foreach (var line in GameObject.FindGameObjectsWithTag("Line"))
-                {
-                                        GameObject.Destroy(line);
-                }
-        */
-
-
-
-        // CreateHexGridDataStructure();
     }
 
     IEnumerator DrawMetatronGraphicsCoroutine()
