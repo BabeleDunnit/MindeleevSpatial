@@ -113,10 +113,13 @@ public class PolyhedronRecipe
 {
     public List<RecipeToken> Tokens { get; set; } = new List<RecipeToken>();
     public char BasePolyhedron { get; set; }
+    public int PaletteIdx { get; set; } = 0; // NEW: Palette index, default 0
 
     public override string ToString()
     {
-        return string.Concat(Tokens.Select(t => t.ToString())) + BasePolyhedron;
+        string ops = string.Concat(Tokens.Select(t => t.ToString()));
+        string paletteStr = PaletteIdx.ToString("D2");
+        return $"{ops}{paletteStr}{BasePolyhedron}";
     }
 }
 
@@ -151,10 +154,20 @@ public static class PolyhedronRecipeParser
             throw new ArgumentException("No base polyhedron found in recipe.");
 
         char basePoly = recipe[basePos];
-        string opsPart = recipe.Substring(0, basePos);
+        string opsAndPalette = recipe.Substring(0, basePos);
+
+        // NEW: Palette index parsing (last two digits before basePolyhedron)
+        int paletteIdx = 0;
+        string opsPart = opsAndPalette;
+        if (opsAndPalette.Length >= 2 &&
+            char.IsDigit(opsAndPalette[opsAndPalette.Length - 2]) &&
+            char.IsDigit(opsAndPalette[opsAndPalette.Length - 1]))
+        {
+            paletteIdx = int.Parse(opsAndPalette.Substring(opsAndPalette.Length - 2, 2));
+            opsPart = opsAndPalette.Substring(0, opsAndPalette.Length - 2);
+        }
 
         var tokens = new List<RecipeToken>();
-
         foreach (Match match in TokenRegex.Matches(opsPart))
         {
             string op = match.Groups[1].Value;
@@ -244,7 +257,8 @@ public static class PolyhedronRecipeParser
         return new PolyhedronRecipe
         {
             Tokens = tokens,
-            BasePolyhedron = basePoly
+            BasePolyhedron = basePoly,
+            PaletteIdx = paletteIdx
         };
     }
 

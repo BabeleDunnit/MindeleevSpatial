@@ -18,7 +18,7 @@ public class PolyhedronRecipeTests
     [Test]
     public void Test_Parse_SimpleRecipe()
     {
-        var recipe = "t(1,2,0.5)k(3,1,0.2)C";
+        var recipe = "t(1,2,0.5)k(3,1,0.2)00C";
         var parsed = PolyhedronRecipeParser.Parse(recipe);
 
         Assert.AreEqual('C', parsed.BasePolyhedron);
@@ -35,6 +35,8 @@ public class PolyhedronRecipeTests
         Assert.AreEqual(3, parsed.Tokens[1].PositionalParameters[0]);
         Assert.AreEqual(1, parsed.Tokens[1].PositionalParameters[1]);
         Assert.AreEqual(0.2f, (float)parsed.Tokens[1].PositionalParameters[2], 1e-6);
+
+        Assert.AreEqual(0, parsed.PaletteIdx);
 
         Assert.AreEqual(recipe, parsed.ToString());
     }
@@ -149,14 +151,15 @@ public class PolyhedronRecipeTests
     [Test]
     public void Test_NamedParameter_Defaults()
     {
-        var recipe = "k()C";
+        var recipe = "k()09C";
         var parsed = PolyhedronRecipeParser.Parse(recipe);
 
         Assert.AreEqual(1, parsed.Tokens[0].Parameter("faceSignatureRounding"));
         Assert.AreEqual(0, parsed.Tokens[0].Parameter("facesSidesFilter"));
         Assert.AreEqual(0.1f, (float)parsed.Tokens[0].Parameter("centerVertexHeight"), 1e-6);
+        Assert.AreEqual(9, parsed.PaletteIdx);
 
-        Assert.AreEqual("k(1,0,0.1)C", parsed.ToString());
+        Assert.AreEqual("k(1,0,0.1)09C", parsed.ToString());
 
     }
 
@@ -197,11 +200,12 @@ public class PolyhedronRecipeTests
     [Test]
     public void Test_NamedParameter_Ambo2()
     {
-        var recipe = "a(5)C";
+        var recipe = "a(5)99C";
         var parsed = PolyhedronRecipeParser.Parse(recipe);
 
         Assert.AreEqual(5, parsed.Tokens[0].Parameter("faceSignatureRounding"));
-        Assert.AreEqual("a(5)C", parsed.ToString());
+        Assert.AreEqual(99, parsed.PaletteIdx);
+        Assert.AreEqual("a(5)99C", parsed.ToString());
     }
 
 
@@ -209,11 +213,12 @@ public class PolyhedronRecipeTests
     [Test]
     public void Test_NamedParameter_Dual()
     {
-        var recipe = "d()C";
+        var recipe = "d()11C";
         var parsed = PolyhedronRecipeParser.Parse(recipe);
 
         Assert.AreEqual(1, parsed.Tokens[0].Parameter("faceSignatureRounding"));
-        Assert.AreEqual("d(1)C", parsed.ToString());
+        Assert.AreEqual(11, parsed.PaletteIdx);
+        Assert.AreEqual("d(1)11C", parsed.ToString());
     }
 
     [Test]
