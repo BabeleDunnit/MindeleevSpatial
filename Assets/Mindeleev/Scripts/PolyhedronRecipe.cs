@@ -124,13 +124,108 @@ public class PolyhedronRecipe
 {
     public List<RecipeToken> Tokens { get; set; } = new List<RecipeToken>();
     public char BasePolyhedron { get; set; }
-    public int PaletteIdx { get; set; } = 0; // NEW: Palette index, default 0
+    public int PaletteIdx { get; set; } = 0;
+
+    // Operator names table (first letter uppercase)
+    public static readonly Dictionary<string, string> OperatorNames = new Dictionary<string, string>
+    {
+        { "a", "Am" },
+        { "d", "Du" },
+        { "k", "Ki" },
+        { "t", "Tru" },
+        { "n", "In" },
+        { "l", "Ste" },
+        { "c", "Col" }
+    };
+
+    /*
+        // Palette names table (first letter uppercase)
+        public static readonly string[] PaletteNames = new string[]
+        {
+            "Rgbcmy",      // 0
+            "Kether",      // 1
+            "Chokmah",     // 2
+            "Binah",       // 3
+            "Chesed",      // 4
+            "Geburah",     // 5
+            "Tiphareth",   // 6
+            "Netzach",     // 7
+            "Hod",         // 8
+            "Yesod",       // 9
+            "Malkuth"      // 10
+        };
+    */
+
+    public static readonly string[] PaletteNames = new string[]
+    {
+        "Arch",      // 0
+        "Ket",      // 1
+        "Chok",     // 2
+        "Bin",       // 3
+        "Ches",      // 4
+        "Geb",     // 5
+        "Tiph",   // 6
+        "Netz",     // 7
+        "Hod",         // 8
+        "Yes",       // 9
+        "Malk"      // 10
+    };
+
+
+    /*
+        // Base polyhedron names table (first letter uppercase)
+        public static readonly Dictionary<char, string> PolyhedronNames = new Dictionary<char, string>
+        {
+            { 'C', "Cube" },
+            { 'T', "Tetrahedron" },
+            { 'O', "Octahedron" },
+            { 'D', "Dodecahedron" },
+            { 'I', "Icosahedron" }
+        };
+    */
+
+    public static readonly Dictionary<char, string> PolyhedronNames = new Dictionary<char, string>
+    {
+        { 'C', "Cub" },
+        { 'T', "Tet" },
+        { 'O', "Oct" },
+        { 'D', "Dod" },
+        { 'I', "Ico" }
+    };
 
     public override string ToString()
     {
         string ops = string.Concat(Tokens.Select(t => t.ToString()));
         string paletteStr = PaletteIdx.ToString("D2");
         return $"{ops}{paletteStr}{BasePolyhedron}";
+    }
+
+    /// <summary>
+    /// Generates a human-readable name for the current recipe/emanation.
+    /// </summary>
+    public string RecipeName()
+    {
+        // Concatenate operator names
+        var opNames = Tokens.Select(t =>
+        {
+            if (OperatorNames.TryGetValue(t.Operator, out var name))
+                return name;
+            return char.ToUpperInvariant(t.Operator[0]) + t.Operator.Substring(1).ToLowerInvariant();
+        });
+
+        string opsPart = string.Join("", opNames);
+
+        // Palette name
+        string paletteName = (PaletteIdx >= 0 && PaletteIdx < PaletteNames.Length)
+            ? PaletteNames[PaletteIdx]
+            : $"Palette{PaletteIdx}";
+
+        // Base polyhedron name
+        string polyName = PolyhedronNames.TryGetValue(BasePolyhedron, out var pname)
+            ? pname
+            : char.ToUpperInvariant(BasePolyhedron).ToString();
+
+        return $"{opsPart}{paletteName}{polyName}";
     }
 }
 
@@ -387,9 +482,6 @@ public static class PolyhedronRecipeBuilder
                     break;
                 case "l":
                     current = Polyhedronisme.ApplyStellation(current, faceSignatureRounding);
-                    break;
-                case "f":
-                    current = Polyhedronisme.ApplyFuckedStellation(current, faceSignatureRounding);
                     break;
                 case "c":
                     if (token.NamedParameters.TryGetValue("colorRemap", out var remapObj) && remapObj is Dictionary<int, int> remapDict)

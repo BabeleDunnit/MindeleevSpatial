@@ -101,7 +101,7 @@ public class PolyhedronRecipeTests
         Assert.AreEqual(0, parsed.Tokens[0].PositionalParameters[1]);
         Assert.AreEqual(0.1f, (float)parsed.Tokens[0].PositionalParameters[2], 1e-6);
 
-//         Assert.AreEqual(recipe, parsed.ToString());
+        //         Assert.AreEqual(recipe, parsed.ToString());
     }
 
     [Test]
@@ -119,8 +119,27 @@ public class PolyhedronRecipeTests
         Assert.AreEqual(0, parsed.Tokens[0].PositionalParameters[1]);
         Assert.AreEqual(0.1f, (float)parsed.Tokens[0].PositionalParameters[2], 1e-6);
 
-        // Assert.AreEqual(recipe, parsed.ToString());
+        Assert.AreEqual("t(1,0,0.1)00C", parsed.ToString());
     }
+
+    [Test]
+    public void Test_Parse_RecipeName2()
+    {
+        var recipe = "tnlkC";
+        var parsed = PolyhedronRecipeParser.Parse(recipe);
+
+        Assert.AreEqual("TruInSteKiArchCub", parsed.RecipeName());
+    }
+
+    [Test]
+    public void Test_Parse_RecipeName01()
+    {
+        var recipe = "dkdkakd05T";
+        var parsed = PolyhedronRecipeParser.Parse(recipe);
+        Assert.AreEqual("DuKiDuKiAmKiDuGebTet", parsed.RecipeName());
+
+    }
+
 
     [Test]
     public void Test_NamedParameter_Overrides_Positional()
@@ -357,9 +376,10 @@ public class PolyhedronRecipeTests
     [Test]
     public void Test_AllPermutationsWithRepetitions()
     {
-        var chars = new HashSet<char> { 'a', 'b', 'c' };
+        var chars = new HashSet<char> { 'a', 'd', 't' };
         var perms = PolyhedronRecipeUtils.AllPermutationsWithRepetition(chars, 5);
         Debug.Log($"Permutations with repetitions: {string.Join(", ", perms)}");
+        Debug.Log($"Names: {string.Join(", ", perms.Skip(1).Select(r => PolyhedronRecipeParser.Parse(r + "03C").RecipeName()))}");
 
     }
 
@@ -721,7 +741,7 @@ public class PolyhedronRecipeTests
         CsvTable csv = new();
         csv.AddRow("idx", "OpSeq", "T", "C", "O", "D", "I");
 
-        List<Dictionary<int, float>> energies = new List<Dictionary<int,float>>();
+        List<Dictionary<int, float>> energies = new List<Dictionary<int, float>>();
         List<string> opSeqs = new();
         List<string> polys = new List<string>
         {
@@ -774,7 +794,7 @@ public class PolyhedronRecipeTests
 
         for (int i = 0; i < 72; i++)
         {
-            
+
             bool equals = true;
             for (int p = 1; p < 5; p++)
             {
