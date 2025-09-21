@@ -98,6 +98,8 @@ public class PolyhedronRecipeTests
         Assert.AreEqual(1, parsed.Tokens[0].PositionalParameters[0]);
         Assert.AreEqual(0, parsed.Tokens[0].PositionalParameters[1]);
         Assert.AreEqual(0.1f, (float)parsed.Tokens[0].PositionalParameters[2], 1e-6);
+
+//         Assert.AreEqual(recipe, parsed.ToString());
     }
 
     [Test]
@@ -114,6 +116,8 @@ public class PolyhedronRecipeTests
         Assert.AreEqual(1, parsed.Tokens[0].PositionalParameters[0]);
         Assert.AreEqual(0, parsed.Tokens[0].PositionalParameters[1]);
         Assert.AreEqual(0.1f, (float)parsed.Tokens[0].PositionalParameters[2], 1e-6);
+
+        // Assert.AreEqual(recipe, parsed.ToString());
     }
 
     [Test]
@@ -128,6 +132,7 @@ public class PolyhedronRecipeTests
 
         Assert.AreEqual(2, parsed.Tokens[0].PositionalParameters[0]);
 
+        Assert.AreEqual("k(2,3,-0.5)C", parsed.ToString());
     }
 
     [Test]
@@ -150,6 +155,9 @@ public class PolyhedronRecipeTests
         Assert.AreEqual(1, parsed.Tokens[0].Parameter("faceSignatureRounding"));
         Assert.AreEqual(0, parsed.Tokens[0].Parameter("facesSidesFilter"));
         Assert.AreEqual(0.1f, (float)parsed.Tokens[0].Parameter("centerVertexHeight"), 1e-6);
+
+        Assert.AreEqual("k(1,0,0.1)C", parsed.ToString());
+
     }
 
     [Test]
@@ -183,7 +191,20 @@ public class PolyhedronRecipeTests
         var parsed = PolyhedronRecipeParser.Parse(recipe);
 
         Assert.AreEqual(5, parsed.Tokens[0].Parameter("faceSignatureRounding"));
+        Assert.AreEqual("a(5)C", parsed.ToString());
     }
+
+    [Test]
+    public void Test_NamedParameter_Ambo2()
+    {
+        var recipe = "a(5)C";
+        var parsed = PolyhedronRecipeParser.Parse(recipe);
+
+        Assert.AreEqual(5, parsed.Tokens[0].Parameter("faceSignatureRounding"));
+        Assert.AreEqual("a(5)C", parsed.ToString());
+    }
+
+
 
     [Test]
     public void Test_NamedParameter_Dual()
@@ -192,6 +213,7 @@ public class PolyhedronRecipeTests
         var parsed = PolyhedronRecipeParser.Parse(recipe);
 
         Assert.AreEqual(1, parsed.Tokens[0].Parameter("faceSignatureRounding"));
+        Assert.AreEqual("d(1)C", parsed.ToString());
     }
 
     [Test]
