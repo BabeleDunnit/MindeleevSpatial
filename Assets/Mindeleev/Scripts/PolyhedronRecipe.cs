@@ -74,35 +74,46 @@ public class RecipeToken
 
     public override string ToString()
     {
-        // Special case for color remap operator
-        if (Operator == "c" && NamedParameters.TryGetValue("colorRemap", out var remapObj) && remapObj is Dictionary<int, int> remapDict)
+        // Get the operator
+        string op = Operator;
+
+        // Determine how many positional parameters to output
+        int paramCount = PositionalParameters.Count;
+
+        // Build the parameter list, using named overrides if present
+        var paramList = new List<string>();
+        for (int i = 0; i < paramCount; i++)
         {
-            var pairs = remapDict.Select(kv => $"{kv.Key}:{kv.Value}");
-            return $"{Operator}({string.Join(",", pairs)})";
+            string key = null;
+            if (OperatorParamMap.TryGetValue(op, out var paramMap) && i < paramMap.Length)
+                key = paramMap[i].key;
+
+            object value = null;
+            if (key != null && NamedParameters.ContainsKey(key))
+                value = NamedParameters[key];
+            else
+                value = PositionalParameters[i];
+
+            paramList.Add(ParameterToString(value));
         }
 
-        var paramList = new List<string>();
-        // Add positional parameters
-        paramList.AddRange(PositionalParameters.Select(p => FormatParam(p)));
-        // Add named parameters (not already present as positional)
-        foreach (var kv in NamedParameters)
-        {
-            // Skip colorRemap for c operator, already handled above
-            if (Operator == "c" && kv.Key == "colorRemap") continue;
-            paramList.Add($"{kv.Key}:{FormatParam(kv.Value)}");
-        }
-        if (paramList.Count == 0)
-            return Operator;
-        return $"{Operator}({string.Join(",", paramList)})";
+        // If there are parameters, output them in parentheses
+        if (paramList.Count > 0)
+            return $"{op}({string.Join(",", paramList)})";
+        else
+            return op;
     }
 
-    private string FormatParam(object p)
+    // Helper to convert parameter to string
+    private string ParameterToString(object value)
     {
-        if (p is float f)
-            return f.ToString("0.###", CultureInfo.InvariantCulture);
-        if (p is Dictionary<int, int> dict)
-            return string.Join(",", dict.Select(kv => $"{kv.Key}:{kv.Value}"));
-        return p.ToString();
+        if (value is float f)
+            return f.ToString("G", CultureInfo.InvariantCulture);
+        if (value is double d)
+            return d.ToString("G", CultureInfo.InvariantCulture);
+        if (value is KeyValuePair<string, object> kv)
+            return $"{kv.Key}:{kv.Value}";
+        return value?.ToString() ?? "";
     }
 }
 

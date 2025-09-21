@@ -134,7 +134,7 @@ public class PolyhedronRecipeTests
 
         Assert.AreEqual(2, parsed.Tokens[0].PositionalParameters[0]);
 
-        Assert.AreEqual("k(2,3,-0.5)C", parsed.ToString());
+        Assert.AreEqual("k(2,3,-0.5)00C", parsed.ToString());
     }
 
     [Test]
@@ -190,11 +190,11 @@ public class PolyhedronRecipeTests
     [Test]
     public void Test_NamedParameter_Ambo()
     {
-        var recipe = "a(faceSignatureRounding:5)C";
+        var recipe = "a(faceSignatureRounding:5)08C";
         var parsed = PolyhedronRecipeParser.Parse(recipe);
 
         Assert.AreEqual(5, parsed.Tokens[0].Parameter("faceSignatureRounding"));
-        Assert.AreEqual("a(5)C", parsed.ToString());
+        Assert.AreEqual("a(5)08C", parsed.ToString());
     }
 
     [Test]
