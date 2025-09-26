@@ -109,8 +109,9 @@ public class Polytron : PolyhedronGenerator,
         o.DisableOutline();
         o.EnableOutline();
 
-        // Debug.Log("[Polytron.OnPointerClick()] Object clicked!");
+        Debug.Log("[Polytron.OnPointerClick()] Object clicked!");
 
+/*
         GameObject engineObj = GameObject.Find("HexCellularAutomata");
         if (engineObj != null)
         {
@@ -130,6 +131,7 @@ public class Polytron : PolyhedronGenerator,
         {
             Debug.LogWarning("GameObject 'PolytronEngine02' not found.");
         }
+        */
     }
 
     private bool isDragging = false;
