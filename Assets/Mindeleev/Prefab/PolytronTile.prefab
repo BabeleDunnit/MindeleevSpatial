@@ -97,5 +97,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   recipeString: C
-  palette: {fileID: 11400000, guid: ab28b9e93145b4817acdbd1ce6e25861, type: 2}
+  palettes:
+  - {fileID: 11400000, guid: ab28b9e93145b4817acdbd1ce6e25861, type: 2}
+  currentPaletteIndex: 0
   polyhedronMaterial: {fileID: 2100000, guid: 7f629499ce79c49db9e376336efd191b, type: 2}

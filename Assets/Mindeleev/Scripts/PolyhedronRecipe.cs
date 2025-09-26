@@ -74,35 +74,46 @@ public class RecipeToken
 
     public override string ToString()
     {
-        // Special case for color remap operator
-        if (Operator == "c" && NamedParameters.TryGetValue("colorRemap", out var remapObj) && remapObj is Dictionary<int, int> remapDict)
+        // Get the operator
+        string op = Operator;
+
+        // Determine how many positional parameters to output
+        int paramCount = PositionalParameters.Count;
+
+        // Build the parameter list, using named overrides if present
+        var paramList = new List<string>();
+        for (int i = 0; i < paramCount; i++)
         {
-            var pairs = remapDict.Select(kv => $"{kv.Key}:{kv.Value}");
-            return $"{Operator}({string.Join(",", pairs)})";
+            string key = null;
+            if (OperatorParamMap.TryGetValue(op, out var paramMap) && i < paramMap.Length)
+                key = paramMap[i].key;
+
+            object value = null;
+            if (key != null && NamedParameters.ContainsKey(key))
+                value = NamedParameters[key];
+            else
+                value = PositionalParameters[i];
+
+            paramList.Add(ParameterToString(value));
         }
 
-        var paramList = new List<string>();
-        // Add positional parameters
-        paramList.AddRange(PositionalParameters.Select(p => FormatParam(p)));
-        // Add named parameters (not already present as positional)
-        foreach (var kv in NamedParameters)
-        {
-            // Skip colorRemap for c operator, already handled above
-            if (Operator == "c" && kv.Key == "colorRemap") continue;
-            paramList.Add($"{kv.Key}:{FormatParam(kv.Value)}");
-        }
-        if (paramList.Count == 0)
-            return Operator;
-        return $"{Operator}({string.Join(",", paramList)})";
+        // If there are parameters, output them in parentheses
+        if (paramList.Count > 0)
+            return $"{op}({string.Join(",", paramList)})";
+        else
+            return op;
     }
 
-    private string FormatParam(object p)
+    // Helper to convert parameter to string
+    private string ParameterToString(object value)
     {
-        if (p is float f)
-            return f.ToString("0.###", CultureInfo.InvariantCulture);
-        if (p is Dictionary<int, int> dict)
-            return string.Join(",", dict.Select(kv => $"{kv.Key}:{kv.Value}"));
-        return p.ToString();
+        if (value is float f)
+            return f.ToString("G", CultureInfo.InvariantCulture);
+        if (value is double d)
+            return d.ToString("G", CultureInfo.InvariantCulture);
+        if (value is KeyValuePair<string, object> kv)
+            return $"{kv.Key}:{kv.Value}";
+        return value?.ToString() ?? "";
     }
 }
 
@@ -113,10 +124,108 @@ public class PolyhedronRecipe
 {
     public List<RecipeToken> Tokens { get; set; } = new List<RecipeToken>();
     public char BasePolyhedron { get; set; }
+    public int PaletteIdx { get; set; } = 0;
+
+    // Operator names table (first letter uppercase)
+    public static readonly Dictionary<string, string> OperatorNames = new Dictionary<string, string>
+    {
+        { "a", "Am" },
+        { "d", "Du" },
+        { "k", "Ki" },
+        { "t", "Tru" },
+        { "n", "In" },
+        { "l", "Ste" },
+        { "c", "Col" }
+    };
+
+    /*
+        // Palette names table (first letter uppercase)
+        public static readonly string[] PaletteNames = new string[]
+        {
+            "Rgbcmy",      // 0
+            "Kether",      // 1
+            "Chokmah",     // 2
+            "Binah",       // 3
+            "Chesed",      // 4
+            "Geburah",     // 5
+            "Tiphareth",   // 6
+            "Netzach",     // 7
+            "Hod",         // 8
+            "Yesod",       // 9
+            "Malkuth"      // 10
+        };
+    */
+
+    public static readonly string[] PaletteNames = new string[]
+    {
+        "Arch",      // 0
+        "Ket",      // 1
+        "Chok",     // 2
+        "Bin",       // 3
+        "Ches",      // 4
+        "Geb",     // 5
+        "Tiph",   // 6
+        "Netz",     // 7
+        "Hod",         // 8
+        "Yes",       // 9
+        "Malk"      // 10
+    };
+
+
+    /*
+        // Base polyhedron names table (first letter uppercase)
+        public static readonly Dictionary<char, string> PolyhedronNames = new Dictionary<char, string>
+        {
+            { 'C', "Cube" },
+            { 'T', "Tetrahedron" },
+            { 'O', "Octahedron" },
+            { 'D', "Dodecahedron" },
+            { 'I', "Icosahedron" }
+        };
+    */
+
+    public static readonly Dictionary<char, string> PolyhedronNames = new Dictionary<char, string>
+    {
+        { 'C', "Cub" },
+        { 'T', "Tet" },
+        { 'O', "Oct" },
+        { 'D', "Dod" },
+        { 'I', "Ico" }
+    };
 
     public override string ToString()
     {
-        return string.Concat(Tokens.Select(t => t.ToString())) + BasePolyhedron;
+        string ops = string.Concat(Tokens.Select(t => t.ToString()));
+        string paletteStr = PaletteIdx.ToString("D2");
+        return $"{ops}{paletteStr}{BasePolyhedron}";
+    }
+
+    /// <summary>
+    /// Generates a human-readable name for the current recipe/emanation.
+    /// </summary>
+    public string RecipeName()
+    {
+        // Concatenate operator names
+        var opNames = Tokens.Select(t =>
+        {
+            if (OperatorNames.TryGetValue(t.Operator, out var name))
+                return name;
+            return char.ToUpperInvariant(t.Operator[0]) + t.Operator.Substring(1).ToLowerInvariant();
+        });
+
+        string opsPart = string.Join("", opNames);
+
+        // Palette name
+        string paletteName = (PaletteIdx >= 0 && PaletteIdx < PaletteNames.Length)
+            ? PaletteNames[PaletteIdx]
+            : $"Palette{PaletteIdx}";
+
+        // Base polyhedron name
+        string polyName = PolyhedronNames.TryGetValue(BasePolyhedron, out var pname)
+            ? pname
+            : char.ToUpperInvariant(BasePolyhedron).ToString();
+
+        return $"{opsPart}{paletteName}{polyName}";
     }
 }
 
@@ -151,10 +260,20 @@ public static class PolyhedronRecipeParser
             throw new ArgumentException("No base polyhedron found in recipe.");
 
         char basePoly = recipe[basePos];
-        string opsPart = recipe.Substring(0, basePos);
+        string opsAndPalette = recipe.Substring(0, basePos);
+
+        // NEW: Palette index parsing (last two digits before basePolyhedron)
+        int paletteIdx = 0;
+        string opsPart = opsAndPalette;
+        if (opsAndPalette.Length >= 2 &&
+            char.IsDigit(opsAndPalette[opsAndPalette.Length - 2]) &&
+            char.IsDigit(opsAndPalette[opsAndPalette.Length - 1]))
+        {
+            paletteIdx = int.Parse(opsAndPalette.Substring(opsAndPalette.Length - 2, 2));
+            opsPart = opsAndPalette.Substring(0, opsAndPalette.Length - 2);
+        }
 
         var tokens = new List<RecipeToken>();
-
         foreach (Match match in TokenRegex.Matches(opsPart))
         {
             string op = match.Groups[1].Value;
@@ -244,7 +363,8 @@ public static class PolyhedronRecipeParser
         return new PolyhedronRecipe
         {
             Tokens = tokens,
-            BasePolyhedron = basePoly
+            BasePolyhedron = basePoly,
+            PaletteIdx = paletteIdx
         };
     }
 
@@ -362,9 +482,6 @@ public static class PolyhedronRecipeBuilder
                     break;
                 case "l":
                     current = Polyhedronisme.ApplyStellation(current, faceSignatureRounding);
-                    break;
-                case "f":
-                    current = Polyhedronisme.ApplyFuckedStellation(current, faceSignatureRounding);
                     break;
                 case "c":
                     if (token.NamedParameters.TryGetValue("colorRemap", out var remapObj) && remapObj is Dictionary<int, int> remapDict)

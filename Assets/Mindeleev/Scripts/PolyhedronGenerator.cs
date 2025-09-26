@@ -7,15 +7,15 @@ using System.Globalization;
 [RequireComponent(typeof(MeshFilter), typeof(MeshRenderer))]
 public class PolyhedronGenerator : MonoBehaviour
 {
-
     /* ------------------------------------------------------------------
      *  Inspector settings
      * ----------------------------------------------------------------*/
     public string recipeString = "C"; // default Cube
-    public PolyhedronPalette palette;
-    
-    // TBD
-    public List<PolyhedronPalette> palettesDict;
+
+    [Header("Palettes")]
+    public List<PolyhedronPalette> palettes = new List<PolyhedronPalette>();
+    private int currentPaletteIndex = 0;
+
     private bool showVertexIndices = false;
     public Material polyhedronMaterial; // Add this field
     public PolyhedronRecipe Recipe { get; set; }
@@ -28,11 +28,13 @@ public class PolyhedronGenerator : MonoBehaviour
 
     public void RebuildMesh()
     {
-
         MeshFilter filter = GetComponent<MeshFilter>();
         MeshRenderer renderer = GetComponent<MeshRenderer>();
 
         Recipe = PolyhedronRecipeParser.Parse(recipeString);
+
+        var palette = GetCurrentPalette();
+        Debug.Log($"[RebuildMesh] palette: {palette}, currentPaletteIndex: {currentPaletteIndex}");
         var polyData = PolyhedronRecipeBuilder.Build(Recipe, palette.colors.Count);
         var polyFinalData = Polyhedronisme.ApplyFlatShade(polyData);
         filter.mesh = Polyhedronisme.BuildMesh(polyFinalData, palette);
@@ -42,6 +44,36 @@ public class PolyhedronGenerator : MonoBehaviour
         {
             ShowVertexIndices(polyData.Item1); // Use logical vertices
         }
+    }
+
+    PolyhedronPalette GetCurrentPalette()
+    {
+        if (currentPaletteIndex < 0 || currentPaletteIndex >= palettes.Count)
+            currentPaletteIndex = 0;
+        return palettes[currentPaletteIndex];
+    }
+
+    public void SetPalette(int index)
+    {
+        if (palettes == null || palettes.Count == 0) return;
+        currentPaletteIndex = Mathf.Clamp(index, 0, palettes.Count - 1);
+        Debug.Log($"[SetPalette] currentPaletteIndex: {currentPaletteIndex}");
+        RebuildMesh();
+    }
+
+    public void NextPalette()
+    {
+        if (palettes == null || palettes.Count == 0) return;
+        currentPaletteIndex = (currentPaletteIndex + 1) % palettes.Count;
+        Debug.Log($"[NextPalette] currentPaletteIndex: {currentPaletteIndex}");
+        RebuildMesh();
+    }
+
+    public void PreviousPalette()
+    {
+        if (palettes == null || palettes.Count == 0) return;
+        currentPaletteIndex = (currentPaletteIndex - 1 + palettes.Count) % palettes.Count;
+        RebuildMesh();
     }
 
     /* ------------------------- MATERIAL ------------------------------ */
@@ -54,7 +86,6 @@ public class PolyhedronGenerator : MonoBehaviour
         }
 
         renderer.material = polyhedronMaterial;
-        // Debug.Log($"Successfully applied material on {Application.platform}");
     }
 
     private void ShowVertexIndices(Vector3[] vertices)
@@ -77,17 +108,19 @@ public class PolyhedronGenerator : MonoBehaviour
         }
     }
 
-    /*
-        void LateUpdate()
+    void Update()
+    {
+        // Example: Switch palettes with keys 1-0 (for 10 palettes)
+        for (int i = 0; i < 10; i++)
         {
-            if (cam != null)
+            if (Input.GetKeyDown((KeyCode)((int)KeyCode.Alpha1 + i)))
             {
-                // billboard “piatto” verso la camera
-                var canvas = button.transform.parent;
-                canvas.rotation = Quaternion.LookRotation(canvas.position - cam.position, Vector3.up);
+                SetPalette(i);
             }
-
-      */
-    
+        }
+        // Example: Cycle palettes with left/right arrow
+        if (Input.GetKeyDown(KeyCode.LeftArrow)) PreviousPalette();
+        if (Input.GetKeyDown(KeyCode.RightArrow)) NextPalette();
+    }
 }
 

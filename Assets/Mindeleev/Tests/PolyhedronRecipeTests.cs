@@ -18,7 +18,7 @@ public class PolyhedronRecipeTests
     [Test]
     public void Test_Parse_SimpleRecipe()
     {
-        var recipe = "t(1,2,0.5)k(3,1,0.2)C";
+        var recipe = "t(1,2,0.5)k(3,1,0.2)00C";
         var parsed = PolyhedronRecipeParser.Parse(recipe);
 
         Assert.AreEqual('C', parsed.BasePolyhedron);
@@ -35,6 +35,8 @@ public class PolyhedronRecipeTests
         Assert.AreEqual(3, parsed.Tokens[1].PositionalParameters[0]);
         Assert.AreEqual(1, parsed.Tokens[1].PositionalParameters[1]);
         Assert.AreEqual(0.2f, (float)parsed.Tokens[1].PositionalParameters[2], 1e-6);
+
+        Assert.AreEqual(0, parsed.PaletteIdx);
 
         Assert.AreEqual(recipe, parsed.ToString());
     }
@@ -98,6 +100,8 @@ public class PolyhedronRecipeTests
         Assert.AreEqual(1, parsed.Tokens[0].PositionalParameters[0]);
         Assert.AreEqual(0, parsed.Tokens[0].PositionalParameters[1]);
         Assert.AreEqual(0.1f, (float)parsed.Tokens[0].PositionalParameters[2], 1e-6);
+
+        //         Assert.AreEqual(recipe, parsed.ToString());
     }
 
     [Test]
@@ -114,7 +118,28 @@ public class PolyhedronRecipeTests
         Assert.AreEqual(1, parsed.Tokens[0].PositionalParameters[0]);
         Assert.AreEqual(0, parsed.Tokens[0].PositionalParameters[1]);
         Assert.AreEqual(0.1f, (float)parsed.Tokens[0].PositionalParameters[2], 1e-6);
+
+        Assert.AreEqual("t(1,0,0.1)00C", parsed.ToString());
     }
+
+    [Test]
+    public void Test_Parse_RecipeName2()
+    {
+        var recipe = "tnlkC";
+        var parsed = PolyhedronRecipeParser.Parse(recipe);
+
+        Assert.AreEqual("TruInSteKiArchCub", parsed.RecipeName());
+    }
+
+    [Test]
+    public void Test_Parse_RecipeName01()
+    {
+        var recipe = "dkdkakd05T";
+        var parsed = PolyhedronRecipeParser.Parse(recipe);
+        Assert.AreEqual("DuKiDuKiAmKiDuGebTet", parsed.RecipeName());
+
+    }
+
 
     [Test]
     public void Test_NamedParameter_Overrides_Positional()
@@ -128,6 +153,7 @@ public class PolyhedronRecipeTests
 
         Assert.AreEqual(2, parsed.Tokens[0].PositionalParameters[0]);
 
+        Assert.AreEqual("k(2,3,-0.5)00C", parsed.ToString());
     }
 
     [Test]
@@ -144,12 +170,16 @@ public class PolyhedronRecipeTests
     [Test]
     public void Test_NamedParameter_Defaults()
     {
-        var recipe = "k()C";
+        var recipe = "k()09C";
         var parsed = PolyhedronRecipeParser.Parse(recipe);
 
         Assert.AreEqual(1, parsed.Tokens[0].Parameter("faceSignatureRounding"));
         Assert.AreEqual(0, parsed.Tokens[0].Parameter("facesSidesFilter"));
         Assert.AreEqual(0.1f, (float)parsed.Tokens[0].Parameter("centerVertexHeight"), 1e-6);
+        Assert.AreEqual(9, parsed.PaletteIdx);
+
+        Assert.AreEqual("k(1,0,0.1)09C", parsed.ToString());
+
     }
 
     [Test]
@@ -179,19 +209,35 @@ public class PolyhedronRecipeTests
     [Test]
     public void Test_NamedParameter_Ambo()
     {
-        var recipe = "a(faceSignatureRounding:5)C";
+        var recipe = "a(faceSignatureRounding:5)08C";
         var parsed = PolyhedronRecipeParser.Parse(recipe);
 
         Assert.AreEqual(5, parsed.Tokens[0].Parameter("faceSignatureRounding"));
+        Assert.AreEqual("a(5)08C", parsed.ToString());
     }
+
+    [Test]
+    public void Test_NamedParameter_Ambo2()
+    {
+        var recipe = "a(5)99C";
+        var parsed = PolyhedronRecipeParser.Parse(recipe);
+
+        Assert.AreEqual(5, parsed.Tokens[0].Parameter("faceSignatureRounding"));
+        Assert.AreEqual(99, parsed.PaletteIdx);
+        Assert.AreEqual("a(5)99C", parsed.ToString());
+    }
+
+
 
     [Test]
     public void Test_NamedParameter_Dual()
     {
-        var recipe = "d()C";
+        var recipe = "d()11C";
         var parsed = PolyhedronRecipeParser.Parse(recipe);
 
         Assert.AreEqual(1, parsed.Tokens[0].Parameter("faceSignatureRounding"));
+        Assert.AreEqual(11, parsed.PaletteIdx);
+        Assert.AreEqual("d(1)11C", parsed.ToString());
     }
 
     [Test]
@@ -330,9 +376,10 @@ public class PolyhedronRecipeTests
     [Test]
     public void Test_AllPermutationsWithRepetitions()
     {
-        var chars = new HashSet<char> { 'a', 'b', 'c' };
+        var chars = new HashSet<char> { 'a', 'd', 't' };
         var perms = PolyhedronRecipeUtils.AllPermutationsWithRepetition(chars, 5);
         Debug.Log($"Permutations with repetitions: {string.Join(", ", perms)}");
+        Debug.Log($"Names: {string.Join(", ", perms.Skip(1).Select(r => PolyhedronRecipeParser.Parse(r + "03C").RecipeName()))}");
 
     }
 
@@ -694,7 +741,7 @@ public class PolyhedronRecipeTests
         CsvTable csv = new();
         csv.AddRow("idx", "OpSeq", "T", "C", "O", "D", "I");
 
-        List<Dictionary<int, float>> energies = new List<Dictionary<int,float>>();
+        List<Dictionary<int, float>> energies = new List<Dictionary<int, float>>();
         List<string> opSeqs = new();
         List<string> polys = new List<string>
         {
@@ -747,7 +794,7 @@ public class PolyhedronRecipeTests
 
         for (int i = 0; i < 72; i++)
         {
-            
+
             bool equals = true;
             for (int p = 1; p < 5; p++)
             {

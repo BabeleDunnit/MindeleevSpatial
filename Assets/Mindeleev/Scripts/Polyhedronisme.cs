@@ -1040,8 +1040,7 @@ public static class Polyhedronisme
         var (meshVertices, triangles, normals, colorIndices) = input;
 
         // Map color indices to actual colors
-        var colors = colorIndices.Select(idx => palette.GetColor(idx)).ToList();
-        // var colors = colorIndices.Select(idx => palette.colors[idx]).ToList();
+        List<Color> colors = colorIndices.Select(idx => palette.GetColor(idx)).ToList();
 
         Mesh mesh = new Mesh();
         mesh.SetVertices(meshVertices);
