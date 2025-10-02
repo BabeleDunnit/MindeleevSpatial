@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using NUnit.Framework;
 using UnityEngine;
 using UnityEngine.TestTools;
+using System;
 
 public class EnumerationTests
 {
@@ -96,7 +97,7 @@ public class EnumerationTests
         Debug.Log("RecipeToInt/IntToRecipe roundtrip test passed for 0..999");
     }
     */
-    
+
 
     // A UnityTest behaves like a coroutine in Play Mode. In Edit Mode you can use
     // `yield return null;` to skip a frame.
@@ -107,4 +108,42 @@ public class EnumerationTests
         // Use yield to skip a frame.
         yield return null;
     }
+
+    // ===== Test helpers =====
+    [Test]
+    public static void Test_PrintAll72()
+    {
+        HashSet<string> names = new();
+
+        for (int i = 1; i <= 72; i++)
+        {
+            var e = PolytronName.Table[i - 1];
+            Debug.Log($"{i,2}. {PolytronName.GetName(i)}   [{e.Angel} / {e.Demon}]  {PolytronName.FmtPeriod(e)}");
+            names.Add(PolytronName.GetName(i));
+        }
+
+        Assert.AreEqual(72, names.Count);
+    }
+
+    /// <summary>
+    /// Stampa un nome per ogni giorno dell'anno 'year' (rispetta mesi e bisestile).
+    /// </summary>
+    [Test]
+    public static void Test_PrintAllByCalendar()
+    {
+        int year = 2025;
+        for (int m = 1; m <= 12; m++)
+        {
+            int max = DateTime.DaysInMonth(year, m);
+            for (int d = 1; d <= max; d++)
+            {
+                int idx = PolytronName.GetIdxFromDayAndMonth(d, m, year);
+                string name = PolytronName.GetName(idx);
+                Debug.Log($"{year}-{m:D2}-{d:D2}  ->  #{idx:D2}  {name}");
+            }
+        }
+    }
+
+
+
 }

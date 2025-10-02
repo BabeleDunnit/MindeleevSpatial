@@ -41,7 +41,7 @@ public class OrbitalGeneticInstantiator : MonoBehaviour
         if (polytron != null)
         {
             polytron.recipeString = nucleusRecipe;
-            polytron.Engine = polytronEngine;
+            // polytron.Engine = polytronEngine;
             
         }
         nucleusObject.name = "Nucleus";
@@ -80,7 +80,7 @@ public class OrbitalGeneticInstantiator : MonoBehaviour
                 var polytronComponent = poly.GetComponent<Polytron>();
                 if (polytronComponent != null)
                 {
-                    polytronComponent.Engine = polytronEngine;
+                    // polytronComponent.Engine = polytronEngine;
                     polytronEngine.Register(polytronComponent);
                     polytronComponent.recipeString = permutedRecipe;
                     PolytronPhysicalBehaviour ppb = new PolytronPhysicalBehaviour();

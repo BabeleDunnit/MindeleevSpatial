@@ -20,7 +20,7 @@ public class Polytron : PolyhedronGenerator,
     IScrollHandler
 {
 
-    public PolytronEngine Engine { get; set; }
+    // public PolytronEngine Engine { get; set; }
 
     public int Id { get; set; }
 

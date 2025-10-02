@@ -15,7 +15,7 @@ public class PolytronEngineSpring01Physics : PolytronEnginePhysics
 
     public override void Setup(GameObject myEngine)
     {
-            PolytronsFactory.Instance.Create(myEngine, 10, "pippo");
+            // PolytronsFactory.Instance.Create(myEngine, 10, "pippo");
     }
 
     public override void Loop(List<Polytron> allPolytrons, GameObject myEngine)
