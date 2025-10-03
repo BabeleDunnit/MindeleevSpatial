@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   version: 1
   sku: ett177w3u0gzndvx0jci27t5
-  packageName: Mindeleev01
+  packageName: Mindeleev
   thumbnail: {fileID: 2800000, guid: 27f58711c155f474faaa5af5c186f249, type: 3}
   savedProjectSettings: {fileID: 11400000, guid: 74721e4ac166552478ff78d4a4ca2fcd,
     type: 2}

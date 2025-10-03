@@ -61,7 +61,8 @@ public abstract class PolytronPhysics
 
     public Vector3 ComputeForceTowardOriginGameObject()
     {
-        Vector3 gameObjectPosition = Owner.Engine.transform.position;
+//         Vector3 gameObjectPosition = Owner.Engine.transform.position;
+        Vector3 gameObjectPosition = new();
         Vector3 myPosition = Owner.gameObject.transform.position;
 
         (Vector3 attractionForce, Vector3 fromMeToOtherVersor, float fromMeToOtherDistance)

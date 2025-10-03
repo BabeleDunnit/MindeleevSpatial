@@ -10,7 +10,7 @@ public class PolyhedronGenerator : MonoBehaviour
     /* ------------------------------------------------------------------
      *  Inspector settings
      * ----------------------------------------------------------------*/
-    public string recipeString = "C"; // default Cube
+    public string recipe = "C"; // default Cube
 
     [Header("Palettes")]
     public List<PolyhedronPalette> palettes = new List<PolyhedronPalette>();
@@ -18,7 +18,7 @@ public class PolyhedronGenerator : MonoBehaviour
 
     private bool showVertexIndices = false;
     public Material polyhedronMaterial; // Add this field
-    public PolyhedronRecipe Recipe { get; set; }
+    // public PolyhedronRecipe Recipe { get; set; }
 
     /* ------------------------------------------------------------------ */
     public virtual void Start()
@@ -31,11 +31,11 @@ public class PolyhedronGenerator : MonoBehaviour
         MeshFilter filter = GetComponent<MeshFilter>();
         MeshRenderer renderer = GetComponent<MeshRenderer>();
 
-        Recipe = PolyhedronRecipeParser.Parse(recipeString);
+        PolyhedronRecipe _recipe = PolyhedronRecipeParser.Parse(recipe);
 
         var palette = GetCurrentPalette();
         Debug.Log($"[RebuildMesh] palette: {palette}, currentPaletteIndex: {currentPaletteIndex}");
-        var polyData = PolyhedronRecipeBuilder.Build(Recipe, palette.colors.Count);
+        var polyData = PolyhedronRecipeBuilder.Build(_recipe, palette.colors.Count);
         var polyFinalData = Polyhedronisme.ApplyFlatShade(polyData);
         filter.mesh = Polyhedronisme.BuildMesh(polyFinalData, palette);
         ApplyPolyhedronMaterial(renderer);

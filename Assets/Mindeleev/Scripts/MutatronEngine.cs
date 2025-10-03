@@ -3,9 +3,12 @@ using System.Collections.Generic;
 using UnityEngine;
 using System.Linq;
 using System;
+using TMPro;
 
 public class MutatronEngine : MonoBehaviour
 {
+
+    bool firstLevelBuild = true;
 
     int maxRings = 12;
 
@@ -14,6 +17,9 @@ public class MutatronEngine : MonoBehaviour
 
     // the 72 polytrons
     private List<Polytron> polytrons = new();
+
+    // the polytrons homes
+    private List<KeyValuePair<HexCoord, HexCellData>> polytronsHomes = new();
 
     int evolveCount = 0;
 
@@ -24,21 +30,28 @@ public class MutatronEngine : MonoBehaviour
         internal Vector3 worldCoords;
         internal bool isOnMetatronPattern;
         internal PolytronSink sink;
-        internal PolyhedronGenerator tile;
-        public GameObject polytron;
+        internal MutatronTile tile;
         internal GameObject circle;
 
-        internal bool sinkUpdated = false;
-
         // the Polytronic Number also represents a quantified energy level in some way.
+        // a polytron in this hexcell will get the appearance 
+        // of RecipeKabbalah.IntToOperatorsSequence(polytronicNumber)
         internal int polytronicNumber;
+
+        // the cellular automata accumulator for the next state of this cell
         internal int nextPolytronicNumberAccumulator;
         internal Range<int> fusionRange;
+
+        // should this stay here? to be decided...
         internal string tileBasePolyhedron;
     }
 
     struct LevelConfig
     {
+
+        // increased at every rebuild
+        int levelCount;
+
         // we will start with 2
         public int actualRingsCount;
         internal int energyQuantumExchanged;
@@ -100,6 +113,7 @@ public class MutatronEngine : MonoBehaviour
         StartCoroutine(DrawMetatronGraphicsCoroutine());
         StartCoroutine(BuildTilesCoroutine());
 
+        firstLevelBuild = false;
         evolveCount = 0;
     }
 
@@ -114,7 +128,7 @@ public class MutatronEngine : MonoBehaviour
         GetComponent<MeshRenderer>().enabled = false;
 
         CreateHexGridDataStructure();
-        Create72Polytrons();
+        StartCoroutine(Create72PolytronsAndHomesCoroutine());
     }
 
 
@@ -128,10 +142,10 @@ public class MutatronEngine : MonoBehaviour
         PolytronSink sink = hckv.Value.sink;
         Debug.Assert(sink);
 
-        string tileRecipe = hckv.Value.tile.recipeString;
+        string tileRecipe = hckv.Value.tile.recipe;
 
         // is there any unbound polytron already with the sinkRecipe?
-        var matchingRecipePolytrons = polytrons.Where(p => p.recipeString == tileRecipe && p.boundSink == null).ToList();
+        var matchingRecipePolytrons = polytrons.Where(p => p.recipe == tileRecipe && p.boundSink == null).ToList();
         if (matchingRecipePolytrons.Count > 0)
         {
             return matchingRecipePolytrons[0];
@@ -167,12 +181,12 @@ public class MutatronEngine : MonoBehaviour
         // so, first I must collect all the tile recipes actually present on the Mutatron
         var tilesRecipes = gridCellsMap
             .Where(c => c.Value.ring <= actualLevelConfig.actualRingsCount)
-            .Select(c => c.Value.tile.recipeString)
+            .Select(c => c.Value.tile.recipe)
             .ToList();
 
         // now collect all the unbound polytrons which are already set on a tile recipe which did not change 
         // (but chaged place) and bind them
-        var matchingRecipeUnboundPolytrons = polytrons.Where(p => tilesRecipes.Contains(p.recipeString) && p.boundSink == null);
+        var matchingRecipeUnboundPolytrons = polytrons.Where(p => tilesRecipes.Contains(p.recipe) && p.boundSink == null);
         Debug.Log($"[UpdatePolytronsSinks] unbound polytrons with matching recipe: {matchingRecipeUnboundPolytrons.Count()}");
 
         int rebuiltPolytrons = 0;
@@ -184,7 +198,7 @@ public class MutatronEngine : MonoBehaviour
             {
                 if (hckv.Value.ring > actualLevelConfig.actualRingsCount) continue;
 
-                if (hckv.Value.sink.boundPolytron == null && hckv.Value.tile.recipeString == matchingRecipeUnboundPolytron.recipeString)
+                if (hckv.Value.sink.boundPolytron == null && hckv.Value.tile.recipe == matchingRecipeUnboundPolytron.recipe)
                 {
                     BindPolytronToSink(matchingRecipeUnboundPolytron, hckv);
                     movedPolytrons++;
@@ -213,7 +227,7 @@ public class MutatronEngine : MonoBehaviour
                 if (p)
                 {
                     BindPolytronToSink(p, hckv);
-                    string tileRecipe = hckv.Value.tile.recipeString;
+                    string tileRecipe = hckv.Value.tile.recipe;
                     RebuildPolytronMesh(p, tileRecipe);
                     rebuiltPolytrons++;
                 }
@@ -225,9 +239,14 @@ public class MutatronEngine : MonoBehaviour
 
     void RebuildPolytronMesh(Polytron p, string recipe)
     {
-        p.recipeString = recipe;
+        p.recipe = recipe;
         p.RebuildMesh();
         p.name = $"Polytron_{recipe}";
+    }
+    void BindPolytronToHome(Polytron p, KeyValuePair<HexCoord, HexCellData> hckv)
+    {
+        // every polytron has a home which will not change
+        hckv.Value.tile.sealHome = p.sealNumber;
     }
 
     void BindPolytronToSink(Polytron p, KeyValuePair<HexCoord, HexCellData> hckv)
@@ -257,7 +276,7 @@ public class MutatronEngine : MonoBehaviour
         }
     }
 
-    void Create72Polytrons()
+    IEnumerator Create72PolytronsAndHomesCoroutine()
     {
         foreach (var hckv in gridCellsMap)
         {
@@ -267,20 +286,83 @@ public class MutatronEngine : MonoBehaviour
 
                 int polytronId = polytrons.Count;
 
-                GameObject polytron = PolytronsFactory.Instance.Create($"polytron/T", 0.4f);
-                polytron.transform.position = hckv.Value.worldCoords + new Vector3(0, 1f, 0);
+                GameObject polytron = PolytronsFactory.Instance.Create($"polytron/T", 0.6f);
+                // polytron.transform.position = hckv.Value.worldCoords + new Vector3(0, 1f, 0);
+                polytron.transform.position = hckv.Value.worldCoords * 0.1f + new Vector3(0, 10f, 0);
+                // polytron.transform.position = new Vector3(0, 50f, 0);
                 float angleToCenter = hckv.Key.PolarAngle();
-                Quaternion polytronRotation = Quaternion.Euler(0f, -angleToCenter * 360f / 6.28f, 0f);
+                Quaternion rotationToCenter = Quaternion.Euler(0f, -angleToCenter * 360f / 6.28f, 0f);
                 // polytron.transform.localRotation = polytronRotation;
                 polytron.name = $"Polytron_{polytronId}";
+
+                Polytron polytronComponent = polytron.GetComponent<Polytron>();
+                polytronComponent.recipe = PolyhedronRecipeKabbalah.IntToOperatorsSequence(polytronId) + "00T";
+                polytronComponent.RebuildMesh();
+
                 polytrons.Add(polytron.GetComponent<Polytron>());
 
-                // bind the polytron to his cell
-                // hckv.Value.sink.GetComponent<PolytronSink>().boundPolytron = polytron.GetComponent<Polytron>();
+                GameObject tile = PolytronsFactory.Instance.Create($"tile/{polytronComponent.recipe}", 1f);
+                tile.transform.localScale = new Vector3(1f, 0.01f, 1f);
+                tile.transform.position = hckv.Value.worldCoords + new Vector3(0, 0.1f, 0);
+                tile.transform.localRotation = rotationToCenter;
+                hckv.Value.tile = tile.GetComponent<MutatronTile>();
+
+                GameObject label = CreateTileLabel(polytronComponent.sealName, tile.transform.position + new Vector3(0, 3, 0));
+                int r1 = polytronId / 12;
+//                 label.transform.rotation = Quaternion.Euler(0, (-60f * (r1 + 2)) - 30f, 0);
+                label.transform.rotation = Quaternion.Euler(0, (-60f * (r1 + 2)) + 180, 0);
+                label.transform.position = tile.transform.position + new Vector3(0, 3, 0);
+
+                // bind the polytron to his home. The home will not change.
+                BindPolytronToHome(polytron.GetComponent<Polytron>(), hckv);
                 BindPolytronToSink(polytron.GetComponent<Polytron>(), hckv);
+
+                polytronsHomes.Add(hckv);
+
+                yield return new WaitForSeconds(0.15f);
             }
         }
     }
+
+    // static Color blueFloor = new Color(52, 56, 87);
+
+
+/*
+    static Color blueFloor
+    {
+        // [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        get
+        {
+            return new Color(52, 56, 87, 255);
+        }
+    }
+*/
+
+
+    public static GameObject CreateTileLabel(string s, Vector3 position)
+    {
+        GameObject label = new GameObject($"Label_{s}");
+        // label.transform.localPosition = Vector3.down * 1.5f;
+        // label.transform.localPosition = position;
+
+        TextMeshPro tmpText = label.AddComponent<TextMeshPro>();
+        tmpText.text = s;
+        tmpText.fontSize = 7;
+        tmpText.alignment = TextAlignmentOptions.Center;
+        tmpText.color = new Color(0.2f, 0.22f, 0.55f);
+        // tmpText.enableAutoSizing = true;
+        tmpText.fontSizeMin = 1;
+        tmpText.fontSizeMax = 20;
+        tmpText.material = new Material(Shader.Find("TextMeshPro/Mobile/Distance Field"));
+        label.transform.localRotation = Quaternion.identity;
+        var rectTransform = tmpText.GetComponent<RectTransform>();
+        //         rectTransform.sizeDelta = new Vector2(2, 0.5f);
+        rectTransform.sizeDelta = new Vector2(5, 1f);
+
+        return label;
+    }
+
+
 
     void DrawCircle(HexCellData hcd, float radius, Color color, float lineWidth = 0.05f, int segments = 20)
     {
@@ -424,6 +506,8 @@ public class MutatronEngine : MonoBehaviour
     {
         foreach (HexCellData hcd in gridCellsMap.Values)
         {
+            if (hcd.ring == 12) continue;
+
             if (hcd.circle)
             {
                 GameObject.Destroy(hcd.circle);
@@ -449,25 +533,28 @@ public class MutatronEngine : MonoBehaviour
 
     IEnumerator DrawMetatronGraphicsCoroutine()
     {
-        yield return new WaitForSeconds(5.0f);
+        if (!firstLevelBuild)
+        {
+            yield return new WaitForSeconds(5.0f);
+        }
 
         // Draw circles
-        foreach (HexCellData hcd in gridCellsMap.Values)
-        {
-            if (hcd.ring <= actualLevelConfig.actualRingsCount)
+            foreach (HexCellData hcd in gridCellsMap.Values)
             {
-                if (hcd.isOnMetatronPattern)
+                if (hcd.ring <= actualLevelConfig.actualRingsCount)
                 {
-                    DrawCircle(hcd, 1.73f, Color.white, 0.025f);
-                    yield return new WaitForSeconds(0.1f);
-                }
-                else
-                {
-                    DrawCircle(hcd, 1.73f, Color.gray, 0.01f);
-                    yield return null;
+                    if (hcd.isOnMetatronPattern)
+                    {
+                        DrawCircle(hcd, 1.73f, Color.white, 0.025f);
+                        yield return new WaitForSeconds(0.1f);
+                    }
+                    else
+                    {
+                        DrawCircle(hcd, 1.73f, Color.gray, 0.01f);
+                        yield return null;
+                    }
                 }
             }
-        }
 
         yield return new WaitForSeconds(0.2f);
 
@@ -573,7 +660,11 @@ public class MutatronEngine : MonoBehaviour
 
     IEnumerator BuildTilesCoroutine()
     {
-        yield return new WaitForSeconds(5.5f);
+
+        if (!firstLevelBuild)
+        {
+            yield return new WaitForSeconds(5.5f);
+        }
         foreach (var hckv in gridCellsMap)
         {
             if (hckv.Value.ring <= actualLevelConfig.actualRingsCount)
@@ -585,11 +676,12 @@ public class MutatronEngine : MonoBehaviour
                 string tileRecipe = PolyhedronRecipeKabbalah.IntToOperatorsSequence(hckv.Value.polytronicNumber) + hckv.Value.tileBasePolyhedron;
 
                 GameObject tile = PolytronsFactory.Instance.Create($"tile/{tileRecipe}", 1f);
-                tile.tag = "Tile";
+                // tile.tag = "Tile";
                 tile.transform.localScale = new Vector3(1f, 0.01f, 1f);
                 tile.transform.position = hckv.Value.worldCoords + new Vector3(0, 0.1f, 0);
                 tile.transform.localRotation = tileRotation;
-                hckv.Value.tile = tile.GetComponent<PolyhedronGenerator>();
+                // hckv.Value.tile = tile.GetComponent<PolyhedronGenerator>();
+                hckv.Value.tile = tile.GetComponent<MutatronTile>();
 
                 yield return new WaitForSeconds(0.15f);
             }
@@ -608,7 +700,7 @@ public class MutatronEngine : MonoBehaviour
             PolytronSink sink = hckv.Value.sink;
             Polytron polytronBoundToSink = sink.boundPolytron;
 
-            if (polytronBoundToSink && polytronBoundToSink.recipeString != hckv.Value.tile.recipeString)
+            if (polytronBoundToSink && polytronBoundToSink.recipe != hckv.Value.tile.recipe)
             {
                 polytronBoundToSink.boundSink = null;
                 sink.boundPolytron = null;
@@ -623,6 +715,22 @@ public class MutatronEngine : MonoBehaviour
         Debug.Log($"[UnbindNonMatchingPolytrons] polytronsThatWillNotMove: {polytronsThatWillNotMove}");
     }
 
+    /*
+        void SendUnboundPolytronsHome()
+        {
+            var unboundPolytrons = polytrons.Where(p => p.boundSink == null).ToList();
+            var unboundSinksOnExternalRing = gridCellsMap.Where(hckv => hckv.Value.ring == 12 && hckv.Value.sink.boundPolytron == null).ToList();
+
+            Debug.Assert(unboundSinksOnExternalRing.Count >= unboundPolytrons.Count);
+            Debug.Log($"unboundPolytrons: {unboundPolytrons.Count}, unboundSinksOnExternalRing: {unboundSinksOnExternalRing.Count}");
+
+            for (int i = 0; i < unboundPolytrons.Count; i++)
+            {
+                BindPolytronToSink(unboundPolytrons[i], unboundSinksOnExternalRing[i]);
+            }
+        }
+        */
+
     void SendUnboundPolytronsHome()
     {
         var unboundPolytrons = polytrons.Where(p => p.boundSink == null).ToList();
@@ -633,10 +741,11 @@ public class MutatronEngine : MonoBehaviour
 
         for (int i = 0; i < unboundPolytrons.Count; i++)
         {
-            BindPolytronToSink(unboundPolytrons[i], unboundSinksOnExternalRing[i]);
+            // BindPolytronToSink(unboundPolytrons[i], unboundSinksOnExternalRing[i]);
+            BindPolytronToSink(unboundPolytrons[i], polytronsHomes[unboundPolytrons[i].sealNumber]);
         }
-
     }
+
 
     void Evolve()
     {
@@ -716,9 +825,9 @@ public class MutatronEngine : MonoBehaviour
     void RebuildTileMesh(HexCoord coord, string recipe)
     {
         PolyhedronGenerator tile = gridCellsMap[coord].tile;
-        if (tile != null && tile.recipeString != recipe)
+        if (tile != null && tile.recipe != recipe)
         {
-            tile.recipeString = recipe;
+            tile.recipe = recipe;
             tile.RebuildMesh();
 
             // PolytronsFactory.CreateLabel(tile.gameObject, tile.recipeString, Vector3.up * 10.5f);

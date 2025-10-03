@@ -27,42 +27,44 @@ public class PolytronsFactory : MonoBehaviour
         Instance = this;
     }
 
-    public void Create(GameObject engineGameObject, int count, string kind)
-    {
-        PolytronEngine engine = engineGameObject.GetComponent<PolytronEngine>();
-
-        for (int i = 0; i < count; i++)
+    /*
+        public void Create(GameObject engineGameObject, int count, string kind)
         {
+            PolytronEngine engine = engineGameObject.GetComponent<PolytronEngine>();
 
-            Vector3 polytronPosition = new Vector3(
-                Random.Range(-5f, 5f),
-                Random.Range(-5f, 5f),
-                Random.Range(-5f, 5f)
-            );
-
-            string recipe = "ttC";
-
-            GameObject poly = Instantiate(polytronPrefab, engine.gameObject.transform.position + polytronPosition, Quaternion.identity, engine.transform);
-            poly.transform.localScale = polytronPrefab.transform.localScale * polytronScale;
-            var polytronComponent = poly.GetComponent<Polytron>();
-            if (polytronComponent != null)
+            for (int i = 0; i < count; i++)
             {
-                polytronComponent.Engine = engine;
-                engine.Register(polytronComponent);
-                polytronComponent.recipeString = recipe;
+
+                Vector3 polytronPosition = new Vector3(
+                    Random.Range(-5f, 5f),
+                    Random.Range(-5f, 5f),
+                    Random.Range(-5f, 5f)
+                );
+
+                string recipe = "ttC";
+
+                GameObject poly = Instantiate(polytronPrefab, engine.gameObject.transform.position + polytronPosition, Quaternion.identity, engine.transform);
+                poly.transform.localScale = polytronPrefab.transform.localScale * polytronScale;
+                var polytronComponent = poly.GetComponent<Polytron>();
+                if (polytronComponent != null)
+                {
+                    polytronComponent.Engine = engine;
+                    engine.Register(polytronComponent);
+                    polytronComponent.recipeString = recipe;
+                }
+
+                poly.name = $"Factory_{i}_{recipe}";
+                CreateLabel(poly, recipe
+                    + " "
+                    + PolyhedronRecipeUtils.ComputeComplexity(PolyhedronRecipeParser.Parse(recipe)),
+                    Vector3.down * 1.5f);
+
+                createdPolytrons.Add(poly);
             }
-
-            poly.name = $"Factory_{i}_{recipe}";
-            CreateLabel(poly, recipe
-                + " "
-                + PolyhedronRecipeUtils.ComputeComplexity(PolyhedronRecipeParser.Parse(recipe)),
-                Vector3.down * 1.5f);
-
-            createdPolytrons.Add(poly);
         }
-    }
+    */
 
-    public static void CreateLabel(GameObject parent, string s, Vector3 position)
+    public static GameObject CreateLabel(GameObject parent, string s, Vector3 position)
     {
         GameObject label = new GameObject($"Label_{s}");
         label.transform.parent = parent.transform;
@@ -71,16 +73,19 @@ public class PolytronsFactory : MonoBehaviour
 
         TextMeshPro tmpText = label.AddComponent<TextMeshPro>();
         tmpText.text = s;
-        tmpText.fontSize = 3;
+        tmpText.fontSize = 10;
         tmpText.alignment = TextAlignmentOptions.Center;
         tmpText.color = Color.white;
         tmpText.enableAutoSizing = true;
         tmpText.fontSizeMin = 1;
-        tmpText.fontSizeMax = 2;
+        tmpText.fontSizeMax = 20;
         tmpText.material = new Material(Shader.Find("TextMeshPro/Mobile/Distance Field"));
         label.transform.localRotation = Quaternion.identity;
         var rectTransform = tmpText.GetComponent<RectTransform>();
-        rectTransform.sizeDelta = new Vector2(2, 0.5f);
+//         rectTransform.sizeDelta = new Vector2(2, 0.5f);
+        rectTransform.sizeDelta = new Vector2(4, 4f);
+
+        return label;
     }
 
     public GameObject Create(string kind, float localUniformScale)
@@ -116,7 +121,14 @@ public class PolytronsFactory : MonoBehaviour
                     var polytronComponent = poly.GetComponent<Polytron>();
                     if (polytronComponent != null)
                     {
-                        polytronComponent.recipeString = recipe;
+                        polytronComponent.recipe = recipe;
+                        polytronComponent.sealNumber = createdPolytrons.Count;
+                        if (polytronComponent.sealNumber >= 72)
+                        {
+                            throw new System.Exception("Too many polytrons created, max is 72");
+                        }
+
+                        polytronComponent.sealName = PolytronName.GetName(polytronComponent.sealNumber + 1);
                     }
 
                     poly.name = $"{kind}_{recipe}";
@@ -154,7 +166,7 @@ public class PolytronsFactory : MonoBehaviour
                     tile.transform.localScale = Vector3.one * localUniformScale;
 
                     var pg = tile.GetComponent<PolyhedronGenerator>();
-                    pg.recipeString = recipe;
+                    pg.recipe = recipe;
 
                     return tile;
                 }

@@ -6,8 +6,9 @@ using SpatialSys.UnitySDK;
 
 public class WorldSpacePanel : MonoBehaviour
 {
-    public TextMeshProUGUI titleText;
-    public TextMeshProUGUI descriptionText;
+    public TextMeshProUGUI pname;
+    public TextMeshProUGUI recipe;
+    public TextMeshProUGUI complexity;
 
     // where are we running? mobile, web, hmd?
     SpatialPlatform platform;
@@ -43,12 +44,10 @@ public class WorldSpacePanel : MonoBehaviour
             button.onClick.AddListener(OnButtonClick);
         }
 
-        if (titleText == null)
+        if (pname == null)
         {
-            titleText = GetComponentInChildren<TextMeshProUGUI>();
+            pname = GetComponentInChildren<TextMeshProUGUI>();
         }
-
-
 
         // detect platform
         platform = SpatialBridge.actorService.localActor.platform;
@@ -70,7 +69,7 @@ public class WorldSpacePanel : MonoBehaviour
                 Debug.LogWarning("Unknown platform type");
                 break;
         }
-        
+
     }
     private void OnButtonClick()
     {
@@ -96,7 +95,7 @@ public class WorldSpacePanel : MonoBehaviour
         string s = $"polytron name: {p.name}\n"
             + $"canvas name: {canvas.name}\n";
 
-        titleText.text = s;
+        pname.text = s;
 
         // move all polytrons
         GameObject engineObj = GameObject.Find("HexCellularAutomata");
@@ -110,9 +109,9 @@ public class WorldSpacePanel : MonoBehaviour
                 foreach (var poly in PolytronsFactory.Instance.createdPolytrons)
                 {
                     if (poly == null) continue;
-                    
-                    GameObject.Find("PolytronEngine02").GetComponent<PolytronEngine>().Deregister(poly.GetComponent<Polytron>());
-                    engine.Register(poly.GetComponent<Polytron>());
+
+                    // GameObject.Find("PolytronEngine02").GetComponent<PolytronEngine>().Deregister(poly.GetComponent<Polytron>());
+                    // engine.Register(poly.GetComponent<Polytron>());
                 }
             }
             else
@@ -204,11 +203,13 @@ public class WorldSpacePanel : MonoBehaviour
         */
 
 
-}
-
-    public void UpdateText(string title, string description)
-    {
-        if (titleText != null) titleText.text = title;
-        if (descriptionText != null) descriptionText.text = description;
     }
+
+    /*    public void UpdateText(string title, string description)
+        {
+            if (titleText != null) titleText.text = title;
+            if (descriptionText != null) descriptionText.text = description;
+        }
+        */
+    
 }

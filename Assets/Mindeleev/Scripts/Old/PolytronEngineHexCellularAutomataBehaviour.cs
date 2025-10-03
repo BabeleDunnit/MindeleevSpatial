@@ -165,7 +165,7 @@ public class PolytronEngineHexCellularAutomataBehaviour : PolytronEnginePhysics
                         3 => "ltO",
                         _ => "O"
                     };
-                    polyGen.recipeString = recipe;
+                    polyGen.recipe = recipe;
                 }
             }
         }
@@ -195,7 +195,7 @@ public class PolytronEngineHexCellularAutomataBehaviour : PolytronEnginePhysics
             foreach (var sink in sinks)
             {
                 PolytronSink sinkComponent = sink.GetComponent<PolytronSink>();
-                if (polytron.recipeString != sinkComponent.attractedRecipe)
+                if (polytron.recipe != sinkComponent.attractedRecipe)
                 {
                     continue;
                 }
@@ -278,7 +278,7 @@ public class PolytronEngineHexCellularAutomataBehaviour : PolytronEnginePhysics
                 // PolyhedronGenerator polyGen = polytron.GetComponent<PolyhedronGenerator>();
                 //if (polyGen == null) continue;
 
-                if (polytron.recipeString == sinkComponent.attractedRecipe)
+                if (polytron.recipe == sinkComponent.attractedRecipe)
                 {
                     if (sinkComponent.boundPolytron == null)
                     {

@@ -22,38 +22,40 @@ public class PolytronEngine : MonoBehaviour
         engineBehaviour = ScriptableObject.Instantiate(engineBehaviour_);
     }
 
-    public void Register(Polytron instance)
-    {
-        instance.Id = registeredPolytrons.Count;
-        registeredPolytrons.Add(instance);
-        Debug.Log("Polytron registered: " + instance.Id);
-    }
-
-    public void Deregister(Polytron instance)
-    {
-        registeredPolytrons.Remove(instance);
-        Debug.Log("Prefab deregistered: " + instance.Id);
-    }
-
-    // Start is called before the first frame update
-    void Start()
-    {
-        GetComponent<MeshRenderer>().enabled = false;
-
-        engineBehaviour.Setup(gameObject);
-
-        Debug.Log($"PolytronEngine::Start() entering");
-        // all empty here
-        foreach (Polytron p in registeredPolytrons)
+    /*
+        public void Register(Polytron instance)
         {
-            Debug.Log($"polytron {p.Id} is of type {p.recipeString}");
-            // p.Behaviour.ComputeForce();
+            instance.Id = registeredPolytrons.Count;
+            registeredPolytrons.Add(instance);
+            Debug.Log("Polytron registered: " + instance.Id);
         }
 
-        Debug.Log($"PolytronEngine::Start() exiting");
+        public void Deregister(Polytron instance)
+        {
+            registeredPolytrons.Remove(instance);
+            Debug.Log("Prefab deregistered: " + instance.Id);
+        }
 
-        spatialCamera = CrossPlatformUtils.FindCamera();
-    }
+        // Start is called before the first frame update
+        void Start()
+        {
+            GetComponent<MeshRenderer>().enabled = false;
+
+            engineBehaviour.Setup(gameObject);
+
+            Debug.Log($"PolytronEngine::Start() entering");
+            // all empty here
+            foreach (Polytron p in registeredPolytrons)
+            {
+                Debug.Log($"polytron {p.Id} is of type {p.recipe}");
+                // p.Behaviour.ComputeForce();
+            }
+
+            Debug.Log($"PolytronEngine::Start() exiting");
+
+            spatialCamera = CrossPlatformUtils.FindCamera();
+        }
+    */
 
     // Update is called once per frame
     void FixedUpdate()
@@ -90,12 +92,12 @@ public class PolytronEngine : MonoBehaviour
         foreach (Polytron p in registeredPolytrons)
         {
             // Debug.Log("recipe: " + p.recipeString);
-            if (!string.IsNullOrEmpty(p.recipeString))
+            if (!string.IsNullOrEmpty(p.recipe))
             {
-                if (recipeCounts.ContainsKey(p.recipeString))
-                    recipeCounts[p.recipeString]++;
+                if (recipeCounts.ContainsKey(p.recipe))
+                    recipeCounts[p.recipe]++;
                 else
-                    recipeCounts[p.recipeString] = 1;
+                    recipeCounts[p.recipe] = 1;
             }
         }
 

@@ -1,3 +1,4 @@
+using System.Data.Common;
 using UnityEngine;
 
 /// <summary>
@@ -13,5 +14,7 @@ public class PolytronSink : MonoBehaviour
     public float weight = 1f;
 
     public HexCoord hexCoord;
+
+    // public bool updated = false;
 
 }

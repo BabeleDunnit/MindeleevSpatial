@@ -40,8 +40,8 @@ public class OrbitalGeneticInstantiator : MonoBehaviour
         var polytron = nucleusObject.GetComponent<Polytron>();
         if (polytron != null)
         {
-            polytron.recipeString = nucleusRecipe;
-            polytron.Engine = polytronEngine;
+            polytron.recipe = nucleusRecipe;
+            // polytron.Engine = polytronEngine;
             
         }
         nucleusObject.name = "Nucleus";
@@ -80,9 +80,9 @@ public class OrbitalGeneticInstantiator : MonoBehaviour
                 var polytronComponent = poly.GetComponent<Polytron>();
                 if (polytronComponent != null)
                 {
-                    polytronComponent.Engine = polytronEngine;
-                    polytronEngine.Register(polytronComponent);
-                    polytronComponent.recipeString = permutedRecipe;
+                    // polytronComponent.Engine = polytronEngine;
+                    // polytronEngine.Register(polytronComponent);
+                    polytronComponent.recipe = permutedRecipe;
                     PolytronPhysicalBehaviour ppb = new PolytronPhysicalBehaviour();
                     ppb.Physics = new PolytronSpringRecipeBasedEquilibriumPhysics(polytronComponent);
                     // polytronComponent.Behaviour = ppb;
@@ -143,7 +143,7 @@ public class OrbitalGeneticInstantiator : MonoBehaviour
             offspring.transform.localScale = collidedPoly.transform.localScale * 0.7f;
             var gen = offspring.GetComponent<PolyhedronGenerator>();
             if (gen != null)
-                gen.recipeString = offspringRecipe;
+                gen.recipe = offspringRecipe;
             offspring.name = $"Offspring_{offspringRecipe}";
             CreateLabel(offspring, offspringRecipe
                 + " "

@@ -68,10 +68,10 @@ public class PolytronHexGrid : MonoBehaviour
                         3 => "ltC",
                         _ => "C"
                     };
-                    polyGen.recipeString = recipe;
+                    polyGen.recipe = recipe;
                 }
 
-                poly.name = $"HexP_{polytronNumber}_R{ring}_I{i}_{polyGen.recipeString}";
+                poly.name = $"HexP_{polytronNumber}_R{ring}_I{i}_{polyGen.recipe}";
                 CreateLabel(poly, poly.name, position);
 
                 polytronNumber++;
@@ -94,7 +94,7 @@ public class PolytronHexGrid : MonoBehaviour
                         3 => "ltO",
                         _ => "O"
                     };
-                    polyGen.recipeString = recipe;
+                    polyGen.recipe = recipe;
                 }
             }
         }
