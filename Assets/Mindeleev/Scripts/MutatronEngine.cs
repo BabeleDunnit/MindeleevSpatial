@@ -296,7 +296,8 @@ public class MutatronEngine : MonoBehaviour
                 polytron.name = $"Polytron_{polytronId}";
 
                 Polytron polytronComponent = polytron.GetComponent<Polytron>();
-                polytronComponent.recipe = PolyhedronRecipeKabbalah.IntToOperatorsSequence(polytronId) + "00T";
+                polytronComponent.recipe = PolyhedronRecipeKabbalah.IntToOperatorsSequence(polytronId) + $"{(polytronId % 11):D2}" + "C";
+                Debug.Log(polytronComponent.recipe);
                 polytronComponent.RebuildMesh();
 
                 polytrons.Add(polytron.GetComponent<Polytron>());
@@ -307,7 +308,7 @@ public class MutatronEngine : MonoBehaviour
                 tile.transform.localRotation = rotationToCenter;
                 hckv.Value.tile = tile.GetComponent<MutatronTile>();
 
-                GameObject label = CreateTileLabel(polytronComponent.sealName, tile.transform.position + new Vector3(0, 3, 0));
+                GameObject label = CreateTileLabel($"{polytronId+1}\n" + polytronComponent.sealName, tile.transform.position + new Vector3(0, 3, 0));
                 int r1 = polytronId / 12;
 //                 label.transform.rotation = Quaternion.Euler(0, (-60f * (r1 + 2)) - 30f, 0);
                 label.transform.rotation = Quaternion.Euler(0, (-60f * (r1 + 2)) + 180, 0);

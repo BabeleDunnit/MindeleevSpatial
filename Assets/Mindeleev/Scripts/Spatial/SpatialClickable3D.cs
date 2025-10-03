@@ -43,8 +43,8 @@ public class SpatialClickable3D : MonoBehaviour
             rt.sizeDelta = hitAreaSize;
 
             var img = imgGO.GetComponent<Image>();
-            // img.color = new Color(1, 1, 1, 0.001f); // invisibile ma cliccabile
-            img.color = new Color(1, 1, 0, 0.3f); // semi-transparent for debugging
+            img.color = new Color(1, 1, 1, 0.001f); // invisibile ma cliccabile
+            // img.color = new Color(1, 1, 0, 0.3f); // semi-transparent for debugging
             img.raycastTarget = true;
 
             button = imgGO.GetComponent<Button>();

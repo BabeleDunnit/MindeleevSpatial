@@ -32,6 +32,7 @@ public class PolyhedronGenerator : MonoBehaviour
         MeshRenderer renderer = GetComponent<MeshRenderer>();
 
         PolyhedronRecipe _recipe = PolyhedronRecipeParser.Parse(recipe);
+        currentPaletteIndex = _recipe.PaletteIdx;
 
         var palette = GetCurrentPalette();
         Debug.Log($"[RebuildMesh] palette: {palette}, currentPaletteIndex: {currentPaletteIndex}");
