@@ -64,7 +64,7 @@ public class PolytronsFactory : MonoBehaviour
         }
     */
 
-    public static void CreateLabel(GameObject parent, string s, Vector3 position)
+    public static GameObject CreateLabel(GameObject parent, string s, Vector3 position)
     {
         GameObject label = new GameObject($"Label_{s}");
         label.transform.parent = parent.transform;
@@ -73,16 +73,19 @@ public class PolytronsFactory : MonoBehaviour
 
         TextMeshPro tmpText = label.AddComponent<TextMeshPro>();
         tmpText.text = s;
-        tmpText.fontSize = 3;
+        tmpText.fontSize = 10;
         tmpText.alignment = TextAlignmentOptions.Center;
         tmpText.color = Color.white;
         tmpText.enableAutoSizing = true;
         tmpText.fontSizeMin = 1;
-        tmpText.fontSizeMax = 2;
+        tmpText.fontSizeMax = 20;
         tmpText.material = new Material(Shader.Find("TextMeshPro/Mobile/Distance Field"));
         label.transform.localRotation = Quaternion.identity;
         var rectTransform = tmpText.GetComponent<RectTransform>();
-        rectTransform.sizeDelta = new Vector2(2, 0.5f);
+//         rectTransform.sizeDelta = new Vector2(2, 0.5f);
+        rectTransform.sizeDelta = new Vector2(4, 4f);
+
+        return label;
     }
 
     public GameObject Create(string kind, float localUniformScale)

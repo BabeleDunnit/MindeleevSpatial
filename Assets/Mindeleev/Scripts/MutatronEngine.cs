@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using System.Linq;
 using System;
+using TMPro;
 
 public class MutatronEngine : MonoBehaviour
 {
@@ -303,14 +304,60 @@ public class MutatronEngine : MonoBehaviour
                 tile.transform.localRotation = rotationToCenter;
                 hckv.Value.tile = tile.GetComponent<MutatronTile>();
 
+                GameObject label = CreateTileLabel(polytronComponent.sealName, tile.transform.position + new Vector3(0, 3, 0));
+                int r1 = polytronId / 12;
+//                 label.transform.rotation = Quaternion.Euler(0, (-60f * (r1 + 2)) - 30f, 0);
+                label.transform.rotation = Quaternion.Euler(0, (-60f * (r1 + 2)) + 180, 0);
+                label.transform.position = tile.transform.position + new Vector3(0, 3, 0);
+
                 // bind the polytron to his home. The home will not change.
                 BindPolytronToHome(polytron.GetComponent<Polytron>(), hckv);
                 BindPolytronToSink(polytron.GetComponent<Polytron>(), hckv);
 
-                yield return new WaitForSeconds(0.1f);
+                yield return new WaitForSeconds(0.15f);
             }
         }
     }
+
+    // static Color blueFloor = new Color(52, 56, 87);
+
+
+/*
+    static Color blueFloor
+    {
+        // [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        get
+        {
+            return new Color(52, 56, 87, 255);
+        }
+    }
+*/
+
+
+    public static GameObject CreateTileLabel(string s, Vector3 position)
+    {
+        GameObject label = new GameObject($"Label_{s}");
+        // label.transform.localPosition = Vector3.down * 1.5f;
+        // label.transform.localPosition = position;
+
+        TextMeshPro tmpText = label.AddComponent<TextMeshPro>();
+        tmpText.text = s;
+        tmpText.fontSize = 7;
+        tmpText.alignment = TextAlignmentOptions.Center;
+        tmpText.color = new Color(0.2f, 0.22f, 0.55f);
+        // tmpText.enableAutoSizing = true;
+        tmpText.fontSizeMin = 1;
+        tmpText.fontSizeMax = 20;
+        tmpText.material = new Material(Shader.Find("TextMeshPro/Mobile/Distance Field"));
+        label.transform.localRotation = Quaternion.identity;
+        var rectTransform = tmpText.GetComponent<RectTransform>();
+        //         rectTransform.sizeDelta = new Vector2(2, 0.5f);
+        rectTransform.sizeDelta = new Vector2(5, 1f);
+
+        return label;
+    }
+
+
 
     void DrawCircle(HexCellData hcd, float radius, Color color, float lineWidth = 0.05f, int segments = 20)
     {
