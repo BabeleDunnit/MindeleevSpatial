@@ -124,7 +124,7 @@ public class MutatronEngine : MonoBehaviour
         GetComponent<MeshRenderer>().enabled = false;
 
         CreateHexGridDataStructure();
-        Create72Polytrons();
+        StartCoroutine(Create72PolytronsAndHomesCoroutine());
     }
 
 
@@ -241,13 +241,8 @@ public class MutatronEngine : MonoBehaviour
     }
     void BindPolytronToHome(Polytron p, KeyValuePair<HexCoord, HexCellData> hckv)
     {
-        // if the polytron is alread bound to an old sink, reset the bound polytron of that sink
-        if (p.boundSink) p.boundSink.boundPolytron = null;
-
-        // now bound the polytron to this sink
-        PolytronSink sinkOfThisCell = hckv.Value.sink;
-        p.boundSink = sinkOfThisCell;
-        sinkOfThisCell.boundPolytron = p;
+        // every polytron has a home which will not change
+        hckv.Value.tile.sealHome = p.sealNumber;
     }
 
     void BindPolytronToSink(Polytron p, KeyValuePair<HexCoord, HexCellData> hckv)
@@ -277,7 +272,7 @@ public class MutatronEngine : MonoBehaviour
         }
     }
 
-    void Create72Polytrons()
+    IEnumerator Create72PolytronsAndHomesCoroutine()
     {
         foreach (var hckv in gridCellsMap)
         {
@@ -288,9 +283,11 @@ public class MutatronEngine : MonoBehaviour
                 int polytronId = polytrons.Count;
 
                 GameObject polytron = PolytronsFactory.Instance.Create($"polytron/T", 0.6f);
-                polytron.transform.position = hckv.Value.worldCoords + new Vector3(0, 1f, 0);
+                // polytron.transform.position = hckv.Value.worldCoords + new Vector3(0, 1f, 0);
+                polytron.transform.position = hckv.Value.worldCoords * 0.1f + new Vector3(0, 10f, 0);
+                // polytron.transform.position = new Vector3(0, 50f, 0);
                 float angleToCenter = hckv.Key.PolarAngle();
-                Quaternion polytronRotation = Quaternion.Euler(0f, -angleToCenter * 360f / 6.28f, 0f);
+                Quaternion rotationToCenter = Quaternion.Euler(0f, -angleToCenter * 360f / 6.28f, 0f);
                 // polytron.transform.localRotation = polytronRotation;
                 polytron.name = $"Polytron_{polytronId}";
 
@@ -300,9 +297,17 @@ public class MutatronEngine : MonoBehaviour
 
                 polytrons.Add(polytron.GetComponent<Polytron>());
 
+                GameObject tile = PolytronsFactory.Instance.Create($"tile/{polytronComponent.recipe}", 1f);
+                tile.transform.localScale = new Vector3(1f, 0.01f, 1f);
+                tile.transform.position = hckv.Value.worldCoords + new Vector3(0, 0.1f, 0);
+                tile.transform.localRotation = rotationToCenter;
+                hckv.Value.tile = tile.GetComponent<MutatronTile>();
+
                 // bind the polytron to his home. The home will not change.
-                // hckv.Value.sink.GetComponent<PolytronSink>().boundPolytron = polytron.GetComponent<Polytron>();
                 BindPolytronToHome(polytron.GetComponent<Polytron>(), hckv);
+                BindPolytronToSink(polytron.GetComponent<Polytron>(), hckv);
+
+                yield return new WaitForSeconds(0.1f);
             }
         }
     }
@@ -617,7 +622,7 @@ public class MutatronEngine : MonoBehaviour
                 string tileRecipe = PolyhedronRecipeKabbalah.IntToOperatorsSequence(hckv.Value.polytronicNumber) + hckv.Value.tileBasePolyhedron;
 
                 GameObject tile = PolytronsFactory.Instance.Create($"tile/{tileRecipe}", 1f);
-                tile.tag = "Tile";
+                // tile.tag = "Tile";
                 tile.transform.localScale = new Vector3(1f, 0.01f, 1f);
                 tile.transform.position = hckv.Value.worldCoords + new Vector3(0, 0.1f, 0);
                 tile.transform.localRotation = tileRotation;

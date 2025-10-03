@@ -16,4 +16,7 @@ public class MutatronTile : PolyhedronGenerator
     public HexCoord hexCoord;
 */
 
+    // if [0..71], this is the home of a polytron
+    public int sealHome = -1;
+
 }
