@@ -18,6 +18,9 @@ public class MutatronEngine : MonoBehaviour
     // the 72 polytrons
     private List<Polytron> polytrons = new();
 
+    // the polytrons homes
+    private List<KeyValuePair<HexCoord, HexCellData>> polytronsHomes = new();
+
     int evolveCount = 0;
 
     public class HexCellData
@@ -314,6 +317,8 @@ public class MutatronEngine : MonoBehaviour
                 BindPolytronToHome(polytron.GetComponent<Polytron>(), hckv);
                 BindPolytronToSink(polytron.GetComponent<Polytron>(), hckv);
 
+                polytronsHomes.Add(hckv);
+
                 yield return new WaitForSeconds(0.15f);
             }
         }
@@ -501,6 +506,8 @@ public class MutatronEngine : MonoBehaviour
     {
         foreach (HexCellData hcd in gridCellsMap.Values)
         {
+            if (hcd.ring == 12) continue;
+
             if (hcd.circle)
             {
                 GameObject.Destroy(hcd.circle);
@@ -708,6 +715,22 @@ public class MutatronEngine : MonoBehaviour
         Debug.Log($"[UnbindNonMatchingPolytrons] polytronsThatWillNotMove: {polytronsThatWillNotMove}");
     }
 
+    /*
+        void SendUnboundPolytronsHome()
+        {
+            var unboundPolytrons = polytrons.Where(p => p.boundSink == null).ToList();
+            var unboundSinksOnExternalRing = gridCellsMap.Where(hckv => hckv.Value.ring == 12 && hckv.Value.sink.boundPolytron == null).ToList();
+
+            Debug.Assert(unboundSinksOnExternalRing.Count >= unboundPolytrons.Count);
+            Debug.Log($"unboundPolytrons: {unboundPolytrons.Count}, unboundSinksOnExternalRing: {unboundSinksOnExternalRing.Count}");
+
+            for (int i = 0; i < unboundPolytrons.Count; i++)
+            {
+                BindPolytronToSink(unboundPolytrons[i], unboundSinksOnExternalRing[i]);
+            }
+        }
+        */
+
     void SendUnboundPolytronsHome()
     {
         var unboundPolytrons = polytrons.Where(p => p.boundSink == null).ToList();
@@ -718,10 +741,11 @@ public class MutatronEngine : MonoBehaviour
 
         for (int i = 0; i < unboundPolytrons.Count; i++)
         {
-            BindPolytronToSink(unboundPolytrons[i], unboundSinksOnExternalRing[i]);
+            // BindPolytronToSink(unboundPolytrons[i], unboundSinksOnExternalRing[i]);
+            BindPolytronToSink(unboundPolytrons[i], polytronsHomes[unboundPolytrons[i].sealNumber]);
         }
-
     }
+
 
     void Evolve()
     {
