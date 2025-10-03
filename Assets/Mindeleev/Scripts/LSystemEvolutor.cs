@@ -44,14 +44,14 @@ public class LSystemEvolutor : MonoBehaviour
     {
         if (polyGen == null)
             polyGen = GetComponent<PolyhedronGenerator>();
-        if (polyGen == null || string.IsNullOrEmpty(polyGen.recipeString))
+        if (polyGen == null || string.IsNullOrEmpty(polyGen.recipe))
             return;
 
-        string evolved = ApplyLSystem(polyGen.recipeString);
-        if (evolved == polyGen.recipeString)
+        string evolved = ApplyLSystem(polyGen.recipe);
+        if (evolved == polyGen.recipe)
             return; // Stable, no change
 
-        polyGen.recipeString = evolved;
+        polyGen.recipe = evolved;
         polyGen.RebuildMesh(); // You need to implement this in PolyhedronGenerator
     }
 

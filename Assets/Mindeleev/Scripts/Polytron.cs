@@ -22,7 +22,12 @@ public class Polytron : PolyhedronGenerator,
 
     // public PolytronEngine Engine { get; set; }
 
-    public int Id { get; set; }
+    // public int Id { get; set; }
+
+    // 0..71
+    public int sealNumber = -1;
+
+    public string sealName;
 
     public Rigidbody RigidBody { get; set; }
 
@@ -88,7 +93,7 @@ public class Polytron : PolyhedronGenerator,
         o.EnableOutline();
 
         WorldSpacePanel wsp = GameObject.Find("InspectorCanvas").GetComponent<WorldSpacePanel>();
-        wsp.titleText.text = "enter " + name;
+        wsp.pname.text = "enter " + sealName;
     }
 
     public void OnPointerExit(PointerEventData eventData)
@@ -99,7 +104,7 @@ public class Polytron : PolyhedronGenerator,
         o.DisableOutline();
 
         WorldSpacePanel wsp = GameObject.Find("InspectorCanvas").GetComponent<WorldSpacePanel>();
-        wsp.titleText.text = "exit " + name;
+        wsp.pname.text = "exit " + sealName;
     }
 
     public void OnPointerClick(PointerEventData eventData)

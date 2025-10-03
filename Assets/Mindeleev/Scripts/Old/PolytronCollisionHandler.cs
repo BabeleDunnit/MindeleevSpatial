@@ -18,8 +18,8 @@ public class PolytronCollisionHandler : MonoBehaviour
         if (polytron != null && otherPolytron != null)
         {
 
-            string originalRecipe = polytron.recipeString;
-            string otherOriginalRecipe = otherPolytron.recipeString;
+            string originalRecipe = polytron.recipe;
+            string otherOriginalRecipe = otherPolytron.recipe;
 
             /*
                         // Example: sum recipes on collision
@@ -32,7 +32,7 @@ public class PolytronCollisionHandler : MonoBehaviour
                 new System.Collections.Generic.List<string> { originalRecipe, otherOriginalRecipe });
 
 
-            polytron.recipeString = newRecipe;
+            polytron.recipe = newRecipe;
             Debug.Log($"r1: {originalRecipe}, r2: {otherOriginalRecipe}, new this recipe: {newRecipe}");
             polytron.RebuildMesh();
 

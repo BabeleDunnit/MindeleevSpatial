@@ -78,7 +78,7 @@ public class SpatialClickable3D : MonoBehaviour
         Debug.Log("3D object clicked via Spatial UI ray!");
         WorldSpacePanel wsp = GameObject.Find("InspectorCanvas").GetComponent<WorldSpacePanel>();
 
-        wsp.titleText.text = "cliccato su un polytrone";
+        wsp.pname.text = "cliccato su un polytrone";
 
         IPointerClickHandler ch = GetComponent<IPointerClickHandler>();
         ch.OnPointerClick(null);

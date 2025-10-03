@@ -23,7 +23,7 @@ public class PolytronOrbital : MonoBehaviour
         }
 
         // Extract the base polyhedron (last uppercase letter in the recipe)
-        string recipe = generator.recipeString;
+        string recipe = generator.recipe;
         char basePoly = recipe.LastOrDefault(c => char.IsUpper(c));
         if (basePoly == default)
         {
@@ -69,7 +69,7 @@ public class PolytronOrbital : MonoBehaviour
                 var orbitalGen = orbital.GetComponent<PolyhedronGenerator>();
                 if (orbitalGen != null)
                 {
-                    orbitalGen.recipeString = string.Concat(Enumerable.Repeat(ops[i - 2], j)) + baseRecipe;
+                    orbitalGen.recipe = string.Concat(Enumerable.Repeat(ops[i - 2], j)) + baseRecipe;
                 }
 
                 orbital.name = $"Orbital_{baseRecipe}_{i + 1}";

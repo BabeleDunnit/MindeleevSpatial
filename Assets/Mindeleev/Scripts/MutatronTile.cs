@@ -1,4 +1,3 @@
-using System.Data.Common;
 using UnityEngine;
 
 /// <summary>
@@ -6,15 +5,15 @@ using UnityEngine;
 /// It can be configured to attract Polytrons by recipe (AttractByRecipe).
 /// Once a Polytron is bound, the sink stops attracting others.
 /// </summary>
-public class PolytronSink : MonoBehaviour
+public class MutatronTile : PolyhedronGenerator
 {
+    /*
     public string attractedRecipe; // The recipe this sink will attract
     public Polytron boundPolytron;
 
     public float weight = 1f;
 
     public HexCoord hexCoord;
-
-    // public bool updated = false;
+*/
 
 }

@@ -84,7 +84,7 @@ public class PolyhedraGridGenerator : MonoBehaviour
                     var generator = instance.GetComponent<PolyhedronGenerator>();
                     if (generator != null)
                     {
-                        generator.recipeString = recipe;
+                        generator.recipe = recipe;
                     }
 
                     // Add text label for easier identification

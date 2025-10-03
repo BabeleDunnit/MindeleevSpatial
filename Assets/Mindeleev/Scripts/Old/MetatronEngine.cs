@@ -171,7 +171,7 @@ public class MetatronEngine : MonoBehaviour
                 Polytron polytronComponent = polytron.GetComponent<Polytron>();
 
                 if (boundPolytrons.Contains(polytron)) continue;
-                if (polytronComponent.recipeString != sinkComponent.attractedRecipe) continue;
+                if (polytronComponent.recipe != sinkComponent.attractedRecipe) continue;
 
                 sinkComponent.boundPolytron = polytronComponent;
                 sink.GetComponent<MeshRenderer>().material.color = Color.red;
@@ -187,16 +187,16 @@ public class MetatronEngine : MonoBehaviour
     void RebuildTileMesh(HexCoord coord, string recipe)
     {
         GameObject tile = gridCellsMap[coord].tile;
-        if (tile != null && tile.GetComponent<PolyhedronGenerator>().recipeString != recipe)
+        if (tile != null && tile.GetComponent<PolyhedronGenerator>().recipe != recipe)
         {
-            tile.GetComponent<PolyhedronGenerator>().recipeString = recipe;
+            tile.GetComponent<PolyhedronGenerator>().recipe = recipe;
             tile.GetComponent<PolyhedronGenerator>().RebuildMesh();
         }
     }
 
     void RebuildPolytronMesh(GameObject p, string recipe)
     {
-        p.GetComponent<Polytron>().recipeString = recipe;
+        p.GetComponent<Polytron>().recipe = recipe;
         p.GetComponent<Polytron>().RebuildMesh();
         p.name = $"Polytron_{recipe}";
     }
@@ -568,7 +568,7 @@ public class MetatronEngine : MonoBehaviour
         cellData.actualState = true;
 
         // this is wrong, only to test visuals:
-        string tileRecipe = cellData.tile.GetComponent<PolyhedronGenerator>().recipeString;
+        string tileRecipe = cellData.tile.GetComponent<PolyhedronGenerator>().recipe;
         GameObject polytron = PolytronsFactory.Instance.Create($"polytron/{tileRecipe}", 0.4f);
         polytron.transform.position = cellData.worldCoords + new Vector3(0, 1f, 0);
         float angleToCenter = new HexCoord(cellData.ring, cellData.idxInRing).PolarAngle();
@@ -730,7 +730,7 @@ public class MetatronEngine : MonoBehaviour
                         }
                     }
 
-                    string cellRecipe = hckv.Value.tile.GetComponent<PolyhedronGenerator>().recipeString;
+                    string cellRecipe = hckv.Value.tile.GetComponent<PolyhedronGenerator>().recipe;
 
                     List<string> fissionRecipes = PolyhedronRecipeKabbalah.RecipeFission(cellRecipe, aliveNeighbors + 1);
                     Debug.Log($"fission of cell at ring {hckv.Value.ring}, idxInRing {hckv.Value.idxInRing}, cell recipe: {cellRecipe}, aliveNeighbors: {aliveNeighbors}, recipes: {string.Join(", ", fissionRecipes)}");
@@ -780,7 +780,7 @@ public class MetatronEngine : MonoBehaviour
                         if (gridCellsMap.ContainsKey(neighbor) && gridCellsMap[neighbor].ring <= actualLevelConfig.actualRingsCount)
                         {
                             HexCellData neighborCellData = gridCellsMap[neighbor];
-                            recipesForFusion.Add(neighborCellData.tile.GetComponent<PolyhedronGenerator>().recipeString);
+                            recipesForFusion.Add(neighborCellData.tile.GetComponent<PolyhedronGenerator>().recipe);
                         }
                     }
                     Debug.Log($"fusion recipes: {string.Join(", ", recipesForFusion)}");
@@ -842,7 +842,7 @@ public class MetatronEngine : MonoBehaviour
                 hckv.Value.polytron.GetComponent<Polytron>().recipeString = hckv.Value.tile.GetComponent<PolyhedronGenerator>().recipeString;
                 hckv.Value.polytron.GetComponent<Polytron>().RebuildMesh();
                 */
-                RebuildPolytronMesh(hckv.Value.polytron, hckv.Value.tile.GetComponent<PolyhedronGenerator>().recipeString);
+                RebuildPolytronMesh(hckv.Value.polytron, hckv.Value.tile.GetComponent<PolyhedronGenerator>().recipe);
             }
 
         }

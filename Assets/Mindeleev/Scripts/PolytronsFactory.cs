@@ -118,7 +118,14 @@ public class PolytronsFactory : MonoBehaviour
                     var polytronComponent = poly.GetComponent<Polytron>();
                     if (polytronComponent != null)
                     {
-                        polytronComponent.recipeString = recipe;
+                        polytronComponent.recipe = recipe;
+                        polytronComponent.sealNumber = createdPolytrons.Count;
+                        if (polytronComponent.sealNumber >= 72)
+                        {
+                            throw new System.Exception("Too many polytrons created, max is 72");
+                        }
+
+                        polytronComponent.sealName = PolytronName.GetName(polytronComponent.sealNumber + 1);
                     }
 
                     poly.name = $"{kind}_{recipe}";
@@ -156,7 +163,7 @@ public class PolytronsFactory : MonoBehaviour
                     tile.transform.localScale = Vector3.one * localUniformScale;
 
                     var pg = tile.GetComponent<PolyhedronGenerator>();
-                    pg.recipeString = recipe;
+                    pg.recipe = recipe;
 
                     return tile;
                 }
