@@ -28,7 +28,7 @@ public class Outline : MonoBehaviour
     /// <summary>
     /// Enable the outline/halo effect.
     /// </summary>
-    public void EnableOutline()
+    internal void EnableOutline()
     {
         if (isOutlined) return;
 
@@ -43,7 +43,7 @@ public class Outline : MonoBehaviour
             outlineGameObject.transform.localPosition = Vector3.zero;
             outlineGameObject.transform.localRotation = Quaternion.identity;
             Vector3 outlineScaleFactor = new Vector3(outlineWidth, outlineWidth, outlineWidth);
-            outlineGameObject.transform.localScale = outlineScaleFactor + new Vector3(1,1,1);
+            outlineGameObject.transform.localScale = outlineScaleFactor + new Vector3(1, 1, 1);
 
             var mfCopy = outlineGameObject.AddComponent<MeshFilter>();
             var mrCopy = outlineGameObject.AddComponent<MeshRenderer>();
@@ -59,11 +59,17 @@ public class Outline : MonoBehaviour
     /// <summary>
     /// Disable the outline/halo effect.
     /// </summary>
-    public void DisableOutline()
+    internal void DisableOutline()
     {
         if (!isOutlined) return;
         Destroy(outlineGameObject);
         isOutlined = false;
+    }
+
+    public void RebuildOutline()
+    {
+        DisableOutline();
+        EnableOutline();
     }
 }
 

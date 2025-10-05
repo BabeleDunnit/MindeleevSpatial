@@ -47,13 +47,15 @@ public class Polytron : PolyhedronGenerator,
     {
         // Debug.Log($"[PointerEvent] BeginDrag on {gameObject.name}");
 
+/*
         Outline o = GetComponent<Outline>();
         o.outlineColor = Color.blue;
         o.outlineWidth = 0.5f;
         o.DisableOutline();
         o.EnableOutline();
-
         BeginDrag();
+        */
+        
     }
 
     public void OnDrag(PointerEventData eventData)
@@ -64,13 +66,14 @@ public class Polytron : PolyhedronGenerator,
     public void OnEndDrag(PointerEventData eventData)
     {
         // Debug.Log($"[PointerEvent] EndDrag on {gameObject.name}");
+        /*
+                Outline o = GetComponent<Outline>();
+                o.outlineColor = Color.magenta;
+                o.DisableOutline();
+                o.EnableOutline();
 
-        Outline o = GetComponent<Outline>();
-        o.outlineColor = Color.magenta;
-        o.DisableOutline();
-        o.EnableOutline();
-
-        EndDrag();
+                EndDrag();
+        */
 
     }
 
@@ -89,8 +92,9 @@ public class Polytron : PolyhedronGenerator,
         // Debug.Log("Pointer over object");
 
         Outline o = GetComponent<Outline>();
-        o.outlineColor = Color.yellow;
-        o.EnableOutline();
+        o.outlineColor = Color.white;
+        o.outlineWidth = 0.1f;
+        o.RebuildOutline();
 
         WorldSpacePanel wsp = GameObject.Find("InspectorCanvas").GetComponent<WorldSpacePanel>();
         wsp.pname.text = "enter " + sealName;
@@ -101,7 +105,9 @@ public class Polytron : PolyhedronGenerator,
         // Debug.Log("Pointer left object");
 
         Outline o = GetComponent<Outline>();
-        o.DisableOutline();
+        // o.DisableOutline();
+
+        GetComponent<ClickStateController>().ApplyState();
 
         WorldSpacePanel wsp = GameObject.Find("InspectorCanvas").GetComponent<WorldSpacePanel>();
         wsp.pname.text = "exit " + sealName;
@@ -109,34 +115,18 @@ public class Polytron : PolyhedronGenerator,
 
     public void OnPointerClick(PointerEventData eventData)
     {
+        /*
         Outline o = GetComponent<Outline>();
         o.outlineColor = Color.green;
         o.DisableOutline();
         o.EnableOutline();
+        */
+
+        ClickStateController csc = GetComponent<ClickStateController>();
+        csc.AdvanceState();
 
         Debug.Log("[Polytron.OnPointerClick()] Object clicked!");
 
-/*
-        GameObject engineObj = GameObject.Find("HexCellularAutomata");
-        if (engineObj != null)
-        {
-            PolytronEngine engine = engineObj.GetComponent<PolytronEngine>();
-            if (engine != null)
-            {
-                Debug.Log("Found PolytronEngine02 and casted to PolytronEngine.");
-                // You can now use 'engine' as needed
-                engine.Register(this);
-            }
-            else
-            {
-                Debug.LogWarning("PolytronEngine component not found on PolytronEngine02.");
-            }
-        }
-        else
-        {
-            Debug.LogWarning("GameObject 'PolytronEngine02' not found.");
-        }
-        */
     }
 
     private bool isDragging = false;
