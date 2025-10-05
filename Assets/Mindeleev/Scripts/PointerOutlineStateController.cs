@@ -7,7 +7,7 @@ using UnityEngine;
 /// Use AdvanceState() to cycle through states. Configure states in the Inspector.
 /// </summary>
 [RequireComponent(typeof(Outline))]
-public class ClickStateController : MonoBehaviour
+public class PointerOutlineStateController : MonoBehaviour
 {
     [Serializable]
     public class State
@@ -25,6 +25,8 @@ public class ClickStateController : MonoBehaviour
 
     private int currentState = 0;
     private Outline outline;
+
+    public State onHover = new State() { name = "onHover", outlineColor = Color.white, outlineWidth = 0.1f };
 
     void Awake()
     {
@@ -96,4 +98,22 @@ public class ClickStateController : MonoBehaviour
             outline.EnableOutline();
         }
     }
+
+    public void OnHoverEnter()
+    {
+        if (outline == null) outline = GetComponent<Outline>();
+        outline.outlineColor = onHover.outlineColor;
+        outline.outlineWidth = onHover.outlineWidth;
+        outline.DisableOutline();
+        if (onHover.outlineWidth > 0f)
+        {
+            outline.EnableOutline();
+        }
+    }
+
+    public void OnHoverExit()
+    {
+        ApplyState();
+    }  
+
 }

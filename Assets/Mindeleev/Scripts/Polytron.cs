@@ -91,10 +91,14 @@ public class Polytron : PolyhedronGenerator,
     {
         // Debug.Log("Pointer over object");
 
-        Outline o = GetComponent<Outline>();
-        o.outlineColor = Color.white;
-        o.outlineWidth = 0.1f;
-        o.RebuildOutline();
+        GetComponent<PointerOutlineStateController>().OnHoverEnter();
+
+        /*
+                Outline o = GetComponent<Outline>();
+                o.outlineColor = Color.white;
+                o.outlineWidth = 0.1f;
+                o.RebuildOutline();
+        */
 
         WorldSpacePanel wsp = GameObject.Find("InspectorCanvas").GetComponent<WorldSpacePanel>();
         wsp.pname.text = "enter " + sealName;
@@ -104,10 +108,11 @@ public class Polytron : PolyhedronGenerator,
     {
         // Debug.Log("Pointer left object");
 
-        Outline o = GetComponent<Outline>();
+//         Outline o = GetComponent<Outline>();
         // o.DisableOutline();
 
-        GetComponent<ClickStateController>().ApplyState();
+//         GetComponent<PointerOutlineStateController>().ApplyState();
+        GetComponent<PointerOutlineStateController>().OnHoverExit();
 
         WorldSpacePanel wsp = GameObject.Find("InspectorCanvas").GetComponent<WorldSpacePanel>();
         wsp.pname.text = "exit " + sealName;
@@ -122,7 +127,7 @@ public class Polytron : PolyhedronGenerator,
         o.EnableOutline();
         */
 
-        ClickStateController csc = GetComponent<ClickStateController>();
+        PointerOutlineStateController csc = GetComponent<PointerOutlineStateController>();
         csc.AdvanceState();
 
         Debug.Log("[Polytron.OnPointerClick()] Object clicked!");
