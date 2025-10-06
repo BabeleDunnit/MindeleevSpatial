@@ -7,6 +7,11 @@ using SpatialSys.UnitySDK;
 
 [RequireComponent(typeof(Collider))]
 [RequireComponent(typeof(Rigidbody))]
+[RequireComponent(typeof(SpatialClickable3D))]
+
+// down, up and click handlers need an UI element to be fired, and this is why we need to have
+// a SpatialClikcable3D component. For some reason, enter/exit and drag stuff works 
+// (because based on early raycasting??)
 public class Polytron : PolyhedronGenerator,
   IPointerEnterHandler,
     IPointerExitHandler,
@@ -35,37 +40,37 @@ public class Polytron : PolyhedronGenerator,
 
     public void OnPointerDown(PointerEventData eventData)
     {
-        // Debug.Log($"[PointerEvent] Down on {gameObject.name}");
+        Debug.Log($"[PointerEvent] Down on {gameObject.name}");
     }
 
     public void OnPointerUp(PointerEventData eventData)
     {
-        // Debug.Log($"[PointerEvent] Up on {gameObject.name}");
+        Debug.Log($"[PointerEvent] Up on {gameObject.name}");
     }
 
     public void OnBeginDrag(PointerEventData eventData)
     {
-        // Debug.Log($"[PointerEvent] BeginDrag on {gameObject.name}");
+        Debug.Log($"[PointerEvent] BeginDrag on {gameObject.name}");
 
-/*
-        Outline o = GetComponent<Outline>();
-        o.outlineColor = Color.blue;
-        o.outlineWidth = 0.5f;
-        o.DisableOutline();
-        o.EnableOutline();
-        BeginDrag();
-        */
-        
+        /*
+                Outline o = GetComponent<Outline>();
+                o.outlineColor = Color.blue;
+                o.outlineWidth = 0.5f;
+                o.DisableOutline();
+                o.EnableOutline();
+                BeginDrag();
+                */
+
     }
 
     public void OnDrag(PointerEventData eventData)
     {
-        // Debug.Log($"[PointerEvent] Drag on {gameObject.name}");
+        Debug.Log($"[PointerEvent] Drag on {gameObject.name}");
     }
 
     public void OnEndDrag(PointerEventData eventData)
     {
-        // Debug.Log($"[PointerEvent] EndDrag on {gameObject.name}");
+        Debug.Log($"[PointerEvent] EndDrag on {gameObject.name}");
         /*
                 Outline o = GetComponent<Outline>();
                 o.outlineColor = Color.magenta;
@@ -79,12 +84,15 @@ public class Polytron : PolyhedronGenerator,
 
     public void OnDrop(PointerEventData eventData)
     {
-        // Debug.Log($"[PointerEvent] Drop on {gameObject.name}");
+        Debug.Log($"[PointerEvent] Drop on {gameObject.name}");
     }
 
     public void OnScroll(PointerEventData eventData)
     {
-        // Debug.Log($"[PointerEvent] Scroll on {gameObject.name}, delta: {eventData.scrollDelta}");
+        PointerOutlineStateController csc = GetComponent<PointerOutlineStateController>();
+        csc.AdvanceState();
+
+        Debug.Log($"[PointerEvent] Scroll on {gameObject.name}, delta: {eventData.scrollDelta}");
     }
 
     public void OnPointerEnter(PointerEventData eventData)
@@ -108,10 +116,10 @@ public class Polytron : PolyhedronGenerator,
     {
         // Debug.Log("Pointer left object");
 
-//         Outline o = GetComponent<Outline>();
+        //         Outline o = GetComponent<Outline>();
         // o.DisableOutline();
 
-//         GetComponent<PointerOutlineStateController>().ApplyState();
+        //         GetComponent<PointerOutlineStateController>().ApplyState();
         GetComponent<PointerOutlineStateController>().OnHoverExit();
 
         WorldSpacePanel wsp = GameObject.Find("InspectorCanvas").GetComponent<WorldSpacePanel>();
@@ -127,11 +135,24 @@ public class Polytron : PolyhedronGenerator,
         o.EnableOutline();
         */
 
-        PointerOutlineStateController csc = GetComponent<PointerOutlineStateController>();
-        csc.AdvanceState();
+        if (eventData?.clickCount == 2)
+        {
+            Debug.Log("double click");
+        }
+
+        // PointerOutlineStateController csc = GetComponent<PointerOutlineStateController>();
+        // csc.AdvanceState();
 
         Debug.Log("[Polytron.OnPointerClick()] Object clicked!");
 
+    }
+
+    public void OnSpatialClickable3DClick()
+    {
+        PointerOutlineStateController csc = GetComponent<PointerOutlineStateController>();
+        csc.AdvanceState();
+
+        Debug.Log("[Polytron.OnSpatialClickable3DClick()] Object clicked!");
     }
 
     private bool isDragging = false;
@@ -168,13 +189,13 @@ public class Polytron : PolyhedronGenerator,
     {
         base.Start();
 
-    
+
         RigidBody = GetComponent<Rigidbody>();
         if (RigidBody == null)
         {
             throw new NullReferenceException("Polytron must have a RigidBody component, please check");
         }
-    
+
         mainCamera = CrossPlatformUtils.FindCamera();
 
     }
