@@ -10,7 +10,8 @@ public class SpatialClickable3D : MonoBehaviour
     public Button button;
 
     // canvas scale is 1 so these are meters
-    private Vector2 hitAreaSize = new Vector2(0.8f, 0.8f);
+//     private Vector2 hitAreaSize = new Vector2(0.8f, 0.8f);
+    private Vector2 hitAreaSize = new Vector2(1.8f, 1.8f);
 
     Transform cam;
 
@@ -43,12 +44,13 @@ public class SpatialClickable3D : MonoBehaviour
             rt.sizeDelta = hitAreaSize;
 
             var img = imgGO.GetComponent<Image>();
-            img.color = new Color(1, 1, 1, 0.001f); // invisibile ma cliccabile
-            // img.color = new Color(1, 1, 0, 0.3f); // semi-transparent for debugging
+            // img.color = new Color(1, 1, 1, 0.001f); // invisibile ma cliccabile
+            img.color = new Color(1, 1, 0, 0.3f); // semi-transparent for debugging
             img.raycastTarget = true;
 
             button = imgGO.GetComponent<Button>();
             button.onClick.AddListener(OnClicked);
+
 
             GraphicRaycaster gr = canvasGO.AddComponent<GraphicRaycaster>();
         }
