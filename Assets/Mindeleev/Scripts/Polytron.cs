@@ -52,14 +52,14 @@ public class Polytron : PolyhedronGenerator,
     {
         Debug.Log($"[PointerEvent] BeginDrag on {gameObject.name}");
 
-        /*
+        
                 Outline o = GetComponent<Outline>();
                 o.outlineColor = Color.blue;
                 o.outlineWidth = 0.5f;
                 o.DisableOutline();
                 o.EnableOutline();
                 BeginDrag();
-                */
+                
 
     }
 
@@ -71,15 +71,14 @@ public class Polytron : PolyhedronGenerator,
     public void OnEndDrag(PointerEventData eventData)
     {
         Debug.Log($"[PointerEvent] EndDrag on {gameObject.name}");
-        /*
+        
                 Outline o = GetComponent<Outline>();
                 o.outlineColor = Color.magenta;
                 o.DisableOutline();
                 o.EnableOutline();
 
                 EndDrag();
-        */
-
+        
     }
 
     public void OnDrop(PointerEventData eventData)
@@ -99,15 +98,14 @@ public class Polytron : PolyhedronGenerator,
     {
         // Debug.Log("Pointer over object");
 
-        GetComponent<PointerOutlineStateController>().OnHoverEnter();
+        // GetComponent<PointerOutlineStateController>().OnHoverEnter();
 
-        /*
+        
                 Outline o = GetComponent<Outline>();
                 o.outlineColor = Color.white;
                 o.outlineWidth = 0.1f;
                 o.RebuildOutline();
-        */
-
+        
         WorldSpacePanel wsp = GameObject.Find("InspectorCanvas").GetComponent<WorldSpacePanel>();
         wsp.pname.text = "enter " + sealName;
     }
@@ -116,11 +114,10 @@ public class Polytron : PolyhedronGenerator,
     {
         // Debug.Log("Pointer left object");
 
-        //         Outline o = GetComponent<Outline>();
-        // o.DisableOutline();
+        Outline o = GetComponent<Outline>();
+        o.DisableOutline();
 
-        //         GetComponent<PointerOutlineStateController>().ApplyState();
-        GetComponent<PointerOutlineStateController>().OnHoverExit();
+        // GetComponent<PointerOutlineStateController>().OnHoverExit();
 
         WorldSpacePanel wsp = GameObject.Find("InspectorCanvas").GetComponent<WorldSpacePanel>();
         wsp.pname.text = "exit " + sealName;
@@ -128,13 +125,12 @@ public class Polytron : PolyhedronGenerator,
 
     public void OnPointerClick(PointerEventData eventData)
     {
-        /*
+        
         Outline o = GetComponent<Outline>();
         o.outlineColor = Color.green;
         o.DisableOutline();
         o.EnableOutline();
-        */
-
+        
         if (eventData?.clickCount == 2)
         {
             Debug.Log("double click");
@@ -147,8 +143,15 @@ public class Polytron : PolyhedronGenerator,
 
     }
 
-    public void OnSpatialClickable3DClick()
+    public void OnSpatialClickable3DClick(PointerEventData eventData)
     {
+
+        if (eventData?.clickCount == 2)
+        {
+            Debug.Log("double click");
+        }
+
+
         PointerOutlineStateController csc = GetComponent<PointerOutlineStateController>();
         csc.AdvanceState();
 

@@ -37,7 +37,7 @@ MonoBehaviour:
     ignore: 0
   - layer1: 6
     layer2: 13
-    ignore: 1
+    ignore: 0
   - layer1: 6
     layer2: 14
     ignore: 0
@@ -70,7 +70,7 @@ MonoBehaviour:
     ignore: 0
   - layer1: 7
     layer2: 13
-    ignore: 1
+    ignore: 0
   - layer1: 7
     layer2: 14
     ignore: 0
@@ -100,7 +100,7 @@ MonoBehaviour:
     ignore: 0
   - layer1: 8
     layer2: 13
-    ignore: 1
+    ignore: 0
   - layer1: 8
     layer2: 14
     ignore: 0
@@ -127,7 +127,7 @@ MonoBehaviour:
     ignore: 0
   - layer1: 9
     layer2: 13
-    ignore: 1
+    ignore: 0
   - layer1: 9
     layer2: 14
     ignore: 0
@@ -151,7 +151,7 @@ MonoBehaviour:
     ignore: 0
   - layer1: 10
     layer2: 13
-    ignore: 1
+    ignore: 0
   - layer1: 10
     layer2: 14
     ignore: 0
@@ -172,7 +172,7 @@ MonoBehaviour:
     ignore: 0
   - layer1: 11
     layer2: 13
-    ignore: 1
+    ignore: 0
   - layer1: 11
     layer2: 14
     ignore: 0
@@ -190,7 +190,7 @@ MonoBehaviour:
     ignore: 0
   - layer1: 12
     layer2: 13
-    ignore: 1
+    ignore: 0
   - layer1: 12
     layer2: 14
     ignore: 0
@@ -208,7 +208,7 @@ MonoBehaviour:
     ignore: 0
   - layer1: 13
     layer2: 14
-    ignore: 1
+    ignore: 0
   - layer1: 13
     layer2: 29
     ignore: 0
@@ -217,7 +217,7 @@ MonoBehaviour:
     ignore: 0
   - layer1: 13
     layer2: 31
-    ignore: 1
+    ignore: 0
   customCollision2DSettings:
   - layer1: 6
     layer2: 6

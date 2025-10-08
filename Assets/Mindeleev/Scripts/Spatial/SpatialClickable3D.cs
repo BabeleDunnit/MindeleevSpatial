@@ -3,6 +3,17 @@ using UnityEngine.UI;
 using UnityEngine.EventSystems;
 
 
+public class SpatialClickable3DProxy : MonoBehaviour, IPointerClickHandler
+{
+    public SpatialClickable3D target;
+
+    public void OnPointerClick(PointerEventData eventData)
+    {
+        if (target != null)
+            target.OnProxyPointerClick(eventData);
+    }
+}
+
 [RequireComponent(typeof(Collider))]
 public class SpatialClickable3D : MonoBehaviour
 {
@@ -11,7 +22,7 @@ public class SpatialClickable3D : MonoBehaviour
 
     // canvas scale is 1 so these are meters
 //     private Vector2 hitAreaSize = new Vector2(0.8f, 0.8f);
-    private Vector2 hitAreaSize = new Vector2(1.8f, 1.8f);
+    private Vector2 hitAreaSize = new Vector2(2.8f, 2.8f);
 
     Transform cam;
 
@@ -40,22 +51,51 @@ public class SpatialClickable3D : MonoBehaviour
 
             imgGO.layer = LayerMask.NameToLayer("UI");
 
+            // After creating imgGO (the UI element)
+            var proxy = imgGO.AddComponent<SpatialClickable3DProxy>();
+            proxy.target = this;
+
             var rt = imgGO.GetComponent<RectTransform>();
             rt.sizeDelta = hitAreaSize;
 
             var img = imgGO.GetComponent<Image>();
             // img.color = new Color(1, 1, 1, 0.001f); // invisibile ma cliccabile
-            img.color = new Color(1, 1, 0, 0.3f); // semi-transparent for debugging
+            img.color = new Color(1, 0, 0, 0.3f); // semi-transparent for debugging
             img.raycastTarget = true;
 
             button = imgGO.GetComponent<Button>();
-            button.onClick.AddListener(OnClicked);
+            // button.onClick.AddListener(OnClicked);
 
 
             GraphicRaycaster gr = canvasGO.AddComponent<GraphicRaycaster>();
         }
     }
 
+    public void OnProxyPointerClick(PointerEventData eventData)
+    {
+        Debug.Log($"OnProxyPointerClick: clicked in SpatialClickable3D via proxy, clicks: {eventData.clickCount}");
+
+        /*   Polytron p = GetComponent<Polytron>();
+           if (p != null)
+           {
+               p.OnSpatialClickable3DClick(eventData);
+           }
+           */
+    
+}
+
+/*
+ public void OnPointerClick(PointerEventData eventData)
+    {
+        Debug.Log("clicked in SpatialLickable3D");
+        // Forward click count and other info to Polytron
+        Polytron p = GetComponent<Polytron>();
+        if (p != null)
+        {
+            p.OnSpatialClickable3DClick(eventData);
+        }
+    }
+*/
 
     void LateUpdate()
     {
@@ -78,8 +118,8 @@ public class SpatialClickable3D : MonoBehaviour
     void OnClicked()
     {
         Debug.Log("3D object clicked via Spatial UI ray!");
-        //WorldSpacePanel wsp = GameObject.Find("InspectorCanvas").GetComponent<WorldSpacePanel>();
-        //wsp.pname.text = "cliccato su un polytrone";
+        WorldSpacePanel wsp = GameObject.Find("InspectorCanvas").GetComponent<WorldSpacePanel>();
+        wsp.pname.text = "cliccato su un polytrone";
 
         /*
                 IPointerClickHandler ch = GetComponent<IPointerClickHandler>();
@@ -87,7 +127,7 @@ public class SpatialClickable3D : MonoBehaviour
                 */
 
         Polytron p = GetComponent<Polytron>();
-        p.OnSpatialClickable3DClick();
+        // p.OnSpatialClickable3DClick();
     }
 
     /*
