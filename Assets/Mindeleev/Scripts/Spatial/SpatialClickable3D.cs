@@ -18,26 +18,28 @@ public class SpatialClickable3DProxy : MonoBehaviour, IPointerClickHandler
 public class SpatialClickable3D : MonoBehaviour
 {
     [Header("UI hit area (auto se nullo)")]
-    public Button button;
+    // public Button button;
 
     // canvas scale is 1 so these are meters
 //     private Vector2 hitAreaSize = new Vector2(0.8f, 0.8f);
     private Vector2 hitAreaSize = new Vector2(2.8f, 2.8f);
 
-    Transform cam;
+    Transform cameraTransform;
+
+    Canvas canvas;
 
     void Awake()
     {
-        cam = CrossPlatformUtils.FindCamera().transform;
+        cameraTransform = CrossPlatformUtils.FindCamera().transform;
 
-        if (button == null)
-        {
+        // if (button == null)
+        // {
             // Canvas World Space
             var canvasGO = new GameObject("ClickCanvas", typeof(Canvas));
 
-            canvasGO.layer = LayerMask.NameToLayer("UI");
+            // canvasGO.layer = LayerMask.NameToLayer("UI");
 
-            var canvas = canvasGO.GetComponent<Canvas>();
+            canvas = canvasGO.GetComponent<Canvas>();
             canvas.renderMode = RenderMode.WorldSpace;
             canvas.transform.SetParent(transform, false);
             canvas.transform.localPosition = Vector3.zero;
@@ -49,7 +51,7 @@ public class SpatialClickable3D : MonoBehaviour
             var imgGO = new GameObject("HitArea", typeof(RectTransform), typeof(Image), typeof(Button));
             imgGO.transform.SetParent(canvasGO.transform, false);
 
-            imgGO.layer = LayerMask.NameToLayer("UI");
+            // imgGO.layer = LayerMask.NameToLayer("UI");
 
             // After creating imgGO (the UI element)
             var proxy = imgGO.AddComponent<SpatialClickable3DProxy>();
@@ -63,12 +65,11 @@ public class SpatialClickable3D : MonoBehaviour
             img.color = new Color(1, 0, 0, 0.3f); // semi-transparent for debugging
             img.raycastTarget = true;
 
-            button = imgGO.GetComponent<Button>();
+            // button = imgGO.GetComponent<Button>();
             // button.onClick.AddListener(OnClicked);
 
-
             GraphicRaycaster gr = canvasGO.AddComponent<GraphicRaycaster>();
-        }
+        // }
     }
 
     public void OnProxyPointerClick(PointerEventData eventData)
@@ -99,11 +100,11 @@ public class SpatialClickable3D : MonoBehaviour
 
     void LateUpdate()
     {
-        if (cam != null)
+        if (cameraTransform != null)
         {
             // Billboard “piatto” verso la camera
-            var canvas = button.transform.parent;
-            canvas.rotation = Quaternion.LookRotation(canvas.position - cam.position, Vector3.up);
+            // var canvas = button.transform.parent;
+            canvas.transform.rotation = Quaternion.LookRotation(canvas.transform.position - cameraTransform.position, Vector3.up);
 
             /*            
                                     // Move canvas slightly toward the camera to avoid being inside the 3D object
