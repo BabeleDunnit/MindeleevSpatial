@@ -296,7 +296,8 @@ public class MutatronEngine : MonoBehaviour
                 polytron.name = $"Polytron_{polytronId}";
 
                 Polytron polytronComponent = polytron.GetComponent<Polytron>();
-                polytronComponent.recipe = PolyhedronRecipeKabbalah.IntToOperatorsSequence(polytronId) + $"{(polytronId % 11):D2}" + "C";
+//                 polytronComponent.recipe = PolyhedronRecipeKabbalah.IntToOperatorsSequence(polytronId + 50) + $"{(polytronId % 11):D2}" + "O";
+                polytronComponent.recipe = PolyhedronRecipeKabbalah.IntToOperatorsSequence(polytronId + 50) + "O";
                 Debug.Log(polytronComponent.recipe);
                 polytronComponent.RebuildMesh();
 
@@ -320,7 +321,7 @@ public class MutatronEngine : MonoBehaviour
 
                 polytronsHomes.Add(hckv);
 
-                yield return new WaitForSeconds(0.15f);
+                yield return new WaitForSeconds(2.15f);
             }
         }
     }

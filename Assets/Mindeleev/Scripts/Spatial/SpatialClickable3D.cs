@@ -22,7 +22,7 @@ public class SpatialClickable3D : MonoBehaviour
 
     // canvas scale is 1 so these are meters
 //     private Vector2 hitAreaSize = new Vector2(0.8f, 0.8f);
-    private Vector2 hitAreaSize = new Vector2(2.8f, 2.8f);
+    private Vector2 hitAreaSize = new Vector2(3.8f, 3.8f);
 
     Transform cameraTransform;
 
@@ -34,12 +34,19 @@ public class SpatialClickable3D : MonoBehaviour
 
         // if (button == null)
         // {
-            // Canvas World Space
-            var canvasGO = new GameObject("ClickCanvas", typeof(Canvas));
+        // Canvas World Space
+        var canvasGO = new GameObject("ClickCanvas", typeof(Canvas), typeof(GraphicRaycaster));
 
-            // canvasGO.layer = LayerMask.NameToLayer("UI");
+        // Try to put canvas on the UI layer so external raycasters that filter by layer can hit it
+        /*
+        int uiLayer = LayerMask.NameToLayer("UI");
+        if (uiLayer >= 0)
+            canvasGO.layer = uiLayer;
+*/
 
-            canvas = canvasGO.GetComponent<Canvas>();
+            // GraphicRaycaster gr = canvasGO.AddComponent<GraphicRaycaster>();
+
+        canvas = canvasGO.GetComponent<Canvas>();
             canvas.renderMode = RenderMode.WorldSpace;
             canvas.transform.SetParent(transform, false);
             canvas.transform.localPosition = Vector3.zero;
@@ -47,14 +54,27 @@ public class SpatialClickable3D : MonoBehaviour
 
             canvas.transform.localScale = Vector3.one;
 
+            // Ensure the world-space canvas has a camera assigned (some raycasters need this)
+            var cam = CrossPlatformUtils.FindCamera();
+            if (cam != null)
+                canvas.worldCamera = cam;
+
+            // Make sure the canvas sorts above default geometry so raycasters see it first
+            canvas.overrideSorting = true;
+            canvas.sortingOrder = 100;
+
             // Hit area (Image + Button)
             var imgGO = new GameObject("HitArea", typeof(RectTransform), typeof(Image), typeof(Button));
             imgGO.transform.SetParent(canvasGO.transform, false);
 
-            // imgGO.layer = LayerMask.NameToLayer("UI");
+        /*
+                // Put hit area on UI layer as well (if available)
+                if (uiLayer >= 0)
+                    imgGO.layer = uiLayer;
+        */
 
-            // After creating imgGO (the UI element)
-            var proxy = imgGO.AddComponent<SpatialClickable3DProxy>();
+        // After creating imgGO (the UI element)
+        var proxy = imgGO.AddComponent<SpatialClickable3DProxy>();
             proxy.target = this;
 
             var rt = imgGO.GetComponent<RectTransform>();
@@ -65,10 +85,13 @@ public class SpatialClickable3D : MonoBehaviour
             img.color = new Color(1, 0, 0, 0.3f); // semi-transparent for debugging
             img.raycastTarget = true;
 
-            // button = imgGO.GetComponent<Button>();
+        Button button = imgGO.GetComponent<Button>();
+        var colors = button.colors;
+        colors.highlightedColor = Color.green;
+        button.colors = colors;
+
             // button.onClick.AddListener(OnClicked);
 
-            GraphicRaycaster gr = canvasGO.AddComponent<GraphicRaycaster>();
         // }
     }
 
@@ -76,12 +99,22 @@ public class SpatialClickable3D : MonoBehaviour
     {
         Debug.Log($"OnProxyPointerClick: clicked in SpatialClickable3D via proxy, clicks: {eventData.clickCount}");
 
-        /*   Polytron p = GetComponent<Polytron>();
-           if (p != null)
-           {
-               p.OnSpatialClickable3DClick(eventData);
-           }
-           */
+        // Forward the pointer event to any Polytron (or other) component on this GameObject so
+        // higher-level logic can react to clicks (double-click, clickCount, etc.).
+        Polytron p = GetComponent<Polytron>();
+        if (p != null)
+        {
+            p.OnSpatialClickable3DClick(eventData);
+            return;
+        }
+
+        // Fallback: if another IPointerClickHandler is present on this GameObject, try to call it.
+        var handlers = GetComponents<IPointerClickHandler>();
+        foreach (var h in handlers)
+        {
+            if (System.Object.ReferenceEquals(h, this)) continue;
+            h.OnPointerClick(eventData);
+        }
     
 }
 

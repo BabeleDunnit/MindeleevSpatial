@@ -18,7 +18,7 @@ GameObject:
   - component: {fileID: -2762113096234932433}
   - component: {fileID: 4694441151912273452}
   - component: {fileID: 6266677477388504940}
-  m_Layer: 13
+  m_Layer: 31
   m_Name: Polytron
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -105,16 +105,6 @@ MonoBehaviour:
   recipe: C
   palettes:
   - {fileID: 11400000, guid: 805b5f8cee0194db6b7bf253c04642ca, type: 2}
-  - {fileID: 11400000, guid: ffc60212218fc49178733b73fb85d961, type: 2}
-  - {fileID: 11400000, guid: 966d9d3f4012f4bd1ad73f87253ebb47, type: 2}
-  - {fileID: 11400000, guid: 1531be8998b2b47819745305a60f47da, type: 2}
-  - {fileID: 11400000, guid: b115ac828397f4f57beae783ccdb7af1, type: 2}
-  - {fileID: 11400000, guid: b4f0d57b1193b45a5a434419f8794664, type: 2}
-  - {fileID: 11400000, guid: 44462c999d4c2434db81c14047f0068d, type: 2}
-  - {fileID: 11400000, guid: d9442efa5bdbf420b9b64e155ccbee71, type: 2}
-  - {fileID: 11400000, guid: 79a8fe538ab8c42b2a30879dc6ab71f7, type: 2}
-  - {fileID: 11400000, guid: e349ff9d865e94f78b2d2b4254c9fdee, type: 2}
-  - {fileID: 11400000, guid: 81151ba2f992b4882827ac173080d926, type: 2}
   polyhedronMaterial: {fileID: 2100000, guid: 7f629499ce79c49db9e376336efd191b, type: 2}
   sealNumber: -1
   sealName: 
@@ -174,7 +164,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: b87f3230eeac340d8a1f9c828722e4ec, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  button: {fileID: 0}
 --- !u!114 &4694441151912273452
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -310,3 +299,7 @@ MonoBehaviour:
     outlineColor: {r: 0, g: 1, b: 0.065425634, a: 0}
     outlineWidth: 0.3
   initialState: 0
+  onHover:
+    name: onHover
+    outlineColor: {r: 1, g: 1, b: 1, a: 1}
+    outlineWidth: 0.1

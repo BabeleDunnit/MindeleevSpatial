@@ -12,17 +12,17 @@ using SpatialSys.UnitySDK;
 // down, up and click handlers need an UI element to be fired, and this is why we need to have
 // a SpatialClikcable3D component. For some reason, enter/exit and drag stuff works 
 // (because based on early raycasting??)
-public class Polytron : PolyhedronGenerator,
-  IPointerEnterHandler,
-    IPointerExitHandler,
-    IPointerDownHandler,
-    IPointerUpHandler,
-    IPointerClickHandler,
-    IBeginDragHandler,
-    IDragHandler,
-    IEndDragHandler,
-    IDropHandler,
-    IScrollHandler
+public class Polytron : PolyhedronGenerator
+  //IPointerEnterHandler,
+  //  IPointerExitHandler,
+  //  IPointerDownHandler,
+  //  IPointerUpHandler,
+  //  IPointerClickHandler,
+  //  IBeginDragHandler,
+  //  IDragHandler,
+  //  IEndDragHandler,
+  //  IDropHandler,
+  //  IScrollHandler
 {
 
     // public PolytronEngine Engine { get; set; }
@@ -115,7 +115,7 @@ public class Polytron : PolyhedronGenerator,
         // Debug.Log("Pointer left object");
 
         Outline o = GetComponent<Outline>();
-        o.DisableOutline();
+//         o.DisableOutline();
 
         // GetComponent<PointerOutlineStateController>().OnHoverExit();
 
@@ -151,10 +151,10 @@ public class Polytron : PolyhedronGenerator,
             Debug.Log("double click");
         }
 
-
+/*
         PointerOutlineStateController csc = GetComponent<PointerOutlineStateController>();
         csc.AdvanceState();
-
+*/
         Debug.Log("[Polytron.OnSpatialClickable3DClick()] Object clicked!");
     }
 
