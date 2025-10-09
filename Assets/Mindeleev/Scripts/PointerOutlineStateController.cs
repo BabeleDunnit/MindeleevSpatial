@@ -24,13 +24,14 @@ public class PointerOutlineStateController : MonoBehaviour
     public int initialState = 0;
 
     private int currentState = 0;
-    private Outline outline;
+    private Outline outlineComponent;
 
     public State onHover = new State() { name = "onHover", outlineColor = Color.white, outlineWidth = 0.1f };
 
     void Awake()
     {
-        outline = GetComponent<Outline>();
+        outlineComponent = GetComponent<Outline>();
+        Debug.Assert(outlineComponent != null);
         if (states == null || states.Count == 0)
         {
             // Add a default state if none configured
@@ -85,29 +86,29 @@ public class PointerOutlineStateController : MonoBehaviour
     /// </summary>
     public void ApplyState()
     {
-        if (outline == null) outline = GetComponent<Outline>();
+        if (outlineComponent == null) outlineComponent = GetComponent<Outline>();
         var state = states[currentState];
-        outline.outlineColor = state.outlineColor;
-        outline.outlineWidth = state.outlineWidth;
+        outlineComponent.outlineColor = state.outlineColor;
+        outlineComponent.outlineWidth = state.outlineWidth;
         //outline.DisableOutline();
         //outline.EnableOutline();
 
-        outline.DisableOutline();
+        outlineComponent.DisableOutline();
         if (state.outlineWidth > 0f)
         {
-            outline.EnableOutline();
+            outlineComponent.EnableOutline();
         }
     }
 
     public void OnHoverEnter()
     {
-        if (outline == null) outline = GetComponent<Outline>();
-        outline.outlineColor = onHover.outlineColor;
-        outline.outlineWidth = onHover.outlineWidth;
-        outline.DisableOutline();
+        if (outlineComponent == null) outlineComponent = GetComponent<Outline>();
+        outlineComponent.outlineColor = onHover.outlineColor;
+        outlineComponent.outlineWidth = onHover.outlineWidth;
+        outlineComponent.DisableOutline();
         if (onHover.outlineWidth > 0f)
         {
-            outline.EnableOutline();
+            outlineComponent.EnableOutline();
         }
     }
 

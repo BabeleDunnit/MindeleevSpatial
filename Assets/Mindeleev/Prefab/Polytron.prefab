@@ -16,6 +16,9 @@ GameObject:
   - component: {fileID: 8305695020945104654}
   - component: {fileID: 7990541047644643839}
   - component: {fileID: 7682338217642048503}
+  - component: {fileID: 1084458752399287248}
+  - component: {fileID: 3634034817177899138}
+  - component: {fileID: 7098882181875574808}
   m_Layer: 31
   m_Name: Polytron
   m_TagString: Untagged
@@ -188,3 +191,57 @@ MonoBehaviour:
   m_BlockingMask:
     serializedVersion: 2
     m_Bits: 4294967295
+--- !u!114 &1084458752399287248
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8404194606809146210}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: b87f3230eeac340d8a1f9c828722e4ec, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+--- !u!114 &3634034817177899138
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8404194606809146210}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f78acc467308f46e3b0f03db2376d174, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  outlineColor: {r: 1, g: 0.92156863, b: 0.015686275, a: 1}
+  outlineWidth: 0.05
+  outlineMaterial: {fileID: 2100000, guid: 419381cca00494e41a6f6d101ffd636b, type: 2}
+--- !u!114 &7098882181875574808
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8404194606809146210}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 22ae440d7bf574374906e3393bc3f72c, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  states:
+  - name: Unselected
+    outlineColor: {r: 0, g: 0, b: 0, a: 0}
+    outlineWidth: 0
+  - name: 
+    outlineColor: {r: 1, g: 1, b: 1, a: 0}
+    outlineWidth: 0.3
+  - name: 
+    outlineColor: {r: 0, g: 1, b: 0.07796383, a: 0}
+    outlineWidth: 0.5
+  initialState: 0
+  onHover:
+    name: onHover
+    outlineColor: {r: 1, g: 1, b: 1, a: 1}
+    outlineWidth: 0.1

@@ -99,14 +99,16 @@ public class SpatialClickable3D : MonoBehaviour
     {
         Debug.Log($"OnProxyPointerClick: clicked in SpatialClickable3D via proxy, clicks: {eventData.clickCount}");
 
-        // Forward the pointer event to any Polytron (or other) component on this GameObject so
-        // higher-level logic can react to clicks (double-click, clickCount, etc.).
-        Polytron p = GetComponent<Polytron>();
-        if (p != null)
-        {
-            p.OnSpatialClickable3DClick(eventData);
-            return;
-        }
+        /*
+                // Forward the pointer event to any Polytron (or other) component on this GameObject so
+                // higher-level logic can react to clicks (double-click, clickCount, etc.).
+                Polytron p = GetComponent<Polytron>();
+                if (p != null)
+                {
+                    p.OnSpatialClickable3DClick(eventData);
+                    return;
+                }
+        */
 
         // Fallback: if another IPointerClickHandler is present on this GameObject, try to call it.
         var handlers = GetComponents<IPointerClickHandler>();

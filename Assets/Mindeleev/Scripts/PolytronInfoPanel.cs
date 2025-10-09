@@ -1,0 +1,130 @@
+using UnityEngine;
+using UnityEngine.UI;
+using System.Collections;
+using TMPro;
+
+/// <summary>
+/// Displays an info panel for a Polytron. Pops up when the player is near, collapses when far.
+/// The panel is positioned low, angled 45° toward the player, and follows the player.
+/// Uses TextMeshPro for text.
+/// </summary>
+public class PolytronInfoPanel : MonoBehaviour
+{
+    [Header("Panel Settings")]
+    public float showDistance = 3.0f;
+    float animationDuration = 0.3f;
+    Vector3 panelOffset = new Vector3(0, 0, 0);
+
+    [Header("References")]
+    public Canvas panelCanvas;
+    public TextMeshProUGUI polytronNameText;
+    public Button actionButton;
+
+    private Transform playerTransform;
+    private bool isVisible = false;
+    private Coroutine animCoroutine;
+
+    void Start()
+    {
+        // Find player camera
+//         var cam = CrossPlatformUtils.FindCamera().transform;
+        Transform cam = null;
+        if (cam != null) playerTransform = cam.transform;
+
+        // Create panel if not assigned
+        if (panelCanvas == null)
+        {
+            // Debug.Assert(1 == 0);
+            Debug.Log("creo il canvas");
+            var canvasGO = new GameObject("PolytronInfoPanelCanvas", typeof(Canvas));
+            canvasGO.transform.SetParent(transform, false);
+            panelCanvas = canvasGO.GetComponent<Canvas>();
+            panelCanvas.renderMode = RenderMode.WorldSpace;
+            panelCanvas.transform.localScale = Vector3.one * 0.1f;
+
+            var panelGO = new GameObject("Panel", typeof(RectTransform), typeof(Image));
+            panelGO.transform.SetParent(canvasGO.transform, false);
+            var panelRT = panelGO.GetComponent<RectTransform>();
+            panelRT.sizeDelta = new Vector2(300, 80);
+            panelGO.GetComponent<Image>().color = new Color(0.1f, 0.1f, 0.2f, 0.8f);
+
+            var textGO = new GameObject("PolytronName", typeof(TextMeshProUGUI));
+            textGO.transform.SetParent(panelGO.transform, false);
+            polytronNameText = textGO.GetComponent<TextMeshProUGUI>();
+            polytronNameText.fontSize = 28;
+            polytronNameText.alignment = TextAlignmentOptions.Left;
+            polytronNameText.color = Color.white;
+            polytronNameText.rectTransform.anchoredPosition = new Vector2(20, 20);
+            polytronNameText.text = "Polytron Name";
+
+            var buttonGO = new GameObject("ActionButton", typeof(Button), typeof(Image));
+            buttonGO.transform.SetParent(panelGO.transform, false);
+            actionButton = buttonGO.GetComponent<Button>();
+            var buttonImg = buttonGO.GetComponent<Image>();
+            buttonImg.color = new Color(0.3f, 0.6f, 1f, 0.9f);
+            var btnRT = buttonGO.GetComponent<RectTransform>();
+            btnRT.sizeDelta = new Vector2(80, 40);
+            btnRT.anchoredPosition = new Vector2(200, -20);
+
+            actionButton.onClick.AddListener(OnActionButtonClicked);
+        }
+
+        panelCanvas.gameObject.SetActive(false);
+        panelCanvas.transform.localScale = Vector3.zero;
+    }
+
+    void Update()
+    {
+        if (playerTransform == null) return;
+
+        float dist = Vector3.Distance(transform.position, playerTransform.position);
+//         bool shouldShow = dist < showDistance;
+        bool shouldShow = true;
+
+        if (shouldShow != isVisible)
+        {
+            if (animCoroutine != null) StopCoroutine(animCoroutine);
+            animCoroutine = StartCoroutine(AnimatePanel(shouldShow));
+            isVisible = shouldShow;
+        }
+
+        if (isVisible)
+        {
+            // Position panel low and angled 45° toward player
+            Vector3 toPlayer = (playerTransform.position - transform.position).normalized;
+            Vector3 panelPos = transform.position + panelOffset;
+            panelCanvas.transform.position = panelPos;
+            Quaternion lookRot = Quaternion.LookRotation(toPlayer, Vector3.up);
+            // panelCanvas.transform.rotation = Quaternion.Euler(45, lookRot.eulerAngles.y, 0);
+        }
+    }
+
+    IEnumerator AnimatePanel(bool show)
+    {
+        panelCanvas.gameObject.SetActive(true);
+        float t = 0f;
+        Vector3 startScale = panelCanvas.transform.localScale;
+        Vector3 endScale = show ? Vector3.one * 0.1f : Vector3.zero;
+
+        while (t < animationDuration)
+        {
+            t += Time.deltaTime;
+            panelCanvas.transform.localScale = Vector3.Lerp(startScale, endScale, t / animationDuration);
+            yield return null;
+        }
+        panelCanvas.transform.localScale = endScale;
+        if (!show) panelCanvas.gameObject.SetActive(false);
+    }
+
+    public void SetPolytronName(string name)
+    {
+        if (polytronNameText != null)
+            polytronNameText.text = name;
+    }
+
+    private void OnActionButtonClicked()
+    {
+        Debug.Log("PolytronInfoPanel: Action button clicked.");
+        // Add your logic here
+    }
+}
