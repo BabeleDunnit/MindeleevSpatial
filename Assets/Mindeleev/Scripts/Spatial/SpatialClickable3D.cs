@@ -25,7 +25,7 @@ public class SpatialClickable3D : MonoBehaviour
 
     // canvas scale is 1 so these are meters
 //     private Vector2 hitAreaSize = new Vector2(0.8f, 0.8f);
-    Vector2 hitAreaSize = new Vector2(3.8f, 3.8f);
+    Vector2 hitAreaSize = new Vector2(1f, 1f);
 
     Transform cameraTransform;
 
@@ -84,8 +84,8 @@ public class SpatialClickable3D : MonoBehaviour
             rt.sizeDelta = hitAreaSize;
 
             var img = imgGO.GetComponent<Image>();
-            // img.color = new Color(1, 1, 1, 0.001f); // invisibile ma cliccabile
-            img.color = new Color(1, 0, 0, 0.3f); // semi-transparent for debugging
+            img.color = new Color(1, 1, 1, 0.001f); // invisible
+            // img.color = new Color(1, 0, 0, 0.3f); // semi-transparent for debugging
             img.raycastTarget = true;
 
         Button button = imgGO.GetComponent<Button>();
@@ -140,7 +140,7 @@ public class SpatialClickable3D : MonoBehaviour
     {
         if (cameraTransform != null)
         {
-            // Billboard “piatto” verso la camera
+            // Billboard toward camera
             // var canvas = button.transform.parent;
             canvas.transform.rotation = Quaternion.LookRotation(canvas.transform.position - cameraTransform.position, Vector3.up);
 
@@ -153,29 +153,4 @@ public class SpatialClickable3D : MonoBehaviour
              */
         }
     }
-
-    void OnClicked()
-    {
-        Debug.Log("3D object clicked via Spatial UI ray!");
-        WorldSpacePanel wsp = GameObject.Find("InspectorCanvas").GetComponent<WorldSpacePanel>();
-        wsp.pname.text = "cliccato su un polytrone";
-
-        /*
-                IPointerClickHandler ch = GetComponent<IPointerClickHandler>();
-                ch.OnPointerClick(null);
-                */
-
-        Polytron p = GetComponent<Polytron>();
-        // p.OnSpatialClickable3DClick();
-    }
-
-    /*
-        private Camera FindSpatialCamera()
-        {
-            var cam = GameObject.FindGameObjectWithTag("MainCamera")?.GetComponent<Camera>();
-            if (cam != null) return cam;
-            return null;
-        }
-    */
-
 }

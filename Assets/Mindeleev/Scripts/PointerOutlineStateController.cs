@@ -114,6 +114,7 @@ public class PointerOutlineStateController : MonoBehaviour
 
     public void OnHoverExit()
     {
+        // restore the previous outline state
         ApplyState();
     }  
 

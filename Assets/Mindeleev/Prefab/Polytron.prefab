@@ -20,7 +20,7 @@ GameObject:
   - component: {fileID: 3634034817177899138}
   - component: {fileID: 7098882181875574808}
   - component: {fileID: 6652825714843277271}
-  m_Layer: 31
+  m_Layer: 13
   m_Name: Polytron
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -236,7 +236,7 @@ MonoBehaviour:
     outlineColor: {r: 0, g: 0, b: 0, a: 0}
     outlineWidth: 0
   - name: 
-    outlineColor: {r: 1, g: 1, b: 1, a: 0}
+    outlineColor: {r: 0.9811321, g: 0.97895026, b: 0, a: 0}
     outlineWidth: 0.3
   - name: 
     outlineColor: {r: 0, g: 1, b: 0.07796383, a: 0}
