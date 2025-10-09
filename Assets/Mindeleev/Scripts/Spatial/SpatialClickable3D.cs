@@ -2,6 +2,9 @@ using UnityEngine;
 using UnityEngine.UI;
 using UnityEngine.EventSystems;
 
+// WARNING:
+// THIS COMPONENT MUST *NOT* BE USED FROM A COROUTINE
+// on Oculus, there is a bug which will cause only the FIRST created canvas to work.
 
 public class SpatialClickable3DProxy : MonoBehaviour, IPointerClickHandler
 {

@@ -347,7 +347,6 @@ public class MutatronEngine : MonoBehaviour
                 int polytronId = polytrons.Count;
 
                 GameObject polytronGameObject = PolytronsFactory.Instance.Create($"polytron/T", 0.6f);
-                polytronGameObject.SetActive(false);
                 // polytron.transform.position = hckv.Value.worldCoords + new Vector3(0, 1f, 0);
                 polytronGameObject.transform.position = hckv.Value.worldCoords * 0.1f + new Vector3(0, 10f, 0);
                 // polytron.transform.position = new Vector3(0, 50f, 0);
@@ -381,16 +380,8 @@ public class MutatronEngine : MonoBehaviour
                 BindPolytronToSink(polytronGameObject.GetComponent<Polytron>(), hckv);
 
                 polytronsHomes.Add(hckv);
-                polytronGameObject.SetActive(true);
-
-                polytronGameObject.SetActive(false);
-                polytronGameObject.SetActive(true);
-
-                // yield return new WaitForSeconds(0.15f);
             }
         }
-        
-        Canvas.ForceUpdateCanvases();                        
     }
 
 

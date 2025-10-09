@@ -124,15 +124,17 @@ public class PolytronsFactory : MonoBehaviour
                     }
                     */
 
-                    poly.AddComponent<SpatialClickable3D>();
-                    SpatialClickable3D sc3d = poly.GetComponent<SpatialClickable3D>();
-                    if (sc3d != null)
-                    {
-                        GameObject.Destroy(sc3d.canvas.GetComponent<GraphicRaycaster>());
-                        sc3d.canvas.gameObject.AddComponent<GraphicRaycaster>();
-                    }
-                    
-                    Canvas.ForceUpdateCanvases();                        
+                    /*
+                                        poly.AddComponent<SpatialClickable3D>();
+                                        SpatialClickable3D sc3d = poly.GetComponent<SpatialClickable3D>();
+                                        if (sc3d != null)
+                                        {
+                                            GameObject.Destroy(sc3d.canvas.GetComponent<GraphicRaycaster>());
+                                            sc3d.canvas.gameObject.AddComponent<GraphicRaycaster>();
+                                        }
+
+                                        Canvas.ForceUpdateCanvases();                        
+                    */
 
                     poly.transform.localScale = Vector3.one * localUniformScale;
 
