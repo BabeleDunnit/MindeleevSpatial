@@ -20,6 +20,7 @@ GameObject:
   - component: {fileID: 3634034817177899138}
   - component: {fileID: 7098882181875574808}
   - component: {fileID: 6652825714843277271}
+  - component: {fileID: 2290202302152306031}
   m_Layer: 13
   m_Name: Polytron
   m_TagString: Untagged
@@ -358,3 +359,19 @@ MonoBehaviour:
       duration: 0
       startTime: 0
       active: 0
+--- !u!114 &2290202302152306031
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8404194606809146210}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 94fdb1b7a60d84457b463d5b214725e3, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  showDistance: 3
+  panelCanvas: {fileID: 0}
+  polytronNameText: {fileID: 0}
+  actionButton: {fileID: 0}

@@ -40,4 +40,25 @@ public static class CrossPlatformUtils
             camService.lockCameraRotation = isDisabled;
         }
     }
+
+
+    public static Vector3 GetAvatarPosition()
+    {
+        Vector3 avatarPosition;
+
+        GameObject avatar = GameObject.Find("[Spatial SDK] Editor Local Avatar");
+        if (avatar == null)
+        {
+            // Get a reference to the local avatar
+            IAvatar localAvatar = SpatialBridge.actorService.localActor.avatar;
+            // localAvatar.position = new Vector3(1, 0, 0);
+            avatarPosition = localAvatar.position;
+        }
+        else
+        {
+            avatarPosition = avatar.transform.position;
+        }
+
+        return avatarPosition;
+    }
 }
