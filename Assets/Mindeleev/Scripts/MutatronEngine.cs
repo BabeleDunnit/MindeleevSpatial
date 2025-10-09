@@ -286,22 +286,23 @@ public class MutatronEngine : MonoBehaviour
 
                 int polytronId = polytrons.Count;
 
-                GameObject polytron = PolytronsFactory.Instance.Create($"polytron/T", 0.6f);
+                GameObject polytronGameObject = PolytronsFactory.Instance.Create($"polytron/T", 0.6f);
+                polytronGameObject.SetActive(false);
                 // polytron.transform.position = hckv.Value.worldCoords + new Vector3(0, 1f, 0);
-                polytron.transform.position = hckv.Value.worldCoords * 0.1f + new Vector3(0, 10f, 0);
+                polytronGameObject.transform.position = hckv.Value.worldCoords * 0.1f + new Vector3(0, 10f, 0);
                 // polytron.transform.position = new Vector3(0, 50f, 0);
                 float angleToCenter = hckv.Key.PolarAngle();
                 Quaternion rotationToCenter = Quaternion.Euler(0f, -angleToCenter * 360f / 6.28f, 0f);
                 // polytron.transform.localRotation = polytronRotation;
-                polytron.name = $"Polytron_{polytronId}";
+                polytronGameObject.name = $"Polytron_{polytronId}";
 
-                Polytron polytronComponent = polytron.GetComponent<Polytron>();
-//                 polytronComponent.recipe = PolyhedronRecipeKabbalah.IntToOperatorsSequence(polytronId + 50) + $"{(polytronId % 11):D2}" + "O";
-                polytronComponent.recipe = PolyhedronRecipeKabbalah.IntToOperatorsSequence(polytronId + 50) + "O";
+                Polytron polytronComponent = polytronGameObject.GetComponent<Polytron>();
+                // polytronComponent.recipe = PolyhedronRecipeKabbalah.IntToOperatorsSequence(polytronId) + $"{(polytronId % 11):D2}" + "C";
+                                 polytronComponent.recipe = PolyhedronRecipeKabbalah.IntToOperatorsSequence(polytronId + 50) + "C";
                 Debug.Log(polytronComponent.recipe);
                 polytronComponent.RebuildMesh();
 
-                polytrons.Add(polytron.GetComponent<Polytron>());
+                polytrons.Add(polytronGameObject.GetComponent<Polytron>());
 
                 GameObject tile = PolytronsFactory.Instance.Create($"tile/{polytronComponent.recipe}", 1f);
                 tile.transform.localScale = new Vector3(1f, 0.01f, 1f);
@@ -309,21 +310,27 @@ public class MutatronEngine : MonoBehaviour
                 tile.transform.localRotation = rotationToCenter;
                 hckv.Value.tile = tile.GetComponent<MutatronTile>();
 
-                GameObject label = CreateTileLabel($"{polytronId+1}\n" + polytronComponent.sealName, tile.transform.position + new Vector3(0, 3, 0));
+                GameObject label = CreateTileLabel($"{polytronId + 1}\n" + polytronComponent.sealName, tile.transform.position + new Vector3(0, 3, 0));
                 int r1 = polytronId / 12;
-//                 label.transform.rotation = Quaternion.Euler(0, (-60f * (r1 + 2)) - 30f, 0);
+                //                 label.transform.rotation = Quaternion.Euler(0, (-60f * (r1 + 2)) - 30f, 0);
                 label.transform.rotation = Quaternion.Euler(0, (-60f * (r1 + 2)) + 180, 0);
                 label.transform.position = tile.transform.position + new Vector3(0, 3, 0);
 
                 // bind the polytron to his home. The home will not change.
-                BindPolytronToHome(polytron.GetComponent<Polytron>(), hckv);
-                BindPolytronToSink(polytron.GetComponent<Polytron>(), hckv);
+                BindPolytronToHome(polytronGameObject.GetComponent<Polytron>(), hckv);
+                BindPolytronToSink(polytronGameObject.GetComponent<Polytron>(), hckv);
 
                 polytronsHomes.Add(hckv);
+                polytronGameObject.SetActive(true);
 
-                yield return new WaitForSeconds(2.15f);
+                polytronGameObject.SetActive(false);
+                polytronGameObject.SetActive(true);
+
+                yield return new WaitForSeconds(0.15f);
             }
         }
+        
+        Canvas.ForceUpdateCanvases();                        
     }
 
     // static Color blueFloor = new Color(52, 56, 87);

@@ -7,7 +7,6 @@ using SpatialSys.UnitySDK;
 
 [RequireComponent(typeof(Collider))]
 [RequireComponent(typeof(Rigidbody))]
-[RequireComponent(typeof(SpatialClickable3D))]
 
 // down, up and click handlers need an UI element to be fired, and this is why we need to have
 // a SpatialClikcable3D component. For some reason, enter/exit and drag stuff works 

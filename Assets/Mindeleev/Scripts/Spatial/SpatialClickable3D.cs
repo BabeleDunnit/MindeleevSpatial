@@ -17,16 +17,16 @@ public class SpatialClickable3DProxy : MonoBehaviour, IPointerClickHandler
 [RequireComponent(typeof(Collider))]
 public class SpatialClickable3D : MonoBehaviour
 {
-    [Header("UI hit area (auto se nullo)")]
+    // [Header("UI hit area (auto se nullo)")]
     // public Button button;
 
     // canvas scale is 1 so these are meters
 //     private Vector2 hitAreaSize = new Vector2(0.8f, 0.8f);
-    private Vector2 hitAreaSize = new Vector2(3.8f, 3.8f);
+    Vector2 hitAreaSize = new Vector2(3.8f, 3.8f);
 
     Transform cameraTransform;
 
-    Canvas canvas;
+    internal Canvas canvas;
 
     void Awake()
     {
