@@ -12,7 +12,7 @@ public class PolytronInfoPanel : MonoBehaviour
 {
     [Header("Panel Settings")]
     public float showDistance = 3.0f;
-    float animationDuration = 0.3f;
+    float animationDuration = 0.5f;
     Vector3 panelOffset = new Vector3(0, 0, 0);
 
     [Header("References")]
@@ -51,7 +51,7 @@ public class PolytronInfoPanel : MonoBehaviour
             var panelGO = new GameObject("Panel", typeof(RectTransform), typeof(Image));
             panelGO.transform.SetParent(canvasGO.transform, false);
             var panelRT = panelGO.GetComponent<RectTransform>();
-            panelRT.sizeDelta = new Vector2(40, 30);
+            panelRT.sizeDelta = new Vector2(4, 3);
             panelGO.GetComponent<Image>().color = new Color(0.1f, 0.1f, 0.2f, 0.8f);
 
             /*
@@ -77,38 +77,43 @@ public class PolytronInfoPanel : MonoBehaviour
                         */
         }
 
-        // panelCanvas.gameObject.SetActive(false);
-        // panelCanvas.transform.localScale = Vector3.zero;
+        panelCanvas.gameObject.SetActive(false);
+        panelCanvas.transform.localScale = Vector3.zero;
     }
 
     void Update()
     {
         // if (cameraTransform == null) return;
 
-        float dist = Vector3.Distance(transform.position, cameraTransform.position);
-//         bool shouldShow = dist < showDistance;
-        bool shouldShow = true;
+//         float dist = Vector3.Distance(transform.position, cameraTransform.position);
+        float dist = Vector3.Distance(transform.position, CrossPlatformUtils.GetAvatarPosition());
+        bool shouldShow = dist < showDistance;
+        // bool shouldShow = true;
 
-        if (shouldShow != isVisible)
+        
+                if (shouldShow != isVisible)
+                {
+                    if (animCoroutine != null) StopCoroutine(animCoroutine);
+                    animCoroutine = StartCoroutine(AnimatePanel(shouldShow));
+                    isVisible = shouldShow;
+                }
+
+                if (isVisible)
         {
-            if (animCoroutine != null) StopCoroutine(animCoroutine);
-            animCoroutine = StartCoroutine(AnimatePanel(shouldShow));
-            isVisible = shouldShow;
-        }
+                    /*
+                    // Position panel low and angled 45° toward player
+                    Vector3 toPlayer = (cameraTransform.position - transform.position).normalized;
+                    Vector3 panelPos = transform.position + panelOffset;
+                    panelCanvas.transform.position = panelPos;
+                    Quaternion lookRot = Quaternion.LookRotation(toPlayer, Vector3.up);
+                    // panelCanvas.transform.rotation = Quaternion.Euler(45, lookRot.eulerAngles.y, 0);
+                    */
+                    
+        panelCanvas.transform.rotation = Quaternion.LookRotation(panelCanvas.transform.position - cameraTransform.position, Vector3.up);
 
-        if (isVisible)
-        {
-            
-            // Position panel low and angled 45° toward player
-            Vector3 toPlayer = (cameraTransform.position - transform.position).normalized;
-            Vector3 panelPos = transform.position + panelOffset;
-            panelCanvas.transform.position = panelPos;
-            Quaternion lookRot = Quaternion.LookRotation(toPlayer, Vector3.up);
-            // panelCanvas.transform.rotation = Quaternion.Euler(45, lookRot.eulerAngles.y, 0);
-            
-            // panelCanvas.transform.rotation = Quaternion.LookRotation(panelCanvas.transform.position - cameraTransform.position, Vector3.up);
+    }
+        
 
-        }
     }
 
     IEnumerator AnimatePanel(bool show)
@@ -116,7 +121,8 @@ public class PolytronInfoPanel : MonoBehaviour
         panelCanvas.gameObject.SetActive(true);
         float t = 0f;
         Vector3 startScale = panelCanvas.transform.localScale;
-        Vector3 endScale = show ? Vector3.one * 0.1f : Vector3.zero;
+        // Vector3 startScale = Vector3.zero;
+        Vector3 endScale = show ? Vector3.one : Vector3.zero;
 
         while (t < animationDuration)
         {
