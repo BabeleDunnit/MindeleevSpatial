@@ -141,7 +141,8 @@ public class PolytronsFactory : MonoBehaviour
                     var waveAnim = poly.GetComponent<WaveAnimation>();
                     if (waveAnim != null)
                     {
-                        waveAnim.animationName = WaveAnimation.AnimationType.Breathe;
+//                         waveAnim.animationName = WaveAnimation.AnimationType.Breathe;
+                        waveAnim.SetAnimation(WaveAnimation.AnimationType.Breathe);
                         waveAnim.SetReferenceTransform(poly.transform.localScale);
                     }
 

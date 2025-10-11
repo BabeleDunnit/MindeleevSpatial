@@ -20,6 +20,7 @@ GameObject:
   - component: {fileID: 3634034817177899138}
   - component: {fileID: 7098882181875574808}
   - component: {fileID: 2290202302152306031}
+  - component: {fileID: -5626925463845379671}
   m_Layer: 13
   m_Name: Polytron
   m_TagString: Untagged
@@ -259,3 +260,115 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   showDistance: 3
+--- !u!114 &-5626925463845379671
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8404194606809146210}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: da3c450a0c9e24f6d91aa92bf67204bc, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  matrix:
+    scaleX:
+      shape: 0
+      frequency: 0
+      amplitude: 10
+      offset: 0
+      dutyCycle: 0
+      slope: 0
+      oneShot: 0
+      duration: 0
+      startTime: 0
+      active: 0
+    scaleY:
+      shape: 0
+      frequency: 0
+      amplitude: 0
+      offset: 0
+      dutyCycle: 0
+      slope: 0
+      oneShot: 0
+      duration: 0
+      startTime: 0
+      active: 0
+    scaleZ:
+      shape: 0
+      frequency: 0
+      amplitude: 0
+      offset: 0
+      dutyCycle: 0
+      slope: 0
+      oneShot: 0
+      duration: 0
+      startTime: 0
+      active: 0
+    posX:
+      shape: 0
+      frequency: 0
+      amplitude: 0
+      offset: 0
+      dutyCycle: 0
+      slope: 0
+      oneShot: 0
+      duration: 0
+      startTime: 0
+      active: 0
+    posY:
+      shape: 0
+      frequency: 0
+      amplitude: 0
+      offset: 0
+      dutyCycle: 0
+      slope: 0
+      oneShot: 0
+      duration: 0
+      startTime: 0
+      active: 0
+    posZ:
+      shape: 0
+      frequency: 0
+      amplitude: 0
+      offset: 0
+      dutyCycle: 0
+      slope: 0
+      oneShot: 0
+      duration: 0
+      startTime: 0
+      active: 0
+    rotX:
+      shape: 0
+      frequency: 0
+      amplitude: 0
+      offset: 0
+      dutyCycle: 0
+      slope: 0
+      oneShot: 0
+      duration: 0
+      startTime: 0
+      active: 0
+    rotY:
+      shape: 0
+      frequency: 0
+      amplitude: 0
+      offset: 0
+      dutyCycle: 0
+      slope: 0
+      oneShot: 0
+      duration: 0
+      startTime: 0
+      active: 0
+    rotZ:
+      shape: 0
+      frequency: 0
+      amplitude: 0
+      offset: 0
+      dutyCycle: 0
+      slope: 0
+      oneShot: 0
+      duration: 0
+      startTime: 0
+      active: 0

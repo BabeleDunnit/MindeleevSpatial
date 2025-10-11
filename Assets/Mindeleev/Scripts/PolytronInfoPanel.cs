@@ -23,7 +23,7 @@ public class PolytronInfoPanel : MonoBehaviour
 
     Transform cameraTransform;
 
-//     private Transform playerTransform;
+    //     private Transform playerTransform;
     private bool isVisible = false;
     private Coroutine animCoroutine;
 
@@ -83,36 +83,29 @@ public class PolytronInfoPanel : MonoBehaviour
 
     void Update()
     {
-        // if (cameraTransform == null) return;
-
-//         float dist = Vector3.Distance(transform.position, cameraTransform.position);
         float dist = Vector3.Distance(transform.position, CrossPlatformUtils.GetAvatarPosition());
         bool shouldShow = dist < showDistance;
-        // bool shouldShow = true;
 
-        
-                if (shouldShow != isVisible)
-                {
-                    if (animCoroutine != null) StopCoroutine(animCoroutine);
-                    animCoroutine = StartCoroutine(AnimatePanel(shouldShow));
-                    isVisible = shouldShow;
-                }
-
-                if (isVisible)
+        if (shouldShow != isVisible)
         {
-                    /*
-                    // Position panel low and angled 45° toward player
-                    Vector3 toPlayer = (cameraTransform.position - transform.position).normalized;
-                    Vector3 panelPos = transform.position + panelOffset;
-                    panelCanvas.transform.position = panelPos;
-                    Quaternion lookRot = Quaternion.LookRotation(toPlayer, Vector3.up);
-                    // panelCanvas.transform.rotation = Quaternion.Euler(45, lookRot.eulerAngles.y, 0);
-                    */
-                    
-        panelCanvas.transform.rotation = Quaternion.LookRotation(panelCanvas.transform.position - cameraTransform.position, Vector3.up);
+            if (animCoroutine != null) StopCoroutine(animCoroutine);
+            animCoroutine = StartCoroutine(AnimatePanel(shouldShow));
+            isVisible = shouldShow;
+            WaveAnimation wa = GetComponent<WaveAnimation>();
+            if (isVisible)
+            {
+                wa?.Pause(true);
+            }
+            else
+            {                
+                wa?.Pause(false);
+            }
+        }
 
-    }
-        
+        if (isVisible)
+        {
+            panelCanvas.transform.rotation = Quaternion.LookRotation(panelCanvas.transform.position - cameraTransform.position, Vector3.up);
+        }
 
     }
 
