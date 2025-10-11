@@ -7,14 +7,6 @@ using UnityEngine;
 /// </summary>
 public class MutatronTile : PolyhedronGenerator
 {
-    /*
-    public string attractedRecipe; // The recipe this sink will attract
-    public Polytron boundPolytron;
-
-    public float weight = 1f;
-
-    public HexCoord hexCoord;
-*/
 
     // if [0..71], this is the home of a polytron
     public int sealHome = -1;

@@ -21,6 +21,9 @@ public class MutatronEngine : MonoBehaviour
     // the polytrons homes
     private List<KeyValuePair<HexCoord, HexCellData>> polytronsHomes = new();
 
+    // the Architron
+    int architronIdx = 70;
+
     int evolveCount = 0;
 
     public class HexCellData

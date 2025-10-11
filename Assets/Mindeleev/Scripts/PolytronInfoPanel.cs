@@ -13,10 +13,10 @@ public class PolytronInfoPanel : MonoBehaviour
     [Header("Panel Settings")]
     public float showDistance = 3.0f;
     float animationDuration = 0.5f;
-    Vector3 panelOffset = new Vector3(0, 0, 0);
+    Vector3 panelOffset = new Vector3(0, 0.5f, 0);
 
     [Header("References")]
-    Canvas panelCanvas = null;
+    public Canvas panelCanvas = null;
     TextMeshProUGUI polytronNameText;
     Button actionButton;
 
@@ -52,6 +52,7 @@ public class PolytronInfoPanel : MonoBehaviour
             panelGO.transform.SetParent(canvasGO.transform, false);
             var panelRT = panelGO.GetComponent<RectTransform>();
             panelRT.sizeDelta = new Vector2(4, 3);
+            panelRT.transform.localPosition = panelOffset;
             panelGO.GetComponent<Image>().color = new Color(0.1f, 0.1f, 0.2f, 0.8f);
 
             /*

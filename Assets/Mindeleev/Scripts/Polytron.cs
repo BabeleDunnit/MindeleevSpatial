@@ -37,6 +37,8 @@ public class Polytron : PolyhedronGenerator,
 
     internal PolytronSink boundSink;
 
+    bool isArchitron = false;
+
     public void OnPointerDown(PointerEventData eventData)
     {
         Debug.Log($"[PointerEvent] Down on {gameObject.name}");
