@@ -321,7 +321,7 @@ public class MutatronEngine : MonoBehaviour
                 BindPolytronToHome(polytronGameObject.GetComponent<Polytron>(), hckv);
                 BindPolytronToSink(polytronGameObject.GetComponent<Polytron>(), hckv);
 
-                polytronsHomes.Add(hckv);
+                // polytronsHomes.Add(hckv);
 
                 yield return new WaitForSeconds(0.15f);
             }
@@ -372,10 +372,8 @@ public class MutatronEngine : MonoBehaviour
                 // bind the polytron to his home. The home will not change.
                 BindPolytronToHome(polytronGameObject.GetComponent<Polytron>(), hckv);
                 BindPolytronToSink(polytronGameObject.GetComponent<Polytron>(), hckv);
-
+*/
                 polytronsHomes.Add(hckv);
-                */
-
             }
         }
     }
