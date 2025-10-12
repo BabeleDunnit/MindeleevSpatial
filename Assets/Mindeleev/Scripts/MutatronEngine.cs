@@ -318,7 +318,7 @@ public class MutatronEngine : MonoBehaviour
                 int r1 = polytronId / 12;
                 //                 label.transform.rotation = Quaternion.Euler(0, (-60f * (r1 + 2)) - 30f, 0);
                 label.transform.rotation = Quaternion.Euler(0, (-60f * (r1 + 2)) + 180, 0);
-                label.transform.position = tile.transform.position + new Vector3(0, 3, 0);
+                label.transform.position = tile.transform.position + new Vector3(0, 3.5f, 0);
 
                 // bind the polytron to his home. The home will not change.
                 BindPolytronToHome(polytronGameObject.GetComponent<Polytron>(), hckv);

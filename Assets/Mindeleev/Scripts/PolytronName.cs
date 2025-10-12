@@ -129,6 +129,19 @@ public static class PolytronName
         return TitleCase(Clean(fused));
     }
 
+
+// ...existing code...
+    /// <summary>
+    /// Returns a human-readable period string for the table entry at 1-based index.
+    /// Example: "from March, 21 to March, 25"
+    /// </summary>
+    public static string GetPeriodString(int index)
+    {
+        if (index < 0 || index >= Table.Length) throw new ArgumentOutOfRangeException(nameof(index), "Index must be between 0 and " + (Table.Length - 1));
+        var e = Table[index];
+        return $"From {MonthName(e.StartMonth)}, {e.StartDay} to {MonthName(e.EndMonth)}, {e.EndDay}";
+    }
+
     /// <summary>
     /// Dato giorno/mese (1-based), restituisce l'indice 1..72 dell'angelo/demone responsabile di quel periodo.
     /// Lancia se la data è invalida (es. 31/11).

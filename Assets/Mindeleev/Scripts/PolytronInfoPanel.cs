@@ -37,7 +37,6 @@ public class PolytronInfoPanel : MonoBehaviour
 
     void Start()
     {
-
         cameraTransform = CrossPlatformUtils.FindCamera().transform;
 
         // Create empty panel if not assigned
@@ -96,14 +95,21 @@ public class PolytronInfoPanel : MonoBehaviour
             button4 = panel.transform.Find("Button4").GetComponent<Button>();
             button4Text = button4.GetComponentInChildren<TextMeshProUGUI>();
 
-            TestPanel();
+            ResetPanel();
+
+            Polytron p = GetComponent<Polytron>();
+
+            headerText.text = p.sealName;
+            bodyText.text = $"{PolytronName.GetPeriodString(p.sealNumber)}";
+            button4Text.text = "Make Architron";
+            UpdatePanelGUI();
         }
 
         canvas.gameObject.SetActive(false);
         canvas.transform.localScale = Vector3.zero;
     }
 
-    void TestPanel()
+    void TestPanelFull()
     {
         headerText.text = "headerText";
         bodyText.text = "bodytext bello lungo e che probabilmente va anche a capo, qui ci si può ragionare";
@@ -112,6 +118,41 @@ public class PolytronInfoPanel : MonoBehaviour
         button2Text.text = "button2 text";
         button3Text.text = "button3 text";
         button4Text.text = "button4 text";
+
+        // Ensure UI visibility matches content
+        UpdatePanelGUI();
+    }
+
+    void ResetPanel()
+    {
+        headerText.text = "";
+        bodyText.text = "";
+        centerButtonText.text = "";
+        button1Text.text = "";
+        button2Text.text = "";
+        button3Text.text = "";
+        button4Text.text = "";
+
+        // Ensure UI visibility matches content
+        // UpdatePanelGUI();
+    }
+
+
+    /// <summary>
+    /// Update panel controls visibility according to whether their corresponding
+    /// TextMeshProUGUI fields contain non-empty text. Call this after changing texts.
+    /// </summary>
+    public void UpdatePanelGUI()
+    {
+        bool HasText(TextMeshProUGUI t) => t != null && !string.IsNullOrWhiteSpace(t.text);
+
+        headerText.gameObject.SetActive(HasText(headerText));
+        bodyText.gameObject.SetActive(HasText(bodyText));
+        centerButton.gameObject.SetActive(centerButtonText != null && HasText(centerButtonText));
+        button1.gameObject.SetActive(button1Text != null && HasText(button1Text));
+        button2.gameObject.SetActive(button2Text != null && HasText(button2Text));
+        button3.gameObject.SetActive(button3Text != null && HasText(button3Text));
+        button4.gameObject.SetActive(button4Text != null && HasText(button4Text));
     }
 
     void Update()

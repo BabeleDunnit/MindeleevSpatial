@@ -108,8 +108,8 @@ public class Polytron : PolyhedronGenerator,
                 o.RebuildOutline();
         */
 
-        WorldSpacePanel wsp = GameObject.Find("InspectorCanvas").GetComponent<WorldSpacePanel>();
-        wsp.pname.text = "enter " + sealName;
+//        WorldSpacePanel wsp = GameObject.Find("InspectorCanvas").GetComponent<WorldSpacePanel>();
+//        wsp.pname.text = "enter " + sealName;
     }
 
     public void OnPointerExit(PointerEventData eventData)
@@ -121,8 +121,8 @@ public class Polytron : PolyhedronGenerator,
 
         GetComponent<PointerOutlineStateController>().OnHoverExit();
 
-        WorldSpacePanel wsp = GameObject.Find("InspectorCanvas").GetComponent<WorldSpacePanel>();
-        wsp.pname.text = "exit " + sealName;
+//        WorldSpacePanel wsp = GameObject.Find("InspectorCanvas").GetComponent<WorldSpacePanel>();
+//        wsp.pname.text = "exit " + sealName;
     }
 
     public void OnPointerClick(PointerEventData eventData)
