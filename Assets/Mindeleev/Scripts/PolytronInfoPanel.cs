@@ -5,7 +5,6 @@ using TMPro;
 
 /// <summary>
 /// Displays an info panel for a Polytron. Pops up when the player is near, collapses when far.
-/// The panel is positioned low, angled 45° toward the player, and follows the player.
 /// Uses TextMeshPro for text.
 /// </summary>
 public class PolytronInfoPanel : MonoBehaviour
@@ -13,46 +12,49 @@ public class PolytronInfoPanel : MonoBehaviour
     [Header("Panel Settings")]
     public float showDistance = 3.0f;
     float animationDuration = 0.5f;
-    Vector3 panelOffset = new Vector3(0, 0.5f, 0);
+    // Vector3 panelOffset = new Vector3(0, 0.5f, 0);
 
     [Header("References")]
-    public Canvas panelCanvas = null;
-    TextMeshProUGUI polytronNameText;
-    Button actionButton;
+    public Canvas canvas;
+    TextMeshProUGUI headerText;
+    TextMeshProUGUI bodyText;
+    Button centerButton;
+    TextMeshProUGUI centerButtonText;
+    Button button1;
+    TextMeshProUGUI button1Text;
+    Button button2;
+    TextMeshProUGUI button2Text;
+    Button button3;
+    TextMeshProUGUI button3Text;
+    Button button4;
+    TextMeshProUGUI button4Text;
 
 
     Transform cameraTransform;
 
-    //     private Transform playerTransform;
     private bool isVisible = false;
     private Coroutine animCoroutine;
 
     void Start()
     {
-        // Find player camera
-        //         var cam = CrossPlatformUtils.FindCamera().transform;
-        //         Transform cam = null;
-        //         if (cam != null) playerTransform = cam.transform;
 
         cameraTransform = CrossPlatformUtils.FindCamera().transform;
 
-
-        // Create panel if not assigned
-        if (panelCanvas == null)
+        // Create empty panel if not assigned
+        if (canvas == null)
         {
             // Debug.Assert(1 == 0);
-            Debug.Log("creo il canvas");
             var canvasGO = new GameObject("PolytronInfoPanelCanvas", typeof(Canvas));
             canvasGO.transform.SetParent(transform, false);
-            panelCanvas = canvasGO.GetComponent<Canvas>();
-            panelCanvas.renderMode = RenderMode.WorldSpace;
-            panelCanvas.transform.localScale = Vector3.one;
+            canvas = canvasGO.GetComponent<Canvas>();
+            canvas.renderMode = RenderMode.WorldSpace;
+            canvas.transform.localScale = Vector3.one;
 
             var panelGO = new GameObject("Panel", typeof(RectTransform), typeof(Image));
             panelGO.transform.SetParent(canvasGO.transform, false);
             var panelRT = panelGO.GetComponent<RectTransform>();
             panelRT.sizeDelta = new Vector2(4, 3);
-            panelRT.transform.localPosition = panelOffset;
+            panelRT.transform.localPosition = new Vector3(0, 0.5f, 0);
             panelGO.GetComponent<Image>().color = new Color(0.1f, 0.1f, 0.2f, 0.8f);
 
             /*
@@ -77,9 +79,39 @@ public class PolytronInfoPanel : MonoBehaviour
                         actionButton.onClick.AddListener(OnActionButtonClicked);
                         */
         }
+        else
+        {
+            Transform panel = canvas.transform.Find("Panel");
+            Debug.Assert(panel != null);
+            headerText = panel.Find("HeaderText").GetComponent<TextMeshProUGUI>();
+            bodyText = panel.transform.Find("BodyText").GetComponent<TextMeshProUGUI>();
+            centerButton = panel.transform.Find("CenterButton").GetComponent<Button>();
+            centerButtonText = centerButton.GetComponentInChildren<TextMeshProUGUI>();
+            button1 = panel.transform.Find("Button1").GetComponent<Button>();
+            button1Text = button1.GetComponentInChildren<TextMeshProUGUI>();
+            button2 = panel.transform.Find("Button2").GetComponent<Button>();
+            button2Text = button2.GetComponentInChildren<TextMeshProUGUI>();
+            button3 = panel.transform.Find("Button3").GetComponent<Button>();
+            button3Text = button3.GetComponentInChildren<TextMeshProUGUI>();
+            button4 = panel.transform.Find("Button4").GetComponent<Button>();
+            button4Text = button4.GetComponentInChildren<TextMeshProUGUI>();
 
-        panelCanvas.gameObject.SetActive(false);
-        panelCanvas.transform.localScale = Vector3.zero;
+            TestPanel();
+        }
+
+        canvas.gameObject.SetActive(false);
+        canvas.transform.localScale = Vector3.zero;
+    }
+
+    void TestPanel()
+    {
+        headerText.text = "headerText";
+        bodyText.text = "bodytext bello lungo e che probabilmente va anche a capo, qui ci si può ragionare";
+        centerButtonText.text = "center button";
+        button1Text.text = "button1 text";
+        button2Text.text = "button2 text";
+        button3Text.text = "button3 text";
+        button4Text.text = "button4 text";
     }
 
     void Update()
@@ -98,45 +130,32 @@ public class PolytronInfoPanel : MonoBehaviour
                 wa?.Pause(true);
             }
             else
-            {                
+            {
                 wa?.Pause(false);
             }
         }
 
         if (isVisible)
         {
-            panelCanvas.transform.rotation = Quaternion.LookRotation(panelCanvas.transform.position - cameraTransform.position, Vector3.up);
+            canvas.transform.rotation = Quaternion.LookRotation(canvas.transform.position - cameraTransform.position, Vector3.up);
         }
 
     }
 
     IEnumerator AnimatePanel(bool show)
     {
-        panelCanvas.gameObject.SetActive(true);
+        canvas.gameObject.SetActive(true);
         float t = 0f;
-        Vector3 startScale = panelCanvas.transform.localScale;
-        // Vector3 startScale = Vector3.zero;
+        Vector3 startScale = canvas.transform.localScale;
         Vector3 endScale = show ? Vector3.one : Vector3.zero;
 
         while (t < animationDuration)
         {
             t += Time.deltaTime;
-            panelCanvas.transform.localScale = Vector3.Lerp(startScale, endScale, t / animationDuration);
+            canvas.transform.localScale = Vector3.Lerp(startScale, endScale, t / animationDuration);
             yield return null;
         }
-        panelCanvas.transform.localScale = endScale;
-        if (!show) panelCanvas.gameObject.SetActive(false);
-    }
-
-    public void SetPolytronName(string name)
-    {
-        if (polytronNameText != null)
-            polytronNameText.text = name;
-    }
-
-    private void OnActionButtonClicked()
-    {
-        Debug.Log("PolytronInfoPanel: Action button clicked.");
-        // Add your logic here
+        canvas.transform.localScale = endScale;
+        if (!show) canvas.gameObject.SetActive(false);
     }
 }
