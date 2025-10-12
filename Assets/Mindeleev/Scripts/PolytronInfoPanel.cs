@@ -9,8 +9,8 @@ using TMPro;
 /// </summary>
 public class PolytronInfoPanel : MonoBehaviour
 {
-    [Header("Panel Settings")]
-    public float showDistance = 3.0f;
+    // [Header("Panel Settings")]
+    float showDistance = 1.5f;
     float animationDuration = 0.5f;
     // Vector3 panelOffset = new Vector3(0, 0.5f, 0);
 
@@ -33,6 +33,8 @@ public class PolytronInfoPanel : MonoBehaviour
     Transform cameraTransform;
 
     private bool isVisible = false;
+
+    private bool mustActivate = false;
     private Coroutine animCoroutine;
 
     void Start()
@@ -158,7 +160,8 @@ public class PolytronInfoPanel : MonoBehaviour
     void Update()
     {
         float dist = Vector3.Distance(transform.position, CrossPlatformUtils.GetAvatarPosition());
-        bool shouldShow = dist < showDistance;
+        bool shouldShow = (dist < showDistance) || mustActivate;
+//         bool shouldShow = mustActivate;
 
         if (shouldShow != isVisible)
         {
@@ -198,5 +201,12 @@ public class PolytronInfoPanel : MonoBehaviour
         }
         canvas.transform.localScale = endScale;
         if (!show) canvas.gameObject.SetActive(false);
+    }
+
+    public void Activate(bool show)
+    {
+        //if (animCoroutine != null) StopCoroutine(animCoroutine);
+        // animCoroutine = StartCoroutine(AnimatePanel(show));
+        mustActivate = show;
     }
 }
