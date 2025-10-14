@@ -25,7 +25,7 @@ RectTransform:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 745778267431902272}
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 1
@@ -1765,8 +1765,8 @@ GameObject:
   - component: {fileID: 1084458752399287248}
   - component: {fileID: 3634034817177899138}
   - component: {fileID: 7098882181875574808}
-  - component: {fileID: 2290202302152306031}
   - component: {fileID: -5626925463845379671}
+  - component: {fileID: 5584251939721688843}
   m_Layer: 13
   m_Name: Polytron
   m_TagString: Untagged
@@ -1900,7 +1900,7 @@ SphereCollider:
   m_IsTrigger: 0
   m_Enabled: 1
   serializedVersion: 2
-  m_Radius: 1
+  m_Radius: 1.5
   m_Center: {x: 0, y: 0, z: 0}
 --- !u!223 &7990541047644643839
 Canvas:
@@ -1919,7 +1919,7 @@ Canvas:
   m_OverrideSorting: 0
   m_OverridePixelPerfect: 0
   m_SortingBucketNormalizedSize: 0
-  m_AdditionalShaderChannelsFlag: 0
+  m_AdditionalShaderChannelsFlag: 25
   m_SortingLayerID: 0
   m_SortingOrder: 0
   m_TargetDisplay: 0
@@ -1994,20 +1994,6 @@ MonoBehaviour:
     name: onHover
     outlineColor: {r: 1, g: 1, b: 1, a: 1}
     outlineWidth: 0.1
---- !u!114 &2290202302152306031
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 8404194606809146210}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 94fdb1b7a60d84457b463d5b214725e3, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  showDistance: 3
-  canvas: {fileID: 1173108252598156082}
 --- !u!114 &-5626925463845379671
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -2111,3 +2097,16 @@ MonoBehaviour:
       duration: 0
       startTime: 0
       active: 0
+--- !u!114 &5584251939721688843
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8404194606809146210}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 94fdb1b7a60d84457b463d5b214725e3, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  canvasComponent: {fileID: 0}

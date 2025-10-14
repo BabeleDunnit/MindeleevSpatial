@@ -20,16 +20,13 @@ public class SpatialClickable3DProxy : MonoBehaviour, IPointerClickHandler
 [RequireComponent(typeof(Collider))]
 public class SpatialClickable3D : MonoBehaviour
 {
-    // [Header("UI hit area (auto se nullo)")]
-    // public Button button;
 
     // canvas scale is 1 so these are meters
-//     private Vector2 hitAreaSize = new Vector2(0.8f, 0.8f);
-    Vector2 hitAreaSize = new Vector2(1f, 1f);
+    private Vector2 hitAreaSize = new Vector2(3f, 3f);
 
     Transform cameraTransform;
 
-    internal Canvas canvas;
+    internal Canvas canvasComponent;
 
     void Awake()
     {
@@ -39,63 +36,43 @@ public class SpatialClickable3D : MonoBehaviour
         // {
         // Canvas World Space
         var canvasGO = new GameObject("ClickCanvas", typeof(Canvas), typeof(GraphicRaycaster));
+        canvasGO.transform.SetParent(transform, false);
 
-        // Try to put canvas on the UI layer so external raycasters that filter by layer can hit it
-        /*
-        int uiLayer = LayerMask.NameToLayer("UI");
-        if (uiLayer >= 0)
-            canvasGO.layer = uiLayer;
-*/
+        canvasComponent = canvasGO.GetComponent<Canvas>();
+        canvasComponent.renderMode = RenderMode.WorldSpace;
+        canvasComponent.transform.localPosition = Vector3.zero;
+        canvasComponent.transform.localRotation = Quaternion.identity;
+        canvasComponent.transform.localScale = Vector3.one;
 
-            // GraphicRaycaster gr = canvasGO.AddComponent<GraphicRaycaster>();
+        // Ensure the world-space canvas has a camera assigned (some raycasters need this)
+        var cam = CrossPlatformUtils.FindCamera();
+        if (cam != null)
+            canvasComponent.worldCamera = cam;
 
-        canvas = canvasGO.GetComponent<Canvas>();
-            canvas.renderMode = RenderMode.WorldSpace;
-            canvas.transform.SetParent(transform, false);
-            canvas.transform.localPosition = Vector3.zero;
-            canvas.transform.localRotation = Quaternion.identity;
+        // Make sure the canvas sorts above default geometry so raycasters see it first
+        canvasComponent.overrideSorting = true;
+        canvasComponent.sortingOrder = 100;
 
-            canvas.transform.localScale = Vector3.one;
-
-            // Ensure the world-space canvas has a camera assigned (some raycasters need this)
-            var cam = CrossPlatformUtils.FindCamera();
-            if (cam != null)
-                canvas.worldCamera = cam;
-
-            // Make sure the canvas sorts above default geometry so raycasters see it first
-            canvas.overrideSorting = true;
-            canvas.sortingOrder = 100;
-
-            // Hit area (Image + Button)
-            var imgGO = new GameObject("HitArea", typeof(RectTransform), typeof(Image), typeof(Button));
-            imgGO.transform.SetParent(canvasGO.transform, false);
-
-        /*
-                // Put hit area on UI layer as well (if available)
-                if (uiLayer >= 0)
-                    imgGO.layer = uiLayer;
-        */
+        // Hit area (Image + Button)
+        var imgGO = new GameObject("HitArea", typeof(RectTransform), typeof(Image), typeof(Button));
+        imgGO.transform.SetParent(canvasGO.transform, false);
 
         // After creating imgGO (the UI element)
         var proxy = imgGO.AddComponent<SpatialClickable3DProxy>();
-            proxy.target = this;
+        proxy.target = this;
 
-            var rt = imgGO.GetComponent<RectTransform>();
-            rt.sizeDelta = hitAreaSize;
+        var rt = imgGO.GetComponent<RectTransform>();
+        rt.sizeDelta = hitAreaSize;
 
-            var img = imgGO.GetComponent<Image>();
-            img.color = new Color(1, 1, 1, 0.001f); // invisible
-            // img.color = new Color(1, 0, 0, 0.3f); // semi-transparent for debugging
-            img.raycastTarget = true;
+        var img = imgGO.GetComponent<Image>();
+        // img.color = new Color(1, 1, 1, 0.001f); // invisible
+        img.color = new Color(1, 0, 0, 0.3f); // semi-transparent for debugging
+        img.raycastTarget = true;
 
         Button button = imgGO.GetComponent<Button>();
         var colors = button.colors;
         colors.highlightedColor = Color.green;
         button.colors = colors;
-
-            // button.onClick.AddListener(OnClicked);
-
-        // }
     }
 
     public void OnProxyPointerClick(PointerEventData eventData)
@@ -120,21 +97,21 @@ public class SpatialClickable3D : MonoBehaviour
             if (System.Object.ReferenceEquals(h, this)) continue;
             h.OnPointerClick(eventData);
         }
-    
-}
 
-/*
- public void OnPointerClick(PointerEventData eventData)
-    {
-        Debug.Log("clicked in SpatialLickable3D");
-        // Forward click count and other info to Polytron
-        Polytron p = GetComponent<Polytron>();
-        if (p != null)
-        {
-            p.OnSpatialClickable3DClick(eventData);
-        }
     }
-*/
+
+    /*
+     public void OnPointerClick(PointerEventData eventData)
+        {
+            Debug.Log("clicked in SpatialLickable3D");
+            // Forward click count and other info to Polytron
+            Polytron p = GetComponent<Polytron>();
+            if (p != null)
+            {
+                p.OnSpatialClickable3DClick(eventData);
+            }
+        }
+    */
 
     void LateUpdate()
     {
@@ -142,7 +119,7 @@ public class SpatialClickable3D : MonoBehaviour
         {
             // Billboard toward camera
             // var canvas = button.transform.parent;
-            canvas.transform.rotation = Quaternion.LookRotation(canvas.transform.position - cameraTransform.position, Vector3.up);
+            canvasComponent.transform.rotation = Quaternion.LookRotation(canvasComponent.transform.position - cameraTransform.position, Vector3.up);
 
             /*            
                                     // Move canvas slightly toward the camera to avoid being inside the 3D object

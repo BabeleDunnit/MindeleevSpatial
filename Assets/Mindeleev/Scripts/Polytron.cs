@@ -99,9 +99,11 @@ public class Polytron : PolyhedronGenerator,
     {
         Debug.Log("OnPointerEnter");
 
-        GetComponent<PointerOutlineStateController>().OnHoverEnter();
+        // da rimettere
+                GetComponent<PointerOutlineStateController>()?.OnHoverEnter();
+                GetComponent<PolytronInfoPanel>()?.Activate(true);
+        
 
-        GetComponent<PolytronInfoPanel>().Activate(true);
 
         /*
                 Outline o = GetComponent<Outline>();
@@ -119,10 +121,9 @@ public class Polytron : PolyhedronGenerator,
         // Outline o = GetComponent<Outline>();
 //         o.DisableOutline();
 
-        GetComponent<PointerOutlineStateController>().OnHoverExit();
+        GetComponent<PointerOutlineStateController>()?.OnHoverExit();
 
-        var info = GetComponent<PolytronInfoPanel>();
-        if (info != null) info.Activate(false);
+        GetComponent<PolytronInfoPanel>()?.Activate(false);
 
 //        WorldSpacePanel wsp = GameObject.Find("InspectorCanvas").GetComponent<WorldSpacePanel>();
 //        wsp.pname.text = "exit " + sealName;

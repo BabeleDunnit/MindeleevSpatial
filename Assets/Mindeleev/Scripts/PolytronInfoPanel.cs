@@ -2,6 +2,7 @@ using UnityEngine;
 using UnityEngine.UI;
 using System.Collections;
 using TMPro;
+using Unity.VisualScripting;
 
 /// <summary>
 /// Displays an info panel for a Polytron. Pops up when the player is near, collapses when far.
@@ -15,7 +16,7 @@ public class PolytronInfoPanel : MonoBehaviour
     // Vector3 panelOffset = new Vector3(0, 0.5f, 0);
 
     [Header("References")]
-    public Canvas canvas;
+    public Canvas canvasComponent;
     TextMeshProUGUI headerText;
     TextMeshProUGUI bodyText;
     Button centerButton;
@@ -42,21 +43,36 @@ public class PolytronInfoPanel : MonoBehaviour
         cameraTransform = CrossPlatformUtils.FindCamera().transform;
 
         // Create empty panel if not assigned
-        if (canvas == null)
+        if (canvasComponent == null)
         {
             // Debug.Assert(1 == 0);
-            var canvasGO = new GameObject("PolytronInfoPanelCanvas", typeof(Canvas));
+            var canvasGO = new GameObject("PolytronInfoPanelCanvas", typeof(Canvas), typeof(GraphicRaycaster));
             canvasGO.transform.SetParent(transform, false);
-            canvas = canvasGO.GetComponent<Canvas>();
-            canvas.renderMode = RenderMode.WorldSpace;
-            canvas.transform.localScale = Vector3.one;
+
+            canvasComponent = canvasGO.GetComponent<Canvas>();
+            canvasComponent.renderMode = RenderMode.WorldSpace;
+            canvasComponent.transform.localScale = Vector3.one;
+
+            // Ensure the world-space canvas has a camera assigned (some raycasters need this)
+            var cam = CrossPlatformUtils.FindCamera();
+            if (cam != null)
+                canvasComponent.worldCamera = cam;
+
+            // Make sure the canvas sorts above default geometry so raycasters see it first
+            canvasComponent.overrideSorting = true;
+            canvasComponent.sortingOrder = 100;
 
             var panelGO = new GameObject("Panel", typeof(RectTransform), typeof(Image));
             panelGO.transform.SetParent(canvasGO.transform, false);
+
             var panelRT = panelGO.GetComponent<RectTransform>();
-            panelRT.sizeDelta = new Vector2(4, 3);
-            panelRT.transform.localPosition = new Vector3(0, 0.5f, 0);
-            panelGO.GetComponent<Image>().color = new Color(0.1f, 0.1f, 0.2f, 0.8f);
+            panelRT.sizeDelta = new Vector2(5, 4);
+            panelRT.transform.localPosition = new Vector3(0, 1.5f, 0);
+
+            var img = panelGO.GetComponent<Image>();
+            // img.color = new Color(1, 1, 1, 0.001f); // invisible
+            img.color = new Color(0.1f, 0.1f, 0.2f, 0.8f); // semi-transparent for debugging
+            img.raycastTarget = true;
 
             /*
                         var textGO = new GameObject("PolytronName", typeof(TextMeshProUGUI));
@@ -82,8 +98,14 @@ public class PolytronInfoPanel : MonoBehaviour
         }
         else
         {
-            Transform panel = canvas.transform.Find("Panel");
+            canvasComponent.gameObject.AddComponent<GraphicRaycaster>();
+
+            Transform panel = canvasComponent.transform.Find("Panel");
             Debug.Assert(panel != null);
+
+            panel.GetComponent<Image>().raycastTarget = true;
+
+
             headerText = panel.Find("HeaderText").GetComponent<TextMeshProUGUI>();
             bodyText = panel.transform.Find("BodyText").GetComponent<TextMeshProUGUI>();
             centerButton = panel.transform.Find("CenterButton").GetComponent<Button>();
@@ -97,7 +119,9 @@ public class PolytronInfoPanel : MonoBehaviour
             button4 = panel.transform.Find("Button4").GetComponent<Button>();
             button4Text = button4.GetComponentInChildren<TextMeshProUGUI>();
 
-            ResetPanel();
+            button4.GetComponent<Image>().raycastTarget = true;
+
+            // ResetPanel();
 
             Polytron p = GetComponent<Polytron>();
 
@@ -107,8 +131,8 @@ public class PolytronInfoPanel : MonoBehaviour
             UpdatePanelGUI();
         }
 
-        canvas.gameObject.SetActive(false);
-        canvas.transform.localScale = Vector3.zero;
+        canvasComponent.gameObject.SetActive(false);
+        canvasComponent.transform.localScale = Vector3.zero;
     }
 
     void TestPanelFull()
@@ -161,7 +185,7 @@ public class PolytronInfoPanel : MonoBehaviour
     {
         float dist = Vector3.Distance(transform.position, CrossPlatformUtils.GetAvatarPosition());
         bool shouldShow = (dist < showDistance) || mustActivate;
-//         bool shouldShow = mustActivate;
+        //         bool shouldShow = mustActivate;
 
         if (shouldShow != isVisible)
         {
@@ -181,26 +205,26 @@ public class PolytronInfoPanel : MonoBehaviour
 
         if (isVisible)
         {
-            canvas.transform.rotation = Quaternion.LookRotation(canvas.transform.position - cameraTransform.position, Vector3.up);
+            canvasComponent.transform.rotation = Quaternion.LookRotation(canvasComponent.transform.position - cameraTransform.position, Vector3.up);
         }
 
     }
 
     IEnumerator AnimatePanel(bool show)
     {
-        canvas.gameObject.SetActive(true);
+        canvasComponent.gameObject.SetActive(true);
         float t = 0f;
-        Vector3 startScale = canvas.transform.localScale;
+        Vector3 startScale = canvasComponent.transform.localScale;
         Vector3 endScale = show ? Vector3.one : Vector3.zero;
 
         while (t < animationDuration)
         {
             t += Time.deltaTime;
-            canvas.transform.localScale = Vector3.Lerp(startScale, endScale, t / animationDuration);
+            canvasComponent.transform.localScale = Vector3.Lerp(startScale, endScale, t / animationDuration);
             yield return null;
         }
-        canvas.transform.localScale = endScale;
-        if (!show) canvas.gameObject.SetActive(false);
+        canvasComponent.transform.localScale = endScale;
+        if (!show) canvasComponent.gameObject.SetActive(false);
     }
 
     public void Activate(bool show)
