@@ -22,7 +22,7 @@ public class SpatialClickable3D : MonoBehaviour
 {
 
     // canvas scale is 1 so these are meters
-    private Vector2 hitAreaSize = new Vector2(3f, 3f);
+    private Vector2 hitAreaSize = new Vector2(1f, 1f);
 
     Transform cameraTransform;
 
