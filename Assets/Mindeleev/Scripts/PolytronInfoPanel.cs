@@ -98,12 +98,12 @@ public class PolytronInfoPanel : MonoBehaviour
         }
         else
         {
-            canvasComponent.gameObject.AddComponent<GraphicRaycaster>();
+            // canvasComponent.gameObject.AddComponent<GraphicRaycaster>();
 
             Transform panel = canvasComponent.transform.Find("Panel");
             Debug.Assert(panel != null);
 
-            panel.GetComponent<Image>().raycastTarget = true;
+            // panel.GetComponent<Image>().raycastTarget = true;
 
 
             headerText = panel.Find("HeaderText").GetComponent<TextMeshProUGUI>();
@@ -119,7 +119,7 @@ public class PolytronInfoPanel : MonoBehaviour
             button4 = panel.transform.Find("Button4").GetComponent<Button>();
             button4Text = button4.GetComponentInChildren<TextMeshProUGUI>();
 
-            button4.GetComponent<Image>().raycastTarget = true;
+            // button4.GetComponent<Image>().raycastTarget = true;
 
             // ResetPanel();
 

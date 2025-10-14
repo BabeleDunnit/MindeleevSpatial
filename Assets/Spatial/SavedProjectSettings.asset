@@ -217,7 +217,7 @@ MonoBehaviour:
     ignore: 0
   - layer1: 13
     layer2: 31
-    ignore: 0
+    ignore: 1
   customCollision2DSettings:
   - layer1: 6
     layer2: 6
