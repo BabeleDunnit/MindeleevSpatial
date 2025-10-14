@@ -2,6 +2,8 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using TMPro;
+using UnityEngine.UI;
+using Unity.VisualScripting;
 
 public class PolytronsFactory : MonoBehaviour
 {
@@ -109,12 +111,38 @@ public class PolytronsFactory : MonoBehaviour
                 {
                     GameObject poly = Instantiate(polytronPrefab, Vector3.zero, Quaternion.identity, transform);
 
+                    // OCULUS BUG: only the first instantiated polytron prefab has a working raycaster
+                    // DOES NOT WORK
+                    /*
+                    SpatialClickable3D sc3d = poly.GetComponent<SpatialClickable3D>();
+                    if (sc3d != null)
+                    {
+                        sc3d.canvas.enabled = false;
+                        sc3d.canvas.enabled = true;
+                        sc3d.canvas.worldCamera = CrossPlatformUtils.FindCamera();
+                        Canvas.ForceUpdateCanvases();                        
+                    }
+                    */
+
+                    /*
+                                        poly.AddComponent<SpatialClickable3D>();
+                                        SpatialClickable3D sc3d = poly.GetComponent<SpatialClickable3D>();
+                                        if (sc3d != null)
+                                        {
+                                            GameObject.Destroy(sc3d.canvas.GetComponent<GraphicRaycaster>());
+                                            sc3d.canvas.gameObject.AddComponent<GraphicRaycaster>();
+                                        }
+
+                                        Canvas.ForceUpdateCanvases();                        
+                    */
+
                     poly.transform.localScale = Vector3.one * localUniformScale;
 
                     var waveAnim = poly.GetComponent<WaveAnimation>();
                     if (waveAnim != null)
                     {
-                        waveAnim.animationName = WaveAnimation.AnimationType.Breathe;
+//                         waveAnim.animationName = WaveAnimation.AnimationType.Breathe;
+                        waveAnim.SetAnimation(WaveAnimation.AnimationType.Breathe);
                         waveAnim.SetReferenceTransform(poly.transform.localScale);
                     }
 

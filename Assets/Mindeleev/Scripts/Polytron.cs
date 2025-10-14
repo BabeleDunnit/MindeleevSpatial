@@ -7,17 +7,21 @@ using SpatialSys.UnitySDK;
 
 [RequireComponent(typeof(Collider))]
 [RequireComponent(typeof(Rigidbody))]
+
+// down, up and click handlers need an UI element to be fired, and this is why we need to have
+// a SpatialClikcable3D component. For some reason, enter/exit and drag stuff works 
+// (because based on early raycasting??)
 public class Polytron : PolyhedronGenerator,
   IPointerEnterHandler,
-    IPointerExitHandler,
-    IPointerDownHandler,
-    IPointerUpHandler,
-    IPointerClickHandler,
-    IBeginDragHandler,
-    IDragHandler,
-    IEndDragHandler,
-    IDropHandler,
-    IScrollHandler
+  IPointerExitHandler,
+  IPointerDownHandler,
+  IPointerUpHandler,
+  IPointerClickHandler,
+  IBeginDragHandler,
+  IDragHandler,
+  IEndDragHandler,
+  IDropHandler,
+  IScrollHandler
 {
 
     // public PolytronEngine Engine { get; set; }
@@ -25,125 +29,129 @@ public class Polytron : PolyhedronGenerator,
     // public int Id { get; set; }
 
     // 0..71
-    public int sealNumber = -1;
+    internal int sealNumber = -1;
 
-    public string sealName;
+    internal string sealName;
 
     public Rigidbody RigidBody { get; set; }
 
     internal PolytronSink boundSink;
 
+    internal bool isArchitron = false;
+
     public void OnPointerDown(PointerEventData eventData)
     {
-        // Debug.Log($"[PointerEvent] Down on {gameObject.name}");
+        Debug.Log($"[PointerEvent] Down on {gameObject.name}");
     }
 
     public void OnPointerUp(PointerEventData eventData)
     {
-        // Debug.Log($"[PointerEvent] Up on {gameObject.name}");
+        Debug.Log($"[PointerEvent] Up on {gameObject.name}");
     }
 
     public void OnBeginDrag(PointerEventData eventData)
     {
-        // Debug.Log($"[PointerEvent] BeginDrag on {gameObject.name}");
+        Debug.Log($"[PointerEvent] BeginDrag on {gameObject.name}");
 
-        Outline o = GetComponent<Outline>();
-        o.outlineColor = Color.blue;
-        o.outlineWidth = 0.5f;
-        o.DisableOutline();
-        o.EnableOutline();
+        /*
+                Outline o = GetComponent<Outline>();
+                o.outlineColor = Color.blue;
+                o.outlineWidth = 0.5f;
+                o.DisableOutline();
+                o.EnableOutline();
+                */
 
         BeginDrag();
     }
 
     public void OnDrag(PointerEventData eventData)
     {
-        // Debug.Log($"[PointerEvent] Drag on {gameObject.name}");
+        Debug.Log($"[PointerEvent] Drag on {gameObject.name}");
     }
 
     public void OnEndDrag(PointerEventData eventData)
     {
-        // Debug.Log($"[PointerEvent] EndDrag on {gameObject.name}");
-
-        Outline o = GetComponent<Outline>();
-        o.outlineColor = Color.magenta;
-        o.DisableOutline();
-        o.EnableOutline();
-
+        Debug.Log($"[PointerEvent] EndDrag on {gameObject.name}");
+        /*
+                Outline o = GetComponent<Outline>();
+                o.outlineColor = Color.magenta;
+                o.DisableOutline();
+                o.EnableOutline();
+*/
         EndDrag();
 
     }
 
     public void OnDrop(PointerEventData eventData)
     {
-        // Debug.Log($"[PointerEvent] Drop on {gameObject.name}");
+        Debug.Log($"[PointerEvent] Drop on {gameObject.name}");
     }
 
     public void OnScroll(PointerEventData eventData)
     {
-        // Debug.Log($"[PointerEvent] Scroll on {gameObject.name}, delta: {eventData.scrollDelta}");
+        PointerOutlineStateController csc = GetComponent<PointerOutlineStateController>();
+        csc.AdvanceState();
+
+        Debug.Log($"[PointerEvent] Scroll on {gameObject.name}, delta: {eventData.scrollDelta}");
     }
 
     public void OnPointerEnter(PointerEventData eventData)
     {
-        // Debug.Log("Pointer over object");
+        Debug.Log("OnPointerEnter");
 
-        Outline o = GetComponent<Outline>();
-        o.outlineColor = Color.yellow;
-        o.EnableOutline();
+        GetComponent<PointerOutlineStateController>()?.OnHoverEnter();
+        GetComponent<PolytronInfoPanel>()?.Activate(true);
 
-        WorldSpacePanel wsp = GameObject.Find("InspectorCanvas").GetComponent<WorldSpacePanel>();
-        wsp.pname.text = "enter " + sealName;
+        /*
+                Outline o = GetComponent<Outline>();
+                o.outlineColor = Color.white;
+                o.outlineWidth = 0.1f;
+                o.RebuildOutline();
+        */
+
     }
 
     public void OnPointerExit(PointerEventData eventData)
     {
-        // Debug.Log("Pointer left object");
+        Debug.Log("OnPointerExit");
 
-        Outline o = GetComponent<Outline>();
-        o.DisableOutline();
+        // Outline o = GetComponent<Outline>();
+        //         o.DisableOutline();
 
-        WorldSpacePanel wsp = GameObject.Find("InspectorCanvas").GetComponent<WorldSpacePanel>();
-        wsp.pname.text = "exit " + sealName;
+        GetComponent<PointerOutlineStateController>()?.OnHoverExit();
+
+        GetComponent<PolytronInfoPanel>()?.Activate(false);
+
+        //        WorldSpacePanel wsp = GameObject.Find("InspectorCanvas").GetComponent<WorldSpacePanel>();
+        //        wsp.pname.text = "exit " + sealName;
     }
 
     public void OnPointerClick(PointerEventData eventData)
     {
+
+        /*
         Outline o = GetComponent<Outline>();
         o.outlineColor = Color.green;
         o.DisableOutline();
         o.EnableOutline();
+        */
+
+        if (eventData?.clickCount == 2)
+        {
+            Debug.Log("double click");
+        }
+
+        PointerOutlineStateController csc = GetComponent<PointerOutlineStateController>();
+        csc.AdvanceState();
 
         Debug.Log("[Polytron.OnPointerClick()] Object clicked!");
 
-/*
-        GameObject engineObj = GameObject.Find("HexCellularAutomata");
-        if (engineObj != null)
-        {
-            PolytronEngine engine = engineObj.GetComponent<PolytronEngine>();
-            if (engine != null)
-            {
-                Debug.Log("Found PolytronEngine02 and casted to PolytronEngine.");
-                // You can now use 'engine' as needed
-                engine.Register(this);
-            }
-            else
-            {
-                Debug.LogWarning("PolytronEngine component not found on PolytronEngine02.");
-            }
-        }
-        else
-        {
-            Debug.LogWarning("GameObject 'PolytronEngine02' not found.");
-        }
-        */
     }
 
     private bool isDragging = false;
     private Vector3 offset;
     private Camera mainCamera;
     private float dragDepth;
-
 
     private void BeginDrag()
     {
@@ -159,33 +167,26 @@ public class Polytron : PolyhedronGenerator,
         }
     }
 
-
     private void EndDrag()
     {
         isDragging = false;
         CrossPlatformUtils.DisableCameraRotation(false);
     }
 
-
-
     // Start is called before the first frame update
     public override void Start()
     {
         base.Start();
 
-    
+
         RigidBody = GetComponent<Rigidbody>();
         if (RigidBody == null)
         {
             throw new NullReferenceException("Polytron must have a RigidBody component, please check");
         }
-    
+
         mainCamera = CrossPlatformUtils.FindCamera();
 
-    }
-
-    void Awake()
-    {
     }
 
     // Update is called once per frame    

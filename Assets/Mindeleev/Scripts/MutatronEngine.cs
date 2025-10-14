@@ -21,6 +21,9 @@ public class MutatronEngine : MonoBehaviour
     // the polytrons homes
     private List<KeyValuePair<HexCoord, HexCellData>> polytronsHomes = new();
 
+    // the Architron
+    int architronIdx = 70;
+
     int evolveCount = 0;
 
     public class HexCellData
@@ -128,6 +131,7 @@ public class MutatronEngine : MonoBehaviour
         GetComponent<MeshRenderer>().enabled = false;
 
         CreateHexGridDataStructure();
+        Create72PolytronsImmediate();
         StartCoroutine(Create72PolytronsAndHomesCoroutine());
     }
 
@@ -260,7 +264,8 @@ public class MutatronEngine : MonoBehaviour
         sinkOfThisCell.boundPolytron = p;
     }
 
-    void AttractPolytronsToSinks()
+    // nearly all polytrons have sinks as their targets, but the architron has a different behaviour
+    void AttractPolytronsToTargets()
     {
         foreach (var hckv in gridCellsMap)
         {
@@ -284,22 +289,15 @@ public class MutatronEngine : MonoBehaviour
             {
                 DrawCircle(hckv.Value, 1.73f, Color.gray, 0.05f);
 
-                int polytronId = polytrons.Count;
+                int polytronId = hckv.Value.idxInRing;
 
-                GameObject polytron = PolytronsFactory.Instance.Create($"polytron/T", 0.6f);
-                // polytron.transform.position = hckv.Value.worldCoords + new Vector3(0, 1f, 0);
-                polytron.transform.position = hckv.Value.worldCoords * 0.1f + new Vector3(0, 10f, 0);
-                // polytron.transform.position = new Vector3(0, 50f, 0);
+                GameObject polytronGameObject = polytrons[hckv.Value.idxInRing].gameObject;
+
+                polytronGameObject.transform.position = hckv.Value.worldCoords * 0.1f + new Vector3(0, 10f, 0);
                 float angleToCenter = hckv.Key.PolarAngle();
                 Quaternion rotationToCenter = Quaternion.Euler(0f, -angleToCenter * 360f / 6.28f, 0f);
-                // polytron.transform.localRotation = polytronRotation;
-                polytron.name = $"Polytron_{polytronId}";
 
-                Polytron polytronComponent = polytron.GetComponent<Polytron>();
-                polytronComponent.recipe = PolyhedronRecipeKabbalah.IntToOperatorsSequence(polytronId) + "00T";
-                polytronComponent.RebuildMesh();
-
-                polytrons.Add(polytron.GetComponent<Polytron>());
+                Polytron polytronComponent = polytronGameObject.GetComponent<Polytron>();
 
                 GameObject tile = PolytronsFactory.Instance.Create($"tile/{polytronComponent.recipe}", 1f);
                 tile.transform.localScale = new Vector3(1f, 0.01f, 1f);
@@ -307,36 +305,62 @@ public class MutatronEngine : MonoBehaviour
                 tile.transform.localRotation = rotationToCenter;
                 hckv.Value.tile = tile.GetComponent<MutatronTile>();
 
-                GameObject label = CreateTileLabel(polytronComponent.sealName, tile.transform.position + new Vector3(0, 3, 0));
+                GameObject label = CreateTileLabel($"{polytronId + 1}\n" + polytronComponent.sealName, tile.transform.position + new Vector3(0, 3, 0));
                 int r1 = polytronId / 12;
-//                 label.transform.rotation = Quaternion.Euler(0, (-60f * (r1 + 2)) - 30f, 0);
                 label.transform.rotation = Quaternion.Euler(0, (-60f * (r1 + 2)) + 180, 0);
-                label.transform.position = tile.transform.position + new Vector3(0, 3, 0);
+                label.transform.position = tile.transform.position + new Vector3(0, 3.5f, 0);
 
                 // bind the polytron to his home. The home will not change.
-                BindPolytronToHome(polytron.GetComponent<Polytron>(), hckv);
-                BindPolytronToSink(polytron.GetComponent<Polytron>(), hckv);
-
-                polytronsHomes.Add(hckv);
+                BindPolytronToHome(polytronGameObject.GetComponent<Polytron>(), hckv);
+                BindPolytronToSink(polytronGameObject.GetComponent<Polytron>(), hckv);
 
                 yield return new WaitForSeconds(0.15f);
             }
         }
     }
 
-    // static Color blueFloor = new Color(52, 56, 87);
-
-
-/*
-    static Color blueFloor
+    void Create72PolytronsImmediate()
     {
-        // [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        get
+        foreach (var hckv in gridCellsMap)
         {
-            return new Color(52, 56, 87, 255);
+            if (hckv.Value.ring == 12)
+            {
+                int polytronId = polytrons.Count;
+
+                GameObject polytronGameObject = PolytronsFactory.Instance.Create($"polytron/T", 0.6f);
+                polytronGameObject.transform.position = hckv.Value.worldCoords * 10f + new Vector3(0, -100f, 0);
+                polytronGameObject.name = $"Polytron_{polytronId}";
+
+                Polytron polytronComponent = polytronGameObject.GetComponent<Polytron>();
+                polytronComponent.recipe = PolyhedronRecipeKabbalah.IntToOperatorsSequence(polytronId) + $"{(polytronId % 11):D2}" + "C";
+                Debug.Log(polytronComponent.recipe);
+                polytronComponent.RebuildMesh();
+                Debug.Assert(polytronId == polytronComponent.sealNumber); // sealNumber is set by the factory
+                if(polytronComponent.sealNumber == architronIdx)
+                {
+                    polytronComponent.isArchitron = true;
+                }
+
+
+                polytrons.Add(polytronGameObject.GetComponent<Polytron>());
+
+                polytronsHomes.Add(hckv);
+            }
         }
     }
-*/
+
+
+
+    /*
+        static Color blueFloor
+        {
+            // [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            get
+            {
+                return new Color(52, 56, 87, 255);
+            }
+        }
+    */
 
 
     public static GameObject CreateTileLabel(string s, Vector3 position)
@@ -489,7 +513,7 @@ public class MutatronEngine : MonoBehaviour
     void DrawLine(Vector3 start, Vector3 end, Color color, float width = 0.05f)
     {
         var go = new GameObject("Line");
-        go.tag = "Line";
+//         go.tag = "Line";
         go.transform.SetParent(transform);
         var lr = go.AddComponent<LineRenderer>();
 
@@ -852,7 +876,7 @@ public class MutatronEngine : MonoBehaviour
 
     void FixedUpdate()
     {
-        AttractPolytronsToSinks();
+        AttractPolytronsToTargets();
     }
 
     int levelCount = 0;

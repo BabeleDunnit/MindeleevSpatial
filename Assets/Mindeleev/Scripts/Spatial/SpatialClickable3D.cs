@@ -2,66 +2,124 @@ using UnityEngine;
 using UnityEngine.UI;
 using UnityEngine.EventSystems;
 
+// WARNING:
+// THIS COMPONENT MUST *NOT* BE USED FROM A COROUTINE
+// on Oculus, there is a bug which will cause only the FIRST created canvas to work.
+
+public class SpatialClickable3DProxy : MonoBehaviour, IPointerClickHandler
+{
+    public SpatialClickable3D target;
+
+    public void OnPointerClick(PointerEventData eventData)
+    {
+        if (target != null)
+            target.OnProxyPointerClick(eventData);
+    }
+}
 
 [RequireComponent(typeof(Collider))]
 public class SpatialClickable3D : MonoBehaviour
 {
-    [Header("UI hit area (auto se nullo)")]
-    public Button button;
 
     // canvas scale is 1 so these are meters
-    private Vector2 hitAreaSize = new Vector2(0.8f, 0.8f);
+    private Vector2 hitAreaSize = new Vector2(1f, 1f);
 
-    Transform cam;
+    Transform cameraTransform;
+
+    internal Canvas canvasComponent;
 
     void Awake()
     {
-        cam = CrossPlatformUtils.FindCamera().transform;
+        cameraTransform = CrossPlatformUtils.FindCamera().transform;
 
-        if (button == null)
-        {
-            // Canvas World Space
-            var canvasGO = new GameObject("ClickCanvas", typeof(Canvas));
+        // if (button == null)
+        // {
+        // Canvas World Space
+        var canvasGO = new GameObject("ClickCanvas", typeof(Canvas), typeof(GraphicRaycaster));
+        canvasGO.transform.SetParent(transform, false);
 
-            canvasGO.layer = LayerMask.NameToLayer("UI");
+        canvasComponent = canvasGO.GetComponent<Canvas>();
+        canvasComponent.renderMode = RenderMode.WorldSpace;
+        canvasComponent.transform.localPosition = Vector3.zero;
+        canvasComponent.transform.localRotation = Quaternion.identity;
+        canvasComponent.transform.localScale = Vector3.one;
 
-            var canvas = canvasGO.GetComponent<Canvas>();
-            canvas.renderMode = RenderMode.WorldSpace;
-            canvas.transform.SetParent(transform, false);
-            canvas.transform.localPosition = Vector3.zero;
-            canvas.transform.localRotation = Quaternion.identity;
+        // Ensure the world-space canvas has a camera assigned (some raycasters need this)
+        var cam = CrossPlatformUtils.FindCamera();
+        if (cam != null)
+            canvasComponent.worldCamera = cam;
 
-            canvas.transform.localScale = Vector3.one;
+        // Make sure the canvas sorts above default geometry so raycasters see it first
+        canvasComponent.overrideSorting = true;
+        canvasComponent.sortingOrder = 100;
 
-            // Hit area (Image + Button)
-            var imgGO = new GameObject("HitArea", typeof(RectTransform), typeof(Image), typeof(Button));
-            imgGO.transform.SetParent(canvasGO.transform, false);
+        // Hit area (Image + Button)
+        var imgGO = new GameObject("HitArea", typeof(RectTransform), typeof(Image), typeof(Button));
+        imgGO.transform.SetParent(canvasGO.transform, false);
 
-            imgGO.layer = LayerMask.NameToLayer("UI");
+        // After creating imgGO (the UI element)
+        var proxy = imgGO.AddComponent<SpatialClickable3DProxy>();
+        proxy.target = this;
 
-            var rt = imgGO.GetComponent<RectTransform>();
-            rt.sizeDelta = hitAreaSize;
+        var rt = imgGO.GetComponent<RectTransform>();
+        rt.sizeDelta = hitAreaSize;
 
-            var img = imgGO.GetComponent<Image>();
-            // img.color = new Color(1, 1, 1, 0.001f); // invisibile ma cliccabile
-            img.color = new Color(1, 1, 0, 0.3f); // semi-transparent for debugging
-            img.raycastTarget = true;
+        var img = imgGO.GetComponent<Image>();
+        // img.color = new Color(1, 1, 1, 0.001f); // invisible
+        img.color = new Color(1, 0, 0, 0.3f); // semi-transparent for debugging
+        img.raycastTarget = true;
 
-            button = imgGO.GetComponent<Button>();
-            button.onClick.AddListener(OnClicked);
-
-            GraphicRaycaster gr = canvasGO.AddComponent<GraphicRaycaster>();
-        }
+        Button button = imgGO.GetComponent<Button>();
+        var colors = button.colors;
+        colors.highlightedColor = Color.green;
+        button.colors = colors;
     }
 
+    public void OnProxyPointerClick(PointerEventData eventData)
+    {
+        Debug.Log($"OnProxyPointerClick: clicked in SpatialClickable3D via proxy, clicks: {eventData.clickCount}");
+
+        /*
+                // Forward the pointer event to any Polytron (or other) component on this GameObject so
+                // higher-level logic can react to clicks (double-click, clickCount, etc.).
+                Polytron p = GetComponent<Polytron>();
+                if (p != null)
+                {
+                    p.OnSpatialClickable3DClick(eventData);
+                    return;
+                }
+        */
+
+        // Fallback: if another IPointerClickHandler is present on this GameObject, try to call it.
+        var handlers = GetComponents<IPointerClickHandler>();
+        foreach (var h in handlers)
+        {
+            if (System.Object.ReferenceEquals(h, this)) continue;
+            h.OnPointerClick(eventData);
+        }
+
+    }
+
+    /*
+     public void OnPointerClick(PointerEventData eventData)
+        {
+            Debug.Log("clicked in SpatialLickable3D");
+            // Forward click count and other info to Polytron
+            Polytron p = GetComponent<Polytron>();
+            if (p != null)
+            {
+                p.OnSpatialClickable3DClick(eventData);
+            }
+        }
+    */
 
     void LateUpdate()
     {
-        if (cam != null)
+        if (cameraTransform != null)
         {
-            // Billboard “piatto” verso la camera
-            var canvas = button.transform.parent;
-            canvas.rotation = Quaternion.LookRotation(canvas.position - cam.position, Vector3.up);
+            // Billboard toward camera
+            // var canvas = button.transform.parent;
+            canvasComponent.transform.rotation = Quaternion.LookRotation(canvasComponent.transform.position - cameraTransform.position, Vector3.up);
 
             /*            
                                     // Move canvas slightly toward the camera to avoid being inside the 3D object
@@ -72,25 +130,4 @@ public class SpatialClickable3D : MonoBehaviour
              */
         }
     }
-
-    void OnClicked()
-    {
-        Debug.Log("3D object clicked via Spatial UI ray!");
-        WorldSpacePanel wsp = GameObject.Find("InspectorCanvas").GetComponent<WorldSpacePanel>();
-
-        wsp.pname.text = "cliccato su un polytrone";
-
-        IPointerClickHandler ch = GetComponent<IPointerClickHandler>();
-        ch.OnPointerClick(null);
-    }
-
-    /*
-        private Camera FindSpatialCamera()
-        {
-            var cam = GameObject.FindGameObjectWithTag("MainCamera")?.GetComponent<Camera>();
-            if (cam != null) return cam;
-            return null;
-        }
-    */
-
 }
