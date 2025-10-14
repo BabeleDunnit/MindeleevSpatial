@@ -264,6 +264,7 @@ public class MutatronEngine : MonoBehaviour
         sinkOfThisCell.boundPolytron = p;
     }
 
+/*
     // nearly all polytrons have sinks as their targets, but the architron has a different behaviour
     void AttractPolytronsToTargets()
     {
@@ -278,6 +279,32 @@ public class MutatronEngine : MonoBehaviour
                 sink.boundPolytron.GetComponent<Rigidbody>().AddForce(attractionForce);
             }
 
+        }
+    }
+    */
+
+    void AttractPolytronsToTargets()
+    {
+        foreach(Polytron p in polytrons)
+        {
+
+                // special behaviour for the architron
+            if(p.isArchitron)
+            {
+
+                (Vector3 attractionForce, Vector3 from1To2Versor, float from1To2Distance) = CalcSpringForce(p.transform.position, CrossPlatformUtils.GetAvatarPosition() + new Vector3(0,0.5f,0), 0.5f, 2.5f);
+                p.GetComponent<Rigidbody>().AddForce(attractionForce);                
+                
+
+                continue;
+            }
+
+            PolytronSink boundSink = p.boundSink;
+            if(boundSink)
+            {
+                (Vector3 attractionForce, Vector3 from1To2Versor, float from1To2Distance) = CalcSpringForce(p.transform.position, boundSink.transform.position, boundSink.weight * 5f, 0.01f);
+                p.GetComponent<Rigidbody>().AddForce(attractionForce);                
+            }
         }
     }
 
@@ -298,6 +325,10 @@ public class MutatronEngine : MonoBehaviour
                 Quaternion rotationToCenter = Quaternion.Euler(0f, -angleToCenter * 360f / 6.28f, 0f);
 
                 Polytron polytronComponent = polytronGameObject.GetComponent<Polytron>();
+                if(polytronComponent.sealNumber == architronIdx)
+                {
+                    polytronComponent.isArchitron = true;
+                }
 
                 GameObject tile = PolytronsFactory.Instance.Create($"tile/{polytronComponent.recipe}", 1f);
                 tile.transform.localScale = new Vector3(1f, 0.01f, 1f);
@@ -336,11 +367,12 @@ public class MutatronEngine : MonoBehaviour
                 Debug.Log(polytronComponent.recipe);
                 polytronComponent.RebuildMesh();
                 Debug.Assert(polytronId == polytronComponent.sealNumber); // sealNumber is set by the factory
-                if(polytronComponent.sealNumber == architronIdx)
+/*
+                if (polytronComponent.sealNumber == architronIdx)
                 {
                     polytronComponent.isArchitron = true;
                 }
-
+*/
 
                 polytrons.Add(polytronGameObject.GetComponent<Polytron>());
 
