@@ -292,9 +292,19 @@ public class MutatronEngine : MonoBehaviour
             if(p.isArchitron)
             {
 
-                (Vector3 attractionForce, Vector3 from1To2Versor, float from1To2Distance) = CalcSpringForce(p.transform.position, CrossPlatformUtils.GetAvatarPosition() + new Vector3(0,0.5f,0), 0.5f, 2.5f);
-                p.GetComponent<Rigidbody>().AddForce(attractionForce);                
+                //(Vector3 attractionForce, Vector3 from1To2Versor, float from1To2Distance) = CalcSpringForce(p.transform.position, CrossPlatformUtils.GetAvatarPosition(), 0.5f, 2.5f);
+                // p.GetComponent<Rigidbody>().AddForce(attractionForce);         
                 
+                // Calculate intersection point on sphere of radius 2.5 at height 0.5
+                Vector3 avatarPos = CrossPlatformUtils.GetAvatarPosition();
+                Vector3 architronPos = p.transform.position;
+
+                Vector3 dir = (architronPos - avatarPos).normalized;
+                Vector3 targetOnSphere = avatarPos + dir * 2.5f;
+                targetOnSphere.y = 1.0f;
+
+                Vector3 forceToCircle = (targetOnSphere - architronPos) * 0.5f;
+                p.GetComponent<Rigidbody>().AddForce(forceToCircle);                
 
                 continue;
             }
@@ -706,7 +716,6 @@ public class MutatronEngine : MonoBehaviour
         {
             // msg += $"Cell (ring={kvp.Key.ring}, idxInRing={kvp.Key.idxInRing}) has polytronic number = {kvp.Value}\n";
         }
-
 
         msg += $"total quantized energy: {totalQuantizedEnergy}, most energy: {energyCellsList[0]}";
 
