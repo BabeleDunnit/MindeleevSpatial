@@ -17,6 +17,9 @@ public class PolytronInfoPanel : MonoBehaviour
 
     [Header("References")]
     public Canvas canvasComponent;
+
+    Transform panelTransform;
+
     TextMeshProUGUI headerText;
     TextMeshProUGUI bodyText;
     Button centerButton;
@@ -100,28 +103,28 @@ public class PolytronInfoPanel : MonoBehaviour
         {
             // canvasComponent.gameObject.AddComponent<GraphicRaycaster>();
 
-            Transform panel = canvasComponent.transform.Find("Panel");
-            Debug.Assert(panel != null);
+            panelTransform = canvasComponent.transform.Find("Panel");
+            Debug.Assert(panelTransform != null);
 
             // panel.GetComponent<Image>().raycastTarget = true;
 
 
-            headerText = panel.Find("HeaderText").GetComponent<TextMeshProUGUI>();
-            bodyText = panel.transform.Find("BodyText").GetComponent<TextMeshProUGUI>();
-            centerButton = panel.transform.Find("CenterButton").GetComponent<Button>();
+            headerText = panelTransform.Find("HeaderText").GetComponent<TextMeshProUGUI>();
+            bodyText = panelTransform.transform.Find("BodyText").GetComponent<TextMeshProUGUI>();
+            centerButton = panelTransform.transform.Find("CenterButton").GetComponent<Button>();
             centerButtonText = centerButton.GetComponentInChildren<TextMeshProUGUI>();
-            button1 = panel.transform.Find("Button1").GetComponent<Button>();
+            button1 = panelTransform.transform.Find("Button1").GetComponent<Button>();
             button1Text = button1.GetComponentInChildren<TextMeshProUGUI>();
-            button2 = panel.transform.Find("Button2").GetComponent<Button>();
+            button2 = panelTransform.transform.Find("Button2").GetComponent<Button>();
             button2Text = button2.GetComponentInChildren<TextMeshProUGUI>();
-            button3 = panel.transform.Find("Button3").GetComponent<Button>();
+            button3 = panelTransform.transform.Find("Button3").GetComponent<Button>();
             button3Text = button3.GetComponentInChildren<TextMeshProUGUI>();
-            button4 = panel.transform.Find("Button4").GetComponent<Button>();
+            button4 = panelTransform.transform.Find("Button4").GetComponent<Button>();
             button4Text = button4.GetComponentInChildren<TextMeshProUGUI>();
 
             // button4.GetComponent<Image>().raycastTarget = true;
 
-            // ResetPanel();
+            ResetPanel();
 
             Polytron p = GetComponent<Polytron>();
 
@@ -185,7 +188,6 @@ public class PolytronInfoPanel : MonoBehaviour
     {
         float dist = Vector3.Distance(transform.position, CrossPlatformUtils.GetAvatarPosition());
         bool shouldShow = (dist < showDistance) || mustActivate;
-        //         bool shouldShow = mustActivate;
 
         if (shouldShow != isVisible)
         {
@@ -205,7 +207,8 @@ public class PolytronInfoPanel : MonoBehaviour
 
         if (isVisible)
         {
-            canvasComponent.transform.rotation = Quaternion.LookRotation(canvasComponent.transform.position - cameraTransform.position, Vector3.up);
+//             canvasComponent.transform.rotation = Quaternion.LookRotation(canvasComponent.transform.position - cameraTransform.position, Vector3.up /*+ new Vector3(30f, 30f, 30f)*/);
+            canvasComponent.transform.rotation = Quaternion.LookRotation(panelTransform.position - cameraTransform.position, Vector3.up /*+ new Vector3(30f, 30f, 30f)*/);
         }
 
     }

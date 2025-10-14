@@ -29,15 +29,15 @@ public class Polytron : PolyhedronGenerator,
     // public int Id { get; set; }
 
     // 0..71
-    public int sealNumber = -1;
+    internal int sealNumber = -1;
 
-    public string sealName;
+    internal string sealName;
 
     public Rigidbody RigidBody { get; set; }
 
     internal PolytronSink boundSink;
 
-    bool isArchitron = false;
+    internal bool isArchitron = false;
 
     public void OnPointerDown(PointerEventData eventData)
     {
@@ -61,7 +61,7 @@ public class Polytron : PolyhedronGenerator,
                 o.EnableOutline();
                 */
 
-                BeginDrag();
+        BeginDrag();
     }
 
     public void OnDrag(PointerEventData eventData)
@@ -78,8 +78,8 @@ public class Polytron : PolyhedronGenerator,
                 o.DisableOutline();
                 o.EnableOutline();
 */
-                EndDrag();
-        
+        EndDrag();
+
     }
 
     public void OnDrop(PointerEventData eventData)
@@ -99,11 +99,8 @@ public class Polytron : PolyhedronGenerator,
     {
         Debug.Log("OnPointerEnter");
 
-        // da rimettere
-                GetComponent<PointerOutlineStateController>()?.OnHoverEnter();
-                GetComponent<PolytronInfoPanel>()?.Activate(true);
-        
-
+        GetComponent<PointerOutlineStateController>()?.OnHoverEnter();
+        GetComponent<PolytronInfoPanel>()?.Activate(true);
 
         /*
                 Outline o = GetComponent<Outline>();
@@ -119,19 +116,19 @@ public class Polytron : PolyhedronGenerator,
         Debug.Log("OnPointerExit");
 
         // Outline o = GetComponent<Outline>();
-//         o.DisableOutline();
+        //         o.DisableOutline();
 
         GetComponent<PointerOutlineStateController>()?.OnHoverExit();
 
         GetComponent<PolytronInfoPanel>()?.Activate(false);
 
-//        WorldSpacePanel wsp = GameObject.Find("InspectorCanvas").GetComponent<WorldSpacePanel>();
-//        wsp.pname.text = "exit " + sealName;
+        //        WorldSpacePanel wsp = GameObject.Find("InspectorCanvas").GetComponent<WorldSpacePanel>();
+        //        wsp.pname.text = "exit " + sealName;
     }
 
     public void OnPointerClick(PointerEventData eventData)
     {
-        
+
         /*
         Outline o = GetComponent<Outline>();
         o.outlineColor = Color.green;
