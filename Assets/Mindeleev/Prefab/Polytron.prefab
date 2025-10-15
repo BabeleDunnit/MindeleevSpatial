@@ -1231,7 +1231,7 @@ GameObject:
   - component: {fileID: 1654556801855746273}
   - component: {fileID: 5532381154073992615}
   m_Layer: 5
-  m_Name: Text (TMP)
+  m_Name: CenterButtonText
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -1864,8 +1864,6 @@ MonoBehaviour:
   - {fileID: 11400000, guid: e349ff9d865e94f78b2d2b4254c9fdee, type: 2}
   - {fileID: 11400000, guid: 81151ba2f992b4882827ac173080d926, type: 2}
   polyhedronMaterial: {fileID: 2100000, guid: 7f629499ce79c49db9e376336efd191b, type: 2}
-  sealNumber: -1
-  sealName: 
 --- !u!54 &-8432150149311953576
 Rigidbody:
   m_ObjectHideFlags: 0

@@ -5,6 +5,7 @@ using System.Linq;
 using System;
 using TMPro;
 using UnityEngine.UIElements;
+using Unity.VisualScripting;
 
 public class MutatronEngine : MonoBehaviour
 {
@@ -127,6 +128,11 @@ public class MutatronEngine : MonoBehaviour
     void AfterTilesCreation()
     {
         UpdatePolytronsSinks();
+
+                    // PolytronInfoPanel pip = polytrons[architronIdx].GetComponent<PolytronInfoPanel>();
+                    // pip.button4Text = "Make Architron";
+
+
         isRebuildingLevel = false;
     }
 
@@ -398,6 +404,10 @@ public class MutatronEngine : MonoBehaviour
                     polytronComponent.isArchitron = true;
                 }
 
+                //PolytronInfoPanel pip = polytronGameObject.GetComponent<PolytronInfoPanel>();
+                // pip.button4Text = "Make Architron";
+
+
                 GameObject tile = PolytronsFactory.Instance.Create($"tile/{polytronComponent.recipe}", 1f);
                 tile.transform.localScale = new Vector3(1f, 0.01f, 1f);
                 tile.transform.position = hckv.Value.worldCoords + new Vector3(0, 0.1f, 0);
@@ -413,9 +423,20 @@ public class MutatronEngine : MonoBehaviour
                 BindPolytronToHome(polytronGameObject.GetComponent<Polytron>(), hckv);
                 BindPolytronToSink(polytronGameObject.GetComponent<Polytron>(), hckv);
 
+
                 yield return new WaitForSeconds(0.15f);
+
+                PolytronInfoPanel pip = polytronGameObject.GetComponent<PolytronInfoPanel>();
+                if (polytronComponent.isArchitron == false)
+                {
+                    pip.button4Text = "Make Architron";
+                }
             }
         }
+
+//                PolytronInfoPanel pip = polytrons[architronIdx].GetComponent<PolytronInfoPanel>();
+//                pip.button4Text = "Make Architron";
+
     }
 
     void Create72PolytronsImmediate()
@@ -435,12 +456,6 @@ public class MutatronEngine : MonoBehaviour
                 Debug.Log(polytronComponent.recipe);
                 polytronComponent.RebuildMesh();
                 Debug.Assert(polytronId == polytronComponent.sealNumber); // sealNumber is set by the factory
-                /*
-                                if (polytronComponent.sealNumber == architronIdx)
-                                {
-                                    polytronComponent.isArchitron = true;
-                                }
-                */
 
                 polytrons.Add(polytronGameObject.GetComponent<Polytron>());
 
