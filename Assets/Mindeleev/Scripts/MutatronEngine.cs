@@ -393,7 +393,6 @@ public class MutatronEngine : MonoBehaviour
                 int polytronId = hckv.Value.idxInRing;
 
                 GameObject polytronGameObject = polytrons[hckv.Value.idxInRing].gameObject;
-
                 polytronGameObject.transform.position = hckv.Value.worldCoords * 0.1f + new Vector3(0, 10f, 0);
                 float angleToCenter = hckv.Key.PolarAngle();
                 Quaternion rotationToCenter = Quaternion.Euler(0f, -angleToCenter * 360f / 6.28f, 0f);
@@ -433,10 +432,6 @@ public class MutatronEngine : MonoBehaviour
                 }
             }
         }
-
-//                PolytronInfoPanel pip = polytrons[architronIdx].GetComponent<PolytronInfoPanel>();
-//                pip.button4Text = "Make Architron";
-
     }
 
     void Create72PolytronsImmediate()
@@ -448,7 +443,7 @@ public class MutatronEngine : MonoBehaviour
                 int polytronId = polytrons.Count;
 
                 GameObject polytronGameObject = PolytronsFactory.Instance.Create($"polytron/T", 0.6f);
-                polytronGameObject.transform.position = hckv.Value.worldCoords * 10f + new Vector3(0, -100f, 0);
+                polytronGameObject.transform.position = hckv.Value.worldCoords * 1f + new Vector3(0, -2f, 0);
                 polytronGameObject.name = $"Polytron_{polytronId}";
 
                 Polytron polytronComponent = polytronGameObject.GetComponent<Polytron>();
