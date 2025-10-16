@@ -275,7 +275,7 @@ public class MutatronEngine : MonoBehaviour
     {
         p.recipe = recipe;
         p.RebuildMesh();
-        p.name = $"Polytron_{recipe}";
+        // p.name = $"Polytron_{recipe}";
     }
     void BindPolytronToHome(Polytron p, KeyValuePair<HexCoord, HexCellData> hckv)
     {
@@ -390,7 +390,7 @@ public class MutatronEngine : MonoBehaviour
 
 
             PolytronSink boundSink = p.boundSink;
-            Debug.Assert(boundSink == null || boundSink.boundPolytron == p);
+            Debug.Assert(boundSink == null || boundSink.boundPolytron == p, $"boundSink: {boundSink?.name}, boundSink.boundPolytron: {boundSink?.boundPolytron?.name}, polytron: {p?.name} ");
             if (boundSink)
             {
                 (Vector3 attractionForce, Vector3 from1To2Versor, float from1To2Distance) = CalcSpringForce(p.transform.position, boundSink.transform.position, boundSink.weight * 5f, 0.01f);
@@ -428,6 +428,7 @@ public class MutatronEngine : MonoBehaviour
                 tile.transform.localScale = new Vector3(1f, 0.01f, 1f);
                 tile.transform.position = hckv.Value.worldCoords + new Vector3(0, 0.1f, 0);
                 tile.transform.localRotation = rotationToCenter;
+                tile.name += $"_home_{polytronComponent.sealNumber}";
                 hckv.Value.tile = tile.GetComponent<MutatronTile>();
 
                 GameObject label = CreateTileLabel($"{polytronId + 1}\n" + polytronComponent.sealName, tile.transform.position + new Vector3(0, 3, 0));
@@ -461,7 +462,7 @@ public class MutatronEngine : MonoBehaviour
 
                 GameObject polytronGameObject = PolytronsFactory.Instance.Create($"polytron/T", 0.6f);
                 polytronGameObject.transform.position = hckv.Value.worldCoords * 1f + new Vector3(0, -2f, 0);
-                polytronGameObject.name = $"Polytron_{polytronId}";
+                polytronGameObject.name += $"_{polytronId}";
 
                 Polytron polytronComponent = polytronGameObject.GetComponent<Polytron>();
                 polytronComponent.recipe = PolyhedronRecipeKabbalah.IntToOperatorsSequence(polytronId) + $"{(polytronId % 11):D2}" + "C";
@@ -571,16 +572,19 @@ public class MutatronEngine : MonoBehaviour
                 }
 
                 gridCellsMap[hex] = cellData;
+
             }
         }
 
         foreach (var hckv in gridCellsMap)
         {
-            CreateSink(hckv);
+            GameObject sink = CreateSink(hckv);
+            sink.name += $"_{hckv.Value.ring}_{hckv.Value.idxInRing}";
         }
+
     }
 
-    void CreateSink(KeyValuePair<HexCoord, HexCellData> hckv)
+    GameObject CreateSink(KeyValuePair<HexCoord, HexCellData> hckv)
     {
         string recipe = "tC";
         GameObject sink = PolytronsFactory.Instance.Create($"sink/{recipe}", 0.3f);
@@ -596,11 +600,11 @@ public class MutatronEngine : MonoBehaviour
         }
 
         hckv.Value.sink = sink.GetComponent<PolytronSink>();
-        // sinks.Add(sink);
         hckv.Value.sink.weight = 0.2f;
         hckv.Value.sink.hexCoord = hckv.Key;
-        //         sink.GetComponent<MeshRenderer>().material.color = Color.red;
         hckv.Value.sink.GetComponent<MeshRenderer>().enabled = false;
+
+        return sink;
     }
 
     bool IsMetatronCoord(int ring, int idxInRing)
@@ -837,11 +841,10 @@ public class MutatronEngine : MonoBehaviour
                 string tileRecipe = PolyhedronRecipeKabbalah.IntToOperatorsSequence(hckv.Value.polytronicNumber) + hckv.Value.tileBasePolyhedron;
 
                 GameObject tile = PolytronsFactory.Instance.Create($"tile/{tileRecipe}", 1f);
-                // tile.tag = "Tile";
+                tile.name += $"_mutatron_{hckv.Value.ring}_{hckv.Value.idxInRing}";
                 tile.transform.localScale = new Vector3(1f, 0.01f, 1f);
                 tile.transform.position = hckv.Value.worldCoords + new Vector3(0, 0.1f, 0);
                 tile.transform.localRotation = tileRotation;
-                // hckv.Value.tile = tile.GetComponent<PolyhedronGenerator>();
                 hckv.Value.tile = tile.GetComponent<MutatronTile>();
 
                 yield return new WaitForSeconds(0.15f);
@@ -1065,17 +1068,34 @@ public class MutatronEngine : MonoBehaviour
         PolytronSink oldArchitronSink = oldArchitron.boundSink;
         PolytronSink newArchitronSink = newArchitron.boundSink;
 
-/* NO
-        BindPolytronToSink(newArchitron, oldArchitronSink);
-        BindPolytronToSink(oldArchitron, newArchitronSink);
-*/
+        // these were failing, then stopped to fail...
+        // BindPolytronToSink(newArchitron, oldArchitronSink);
+        // BindPolytronToSink(oldArchitron, newArchitronSink);
 
-                oldArchitron.boundSink = newArchitronSink;
-                newArchitron.boundSink = oldArchitronSink;
 
-                oldArchitronSink.boundPolytron = newArchitron;
+        //if (newArchitron.boundSink) newArchitron.boundSink.boundPolytron = null;
+
+        newArchitron.boundSink = oldArchitronSink;
+        oldArchitronSink.boundPolytron = newArchitron;
+
+
+        //if (oldArchitron.boundSink) oldArchitron.boundSink.boundPolytron = null;
+
+        oldArchitron.boundSink = newArchitronSink;
         newArchitronSink.boundPolytron = oldArchitron;
 
+
+
+        
+
+        // OK... but I dont know...
+/*
+                oldArchitronSink.boundPolytron = newArchitron;
+                oldArchitron.boundSink = newArchitronSink;
+
+                newArchitronSink.boundPolytron = oldArchitron;
+                newArchitron.boundSink = oldArchitronSink;
+  */      
         newArchitron.GetComponent<PolytronInfoPanel>().button4Text = "";
         oldArchitron.GetComponent<PolytronInfoPanel>().button4Text = "Make Architron";
   
