@@ -290,9 +290,25 @@ public class MutatronEngine : MonoBehaviour
 
         // now bound the polytron to this sink
         PolytronSink sinkOfThisCell = hckv.Value.sink;
+
+        /*
         p.boundSink = sinkOfThisCell;
         sinkOfThisCell.boundPolytron = p;
+        */
+
+        BindPolytronToSink(p, sinkOfThisCell);
     }
+
+    void BindPolytronToSink(Polytron p, PolytronSink ps)
+    {
+        // if the polytron is alread bound to an old sink, reset the bound polytron of that sink
+        if (p.boundSink) p.boundSink.boundPolytron = null;
+
+        p.boundSink = ps;
+        ps.boundPolytron = p;
+    }
+
+
 
     /*
         // nearly all polytrons have sinks as their targets, but the architron has a different behaviour
@@ -374,6 +390,7 @@ public class MutatronEngine : MonoBehaviour
 
 
             PolytronSink boundSink = p.boundSink;
+            Debug.Assert(boundSink == null || boundSink.boundPolytron == p);
             if (boundSink)
             {
                 (Vector3 attractionForce, Vector3 from1To2Versor, float from1To2Distance) = CalcSpringForce(p.transform.position, boundSink.transform.position, boundSink.weight * 5f, 0.01f);
@@ -893,6 +910,12 @@ public class MutatronEngine : MonoBehaviour
 
     void Evolve()
     {
+
+        if(!IsMutatronReady())
+        {
+            return;
+        }
+
         // the idea: for each cell, count how many neighbors have a polytronicNumber higher than the one of the cell.
         // if the number of neighbors lies in the fusionRange, we have a fusion, and a quantum of energy moves from the polytronicNumber
         // of all the neighbors to the cell. 
@@ -1025,6 +1048,37 @@ public class MutatronEngine : MonoBehaviour
         Vector3 attractionForce = from1To2Versor * distanceFromEquilibrium * attractionMultiplier;
 
         return (attractionForce, from1To2Versor, from1To2Distance);
+    }
+
+    internal void SetNewArchitron(int newArchitronIdx)
+    {
+        Debug.Log($"changing Architron, old: {architronIdx}, new: {newArchitronIdx}");
+
+        Polytron oldArchitron = polytrons[architronIdx];
+        Polytron newArchitron = polytrons[newArchitronIdx];
+
+        architronIdx = newArchitronIdx;
+
+        oldArchitron.isArchitron = false;
+        newArchitron.isArchitron = true;
+
+        PolytronSink oldArchitronSink = oldArchitron.boundSink;
+        PolytronSink newArchitronSink = newArchitron.boundSink;
+
+/* NO
+        BindPolytronToSink(newArchitron, oldArchitronSink);
+        BindPolytronToSink(oldArchitron, newArchitronSink);
+*/
+
+                oldArchitron.boundSink = newArchitronSink;
+                newArchitron.boundSink = oldArchitronSink;
+
+                oldArchitronSink.boundPolytron = newArchitron;
+        newArchitronSink.boundPolytron = oldArchitron;
+
+        newArchitron.GetComponent<PolytronInfoPanel>().button4Text = "";
+        oldArchitron.GetComponent<PolytronInfoPanel>().button4Text = "Make Architron";
+  
     }
 
 

@@ -33,6 +33,8 @@ public class PolytronInfoPanel : MonoBehaviour
     Button button4;
     TextMeshProUGUI button4Text_;
 
+    MutatronEngine mutatron;
+
     // Internal string properties that wrap the TextMeshProUGUI.text fields.
     // Setting these will update the underlying UI text and call UpdatePanelGUI().
     internal string headerText
@@ -115,6 +117,9 @@ public class PolytronInfoPanel : MonoBehaviour
     void Start()
     {
         cameraTransform = CrossPlatformUtils.FindCamera().transform;
+
+        mutatron = FindObjectOfType<MutatronEngine>();
+        Debug.Assert(mutatron != null, "MutatronEngine not found in scene, please check");
 
         // Create empty panel if not assigned
         if (canvasComponent == null)
@@ -341,7 +346,8 @@ public class PolytronInfoPanel : MonoBehaviour
         // SendMessage("OnInfoPanelButtonPressed", index, SendMessageOptions.DontRequireReceiver);
         if(index == 4 && button4Text_.text == "Make Architron")
         {
-            Debug.Log("Changing architron");
+            Debug.Log("Changing Architron");
+            mutatron.SetNewArchitron(GetComponent<Polytron>().sealNumber);
         }
     }
 
