@@ -1239,48 +1239,45 @@ public class MutatronEngine : MonoBehaviour
 
         var pOutline = p.GetComponent<PointerOutlineStateController>();
 
-        // Enforce invariant: at most one paletteSelector and one operatorsSelector.
-        // Clicking policy:
-        // - If clicked is paletteSelector -> move it to operators (if necessary clearing previous operator)
-        //   or deselect operators if it was already operators.
-        // - If clicked is operatorsSelector -> deselect operators.
-        // - If clicked is unselected:
-        //     * if a slot is free, assign the clicked polytron to the first free slot (palette preferred)
-        //     * if both occupied, replace the operators slot with clicked (ensuring unique one-per-state)
-        //
-        // This keeps exactly one yellow (palette) and one green (operators) at most.
+        // New selection rules:
+        // - At most one paletteSelector and one operatorsSelector.
+        // - If only one slot is occupied and you click the same polytron, cycle 0 -> 1 -> 2 -> 0.
+        // - If both slots are occupied and you click a selected polytron, deselect that slot.
+        // - Clicking an unselected polytron assigns it to the first free slot (palette preferred).
+        // - If both occupied and you click an unselected polytron, replace the operators slot.
 
         if (paletteSelector == p)
         {
-            // Clicked the palette-selected polytron -> move it to operators state.
-            // Clear palette slot, and replace any existing operators selection.
-            ClearPaletteSelection();
-
-            // If an operators selection existed, clear it so we always have at most one.
-            ClearOperatorsSelection();
-
-            operatorsSelector = p;
-            pOutline?.SetState(2); // operators (green)
+            // Clicked the polytron that is currently the palette selection.
+            if (operatorsSelector == null)
+            {
+                // Only palette selected -> cycle it to operators.
+                ClearPaletteSelection();
+                operatorsSelector = p;
+                pOutline?.SetState(2); // operators (green)
+            }
+            else
+            {
+                // Both selected -> clicking the palette-selected polytron should deselect it.
+                ClearPaletteSelection();
+            }
         }
         else if (operatorsSelector == p)
         {
-            // Clicking the operators-selected polytron toggles it off
+            // Clicked the polytron that is currently the operators selection.
+            // Regardless of the other slot, clicking an operators-selected polytron should deselect it.
             ClearOperatorsSelection();
         }
         else
         {
-            // clicked a polytron that is not currently selected
+            // Clicked a polytron that is not currently selected
             if (paletteSelector == null)
             {
-                // assign it to palette (yellow) and ensure only one palette exists
-                ClearPaletteSelection();
                 paletteSelector = p;
                 pOutline?.SetState(1);
             }
             else if (operatorsSelector == null)
             {
-                // assign it to operators (green) and ensure only one operators exists
-                ClearOperatorsSelection();
                 operatorsSelector = p;
                 pOutline?.SetState(2);
             }
