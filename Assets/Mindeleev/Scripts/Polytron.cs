@@ -24,10 +24,6 @@ public class Polytron : PolyhedronGenerator,
   IScrollHandler
 {
 
-    // public PolytronEngine Engine { get; set; }
-
-    // public int Id { get; set; }
-
     // 0..71
     internal int sealNumber = -1;
 

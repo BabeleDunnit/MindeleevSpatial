@@ -4,11 +4,14 @@ using UnityEngine;
 using System.Linq;
 using System;
 using TMPro;
+using UnityEngine.UIElements;
+using Unity.VisualScripting;
 
 public class MutatronEngine : MonoBehaviour
 {
 
-    bool firstLevelBuild = true;
+    bool mustBuildFirstTime = true;
+    bool isRebuildingLevel = false;
 
     int maxRings = 12;
 
@@ -20,6 +23,8 @@ public class MutatronEngine : MonoBehaviour
 
     // the polytrons homes
     private List<KeyValuePair<HexCoord, HexCellData>> polytronsHomes = new();
+
+    private HexCellData mutatronCenter;
 
     // the Architron
     int architronIdx = 70;
@@ -89,17 +94,36 @@ public class MutatronEngine : MonoBehaviour
             if (polytron.boundSink)
             {
                 polytron.boundSink.boundPolytron = null;
-                polytron.boundSink = null;
+//                 polytron.boundSink = null;
             }
+                polytron.boundSink = null;
         }
 
         SendUnboundPolytronsHome();
+        Debug_CheckAllPolytronsAreAtHome();
     }
+
+    void Debug_CheckAllPolytronsAreAtHome()
+    {
+        Debug.Assert(polytronsHomes.Count == 72);
+        int i = 0;
+        foreach(var ph in polytronsHomes)
+        {
+            HexCellData hcd = ph.Value;
+            PolytronSink sink = hcd.sink;
+            Debug.Assert(sink.boundPolytron == polytrons[i]);
+            Debug.Assert(sink.boundPolytron.boundSink == sink);
+            i++;
+        }   
+    }
+
 
     void BuildLevel(int levelNumber)
     {
 
         Debug.Log($"Building level {levelNumber}");
+
+        isRebuildingLevel = true;
 
         // the level number will determine the Metatron complexity
         // and set actualRingsCount, etc.
@@ -111,18 +135,24 @@ public class MutatronEngine : MonoBehaviour
         ResetLevelGraphics();
         SendAllPolytronsHome();
         InitializeCellsForCurrentLevel();
-        
+
 
         StartCoroutine(DrawMetatronGraphicsCoroutine());
         StartCoroutine(BuildTilesCoroutine());
 
-        firstLevelBuild = false;
+        mustBuildFirstTime = false;
         evolveCount = 0;
     }
 
     void AfterTilesCreation()
     {
         UpdatePolytronsSinks();
+
+        // PolytronInfoPanel pip = polytrons[architronIdx].GetComponent<PolytronInfoPanel>();
+        // pip.button4Text = "Make Architron";
+
+
+        isRebuildingLevel = false;
     }
 
     void Start()
@@ -135,48 +165,58 @@ public class MutatronEngine : MonoBehaviour
         StartCoroutine(Create72PolytronsAndHomesCoroutine());
     }
 
-
-    // questo non dovrebbe farlo uno per uno, altrimenti può essere che ci sia un polytrone che matcha 
-    // ma arriva il suo turno troppo tardi per essere scelto
-    // dovrebbe fare un giro globale prima di updatare i sink
-    int polyCount = 0;
-    Polytron ChoosePolytronToAssignToSink(KeyValuePair<HexCoord, HexCellData> hckv)
-    {
-
-        PolytronSink sink = hckv.Value.sink;
-        Debug.Assert(sink);
-
-        string tileRecipe = hckv.Value.tile.recipe;
-
-        // is there any unbound polytron already with the sinkRecipe?
-        var matchingRecipePolytrons = polytrons.Where(p => p.recipe == tileRecipe && p.boundSink == null).ToList();
-        if (matchingRecipePolytrons.Count > 0)
+    /*
+        // questo non dovrebbe farlo uno per uno, altrimenti può essere che ci sia un polytrone che matcha 
+        // ma arriva il suo turno troppo tardi per essere scelto
+        // dovrebbe fare un giro globale prima di updatare i sink
+        int polyCount = 0;
+        Polytron ChoosePolytronToAssignToSink(KeyValuePair<HexCoord, HexCellData> hckv)
         {
-            return matchingRecipePolytrons[0];
-        }
 
-        if (polyCount >= 72) polyCount = 0;
-        return polytrons[polyCount++];
-    }
+            PolytronSink sink = hckv.Value.sink;
+            Debug.Assert(sink);
+
+            string tileRecipe = hckv.Value.tile.recipe;
+
+            // is there any unbound polytron already with the sinkRecipe?
+            var matchingRecipePolytrons = polytrons.Where(p => p.recipe == tileRecipe && p.boundSink == null).ToList();
+            if (matchingRecipePolytrons.Count > 0)
+            {
+                return matchingRecipePolytrons[0];
+            }
+
+            if (polyCount >= 72) polyCount = 0;
+            return polytrons[polyCount++];
+        }
+    */
 
     Polytron FindPolytronToBind()
     {
+        // first try with polytrons at home
         var toReturn = polytrons.Where(p => p.boundSink != null && gridCellsMap[p.boundSink.hexCoord].ring == 12);
-        // var toReturn = polytrons.Where(p => p.boundSink == null);
 
+        // if no polytrons at home
         if (toReturn.Count() == 0)
         {
+            // try with unbound polytrons
             toReturn = polytrons.Where(p => p.boundSink == null);
         }
 
         return toReturn.FirstOrDefault();
     }
 
-    // this is called to update the positions of the polytrons after each evolution round
+    bool IsMutatronCenter(HexCellData cd)
+    {
+        // Debug.Assert(cd == mutatronCenter);
+        return cd.ring == 0 && cd.idxInRing == 0;
+    }
+
+    // this is called to update the attraction of polytrons to sinks after each evolution round
+    // and at the beginning of a new level
     void UpdatePolytronsSinks()
     {
         // when we call this, we have unbind all the polytrons from their non-matching tiles.
-        // So there are many polytrons already on the mutatron, but they are not bound to any sink.
+        // So there can be many polytrons already on the mutatron, but they are not bound to any sink.
         // Other are bound to some tiles that did not change and were obviously left untouched.
 
         // I must detect if any polytron can be recycled. I must do this globally, not one by one,
@@ -189,8 +229,8 @@ public class MutatronEngine : MonoBehaviour
             .ToList();
 
         // now collect all the unbound polytrons which are already set on a tile recipe which did not change 
-        // (but chaged place) and bind them
-        var matchingRecipeUnboundPolytrons = polytrons.Where(p => tilesRecipes.Contains(p.recipe) && p.boundSink == null);
+        // (but maybe changed place) and bind them
+        var matchingRecipeUnboundPolytrons = polytrons.Where(p => tilesRecipes.Contains(p.recipe) && p.boundSink == null && p.isArchitron == false);
         Debug.Log($"[UpdatePolytronsSinks] unbound polytrons with matching recipe: {matchingRecipeUnboundPolytrons.Count()}");
 
         int rebuiltPolytrons = 0;
@@ -201,6 +241,13 @@ public class MutatronEngine : MonoBehaviour
             foreach (var hckv in gridCellsMap)
             {
                 if (hckv.Value.ring > actualLevelConfig.actualRingsCount) continue;
+
+                // special treatment for the center of the Mutatron, reserved for the architron
+                if (/*hckv.Value.ring == 0 && hckv.Value.idxInRing == 0*/ IsMutatronCenter(hckv.Value))
+                {
+                    // BindPolytronToSink(polytrons[architronIdx], hckv);
+                    continue;
+                }
 
                 if (hckv.Value.sink.boundPolytron == null && hckv.Value.tile.recipe == matchingRecipeUnboundPolytron.recipe)
                 {
@@ -224,15 +271,28 @@ public class MutatronEngine : MonoBehaviour
         {
             if (hckv.Value.ring > actualLevelConfig.actualRingsCount) continue;
 
+            // special treatment for the center of the Mutatron, reserved for the architron.
+            // we always force bind the Architron to the (0,0) cell.
+            if (/*hckv.Value.ring == 0 && hckv.Value.idxInRing == 0*/ IsMutatronCenter(hckv.Value))
+            {
+                Polytron architron = polytrons[architronIdx];
+                Debug.Assert(hckv.Value.sink.boundPolytron == null);
+                BindPolytronToSink(architron, hckv);
+                Debug.Assert(hckv.Value.sink.boundPolytron == architron);
+                Debug.Assert(architron.boundSink = hckv.Value.sink);
+                Debug.Assert(architron.boundSink.boundPolytron = architron);
+                continue;
+            }
+
             if (hckv.Value.sink.boundPolytron == null)
             {
                 Polytron p = FindPolytronToBind();
-                // Debug.Assert(p);
+                // there could be no more polytrons...
                 if (p)
                 {
                     BindPolytronToSink(p, hckv);
                     string tileRecipe = hckv.Value.tile.recipe;
-                    RebuildPolytronMesh(p, tileRecipe);
+                    // RebuildPolytronMesh(p, tileRecipe);
                     rebuiltPolytrons++;
                 }
             }
@@ -245,39 +305,138 @@ public class MutatronEngine : MonoBehaviour
     {
         p.recipe = recipe;
         p.RebuildMesh();
-        p.name = $"Polytron_{recipe}";
+        // p.name = $"Polytron_{recipe}";
     }
-    void BindPolytronToHome(Polytron p, KeyValuePair<HexCoord, HexCellData> hckv)
-    {
-        // every polytron has a home which will not change
-        hckv.Value.tile.sealHome = p.sealNumber;
-    }
+
+    /*
+        void BindPolytronToHome(Polytron p, KeyValuePair<HexCoord, HexCellData> hckv)
+        {
+            // every polytron has a home which will not change
+            hckv.Value.tile.sealHome = p.sealNumber;
+        }
+    */
 
     void BindPolytronToSink(Polytron p, KeyValuePair<HexCoord, HexCellData> hckv)
     {
         // if the polytron is alread bound to an old sink, reset the bound polytron of that sink
-        if (p.boundSink) p.boundSink.boundPolytron = null;
+        // if (p.boundSink) p.boundSink.boundPolytron = null;
 
         // now bound the polytron to this sink
-        PolytronSink sinkOfThisCell = hckv.Value.sink;
+        // PolytronSink sinkOfThisCell = hckv.Value.sink;
+
+        /*
         p.boundSink = sinkOfThisCell;
         sinkOfThisCell.boundPolytron = p;
+        */
+
+        BindPolytronToSink(p, hckv.Value.sink);
     }
 
-    // nearly all polytrons have sinks as their targets, but the architron has a different behaviour
+    void BindPolytronToSink(Polytron p, PolytronSink ps)
+    {
+
+        // if the polytron is alread bound to an old sink, reset the bound polytron of that sink
+        if (p.boundSink)
+        {
+            Debug.Assert(p.boundSink.boundPolytron == p);
+            p.boundSink.boundPolytron = null;
+        }
+
+        // and now bind the polytron and the sink
+        p.boundSink = ps;
+        ps.boundPolytron = p;
+    }
+
+
+
+    /*
+        // nearly all polytrons have sinks as their targets, but the architron has a different behaviour
+        void AttractPolytronsToTargets()
+        {
+            foreach (var hckv in gridCellsMap)
+            {
+                // if (hckv.Value.ring > actualLevelConfig.actualRingsCount) continue;
+
+                PolytronSink sink = hckv.Value.sink;
+                if (sink && sink.boundPolytron)
+                {
+                    (Vector3 attractionForce, Vector3 from1To2Versor, float from1To2Distance) = CalcSpringForce(sink.boundPolytron.transform.position, sink.transform.position, sink.weight * 5f, 0.01f);
+                    sink.boundPolytron.GetComponent<Rigidbody>().AddForce(attractionForce);
+                }
+
+            }
+        }
+        */
+
+    bool IsMutatronReady()
+    {
+        return !mustBuildFirstTime && !isRebuildingLevel;
+    }
+
     void AttractPolytronsToTargets()
     {
-        foreach (var hckv in gridCellsMap)
+        foreach (Polytron p in polytrons)
         {
-            // if (hckv.Value.ring > actualLevelConfig.actualRingsCount) continue;
 
-            PolytronSink sink = hckv.Value.sink;
-            if (sink && sink.boundPolytron)
+            // special behaviour for the architron
+            if (p.isArchitron)
             {
-                (Vector3 attractionForce, Vector3 from1To2Versor, float from1To2Distance) = CalcSpringForce(sink.boundPolytron.transform.position, sink.transform.position, sink.weight * 5f, 0.01f);
-                sink.boundPolytron.GetComponent<Rigidbody>().AddForce(attractionForce);
+                // the Architron has a special, dynamic behaviour. 
+                // if it is outside the Mutatron it will follow the avatar
+
+                Vector3 avatarPos = CrossPlatformUtils.GetAvatarPosition();
+                Vector3 architronPos = p.transform.position;
+
+                // float avatarToArchitronDistance = (architronPos - avatarPos).magnitude;
+                float avatarToMutatronDistance = (new Vector3(transform.position.x, 1f, transform.position.z) - avatarPos).magnitude;
+
+                int architronBehaviour = -1;
+
+                if (IsMutatronReady())
+                {
+                    float approxMutatronRadius = (actualLevelConfig.actualRingsCount + 1) * 3f;
+                    if (avatarToMutatronDistance > approxMutatronRadius)
+                    {
+                        // the avatar is not enough near to the center of the Mutatron.
+                        // lets make the architron follow him
+                        architronBehaviour = 1;
+                    }
+                    else
+                    {
+                        // the avatar is near/inside the Mutatron. the Architron must move to the center of the Mutatron
+                        architronBehaviour = 0;
+                    }
+
+                }
+                else
+                {
+                    // mutatron not ready, the architron follows the avatar
+                    architronBehaviour = 1;
+                }
+
+                Debug.Assert(architronBehaviour != -1);
+
+                if (architronBehaviour == 1)
+                {
+                    // Calculate intersection point on sphere of radius 2.5 at height 1
+                    Vector3 dir = (architronPos - avatarPos).normalized;
+                    Vector3 targetOnSphere = avatarPos + dir * 2.5f;
+                    targetOnSphere.y = 1.0f;
+
+                    Vector3 forceToCircle = (targetOnSphere - architronPos) * 0.5f;
+                    p.GetComponent<Rigidbody>().AddForce(forceToCircle);
+                    continue;
+                }
             }
 
+
+            Debug.Assert(p.boundSink == null || p.boundSink.boundPolytron == p,
+                $" polytron: {p?.name} , polytron.boundSink: {p.boundSink?.name}, polytron.boundSink.boundPolytron: {(p.boundSink?.boundPolytron == null ? "null" : p.boundSink?.boundPolytron.name)},");
+            if (p.boundSink)
+            {
+                (Vector3 attractionForce, Vector3 from1To2Versor, float from1To2Distance) = CalcSpringForce(p.transform.position, p.boundSink.transform.position, p.boundSink.weight * 5f, 0.01f);
+                p.GetComponent<Rigidbody>().AddForce(attractionForce);
+            }
         }
     }
 
@@ -292,17 +451,25 @@ public class MutatronEngine : MonoBehaviour
                 int polytronId = hckv.Value.idxInRing;
 
                 GameObject polytronGameObject = polytrons[hckv.Value.idxInRing].gameObject;
-
                 polytronGameObject.transform.position = hckv.Value.worldCoords * 0.1f + new Vector3(0, 10f, 0);
                 float angleToCenter = hckv.Key.PolarAngle();
                 Quaternion rotationToCenter = Quaternion.Euler(0f, -angleToCenter * 360f / 6.28f, 0f);
 
                 Polytron polytronComponent = polytronGameObject.GetComponent<Polytron>();
+                if (polytronComponent.sealNumber == architronIdx)
+                {
+                    polytronComponent.isArchitron = true;
+                }
+
+                //PolytronInfoPanel pip = polytronGameObject.GetComponent<PolytronInfoPanel>();
+                // pip.button4Text = "Make Architron";
+
 
                 GameObject tile = PolytronsFactory.Instance.Create($"tile/{polytronComponent.recipe}", 1f);
                 tile.transform.localScale = new Vector3(1f, 0.01f, 1f);
                 tile.transform.position = hckv.Value.worldCoords + new Vector3(0, 0.1f, 0);
                 tile.transform.localRotation = rotationToCenter;
+                tile.name += $"_home_{polytronComponent.sealNumber}";
                 hckv.Value.tile = tile.GetComponent<MutatronTile>();
 
                 GameObject label = CreateTileLabel($"{polytronId + 1}\n" + polytronComponent.sealName, tile.transform.position + new Vector3(0, 3, 0));
@@ -311,10 +478,18 @@ public class MutatronEngine : MonoBehaviour
                 label.transform.position = tile.transform.position + new Vector3(0, 3.5f, 0);
 
                 // bind the polytron to his home. The home will not change.
-                BindPolytronToHome(polytronGameObject.GetComponent<Polytron>(), hckv);
+                // This makes all the polytrons being attracted to their homes at the start
+                // of the game; the Architron has a behaviour override in AttractPolytronsToTargrets.
+                // BindPolytronToHome(polytronGameObject.GetComponent<Polytron>(), hckv);
                 BindPolytronToSink(polytronGameObject.GetComponent<Polytron>(), hckv);
 
                 yield return new WaitForSeconds(0.15f);
+
+                PolytronInfoPanel pip = polytronGameObject.GetComponent<PolytronInfoPanel>();
+                if (polytronComponent.isArchitron == false)
+                {
+                    pip.button4Text = "Make Architron";
+                }
             }
         }
     }
@@ -328,19 +503,14 @@ public class MutatronEngine : MonoBehaviour
                 int polytronId = polytrons.Count;
 
                 GameObject polytronGameObject = PolytronsFactory.Instance.Create($"polytron/T", 0.6f);
-                polytronGameObject.transform.position = hckv.Value.worldCoords * 10f + new Vector3(0, -100f, 0);
-                polytronGameObject.name = $"Polytron_{polytronId}";
+                polytronGameObject.transform.position = hckv.Value.worldCoords * 1f + new Vector3(0, -2f, 0);
+                polytronGameObject.name += $"_{polytronId}";
 
                 Polytron polytronComponent = polytronGameObject.GetComponent<Polytron>();
                 polytronComponent.recipe = PolyhedronRecipeKabbalah.IntToOperatorsSequence(polytronId) + $"{(polytronId % 11):D2}" + "C";
                 Debug.Log(polytronComponent.recipe);
                 polytronComponent.RebuildMesh();
                 Debug.Assert(polytronId == polytronComponent.sealNumber); // sealNumber is set by the factory
-                if(polytronComponent.sealNumber == architronIdx)
-                {
-                    polytronComponent.isArchitron = true;
-                }
-
 
                 polytrons.Add(polytronGameObject.GetComponent<Polytron>());
 
@@ -412,9 +582,9 @@ public class MutatronEngine : MonoBehaviour
         for (int ring = 0; ring <= maxRings; ring++)
         {
             int hexesInRing = ring == 0 ? 1 : 6 * ring;
-            for (int i = 0; i < hexesInRing; i++)
+            for (int idxInRing = 0; idxInRing < hexesInRing; idxInRing++)
             {
-                HexCoord hex = ring == 0 ? new HexCoord(0, 0) : HexCoord.AtPolar(ring, i);
+                HexCoord hex = ring == 0 ? new HexCoord(0, 0) : HexCoord.AtPolar(ring, idxInRing);
 
                 Vector2 hexPos2D = hex.Position() * 2f + center2D;
                 Vector3 position = new Vector3(hexPos2D.x, transform.position.y, hexPos2D.y);
@@ -422,13 +592,13 @@ public class MutatronEngine : MonoBehaviour
                 var cellData = new HexCellData
                 {
                     ring = ring,
-                    idxInRing = i,
+                    idxInRing = idxInRing,
                     worldCoords = position,
-                    circle = CreateCircle(ring, i)
+                    circle = CreateCircle(ring, idxInRing)
                 };
 
                 // test                
-                if (ring == 2 && i == 1)
+                if (ring == 2 && idxInRing == 1)
                 {
                     // cellData.actualState = true;
 
@@ -437,33 +607,51 @@ public class MutatronEngine : MonoBehaviour
 
                 // cellData.sink = CreateSink()
 
-                if (IsMetatronCoord(ring, i))
+                if (IsMetatronCoord(ring, idxInRing))
                 {
                     // metatronCellsList.Add(hex);
                     cellData.isOnMetatronPattern = true;
                 }
 
                 gridCellsMap[hex] = cellData;
+
+                if (ring == 0 && idxInRing == 0)
+                {
+                    mutatronCenter = cellData;
+                }
+
             }
         }
 
         foreach (var hckv in gridCellsMap)
         {
-            CreateSink(hckv);
+            GameObject sink = CreateSink(hckv);
+            sink.name += $"_{hckv.Value.ring}_{hckv.Value.idxInRing}";
         }
+
     }
 
-    void CreateSink(KeyValuePair<HexCoord, HexCellData> hckv)
+    GameObject CreateSink(KeyValuePair<HexCoord, HexCellData> hckv)
     {
         string recipe = "tC";
         GameObject sink = PolytronsFactory.Instance.Create($"sink/{recipe}", 0.3f);
-        sink.transform.position = new Vector3(hckv.Value.worldCoords.x, 1.0f, hckv.Value.worldCoords.z);
+
+        // the central sink is a bit higher
+        if (IsMutatronCenter(hckv.Value))
+        {
+            sink.transform.position = new Vector3(hckv.Value.worldCoords.x, 2f, hckv.Value.worldCoords.z);
+        }
+        else
+        {
+            sink.transform.position = new Vector3(hckv.Value.worldCoords.x, 1.0f, hckv.Value.worldCoords.z);
+        }
+
         hckv.Value.sink = sink.GetComponent<PolytronSink>();
-        // sinks.Add(sink);
         hckv.Value.sink.weight = 0.2f;
         hckv.Value.sink.hexCoord = hckv.Key;
-        //         sink.GetComponent<MeshRenderer>().material.color = Color.red;
         hckv.Value.sink.GetComponent<MeshRenderer>().enabled = false;
+
+        return sink;
     }
 
     bool IsMetatronCoord(int ring, int idxInRing)
@@ -513,7 +701,7 @@ public class MutatronEngine : MonoBehaviour
     void DrawLine(Vector3 start, Vector3 end, Color color, float width = 0.05f)
     {
         var go = new GameObject("Line");
-//         go.tag = "Line";
+        //         go.tag = "Line";
         go.transform.SetParent(transform);
         var lr = go.AddComponent<LineRenderer>();
 
@@ -557,28 +745,28 @@ public class MutatronEngine : MonoBehaviour
 
     IEnumerator DrawMetatronGraphicsCoroutine()
     {
-        if (!firstLevelBuild)
+        if (!mustBuildFirstTime)
         {
             yield return new WaitForSeconds(5.0f);
         }
 
         // Draw circles
-            foreach (HexCellData hcd in gridCellsMap.Values)
+        foreach (HexCellData hcd in gridCellsMap.Values)
+        {
+            if (hcd.ring <= actualLevelConfig.actualRingsCount)
             {
-                if (hcd.ring <= actualLevelConfig.actualRingsCount)
+                if (hcd.isOnMetatronPattern)
                 {
-                    if (hcd.isOnMetatronPattern)
-                    {
-                        DrawCircle(hcd, 1.73f, Color.white, 0.025f);
-                        yield return new WaitForSeconds(0.1f);
-                    }
-                    else
-                    {
-                        DrawCircle(hcd, 1.73f, Color.gray, 0.01f);
-                        yield return null;
-                    }
+                    DrawCircle(hcd, 1.73f, Color.white, 0.025f);
+                    yield return new WaitForSeconds(0.1f);
+                }
+                else
+                {
+                    DrawCircle(hcd, 1.73f, Color.gray, 0.01f);
+                    yield return null;
                 }
             }
+        }
 
         yield return new WaitForSeconds(0.2f);
 
@@ -675,7 +863,6 @@ public class MutatronEngine : MonoBehaviour
             // msg += $"Cell (ring={kvp.Key.ring}, idxInRing={kvp.Key.idxInRing}) has polytronic number = {kvp.Value}\n";
         }
 
-
         msg += $"total quantized energy: {totalQuantizedEnergy}, most energy: {energyCellsList[0]}";
 
         Debug.Log(msg);
@@ -685,10 +872,11 @@ public class MutatronEngine : MonoBehaviour
     IEnumerator BuildTilesCoroutine()
     {
 
-        if (!firstLevelBuild)
+        if (!mustBuildFirstTime)
         {
             yield return new WaitForSeconds(5.5f);
         }
+
         foreach (var hckv in gridCellsMap)
         {
             if (hckv.Value.ring <= actualLevelConfig.actualRingsCount)
@@ -700,11 +888,10 @@ public class MutatronEngine : MonoBehaviour
                 string tileRecipe = PolyhedronRecipeKabbalah.IntToOperatorsSequence(hckv.Value.polytronicNumber) + hckv.Value.tileBasePolyhedron;
 
                 GameObject tile = PolytronsFactory.Instance.Create($"tile/{tileRecipe}", 1f);
-                // tile.tag = "Tile";
+                tile.name += $"_mutatron_{hckv.Value.ring}_{hckv.Value.idxInRing}";
                 tile.transform.localScale = new Vector3(1f, 0.01f, 1f);
                 tile.transform.position = hckv.Value.worldCoords + new Vector3(0, 0.1f, 0);
                 tile.transform.localRotation = tileRotation;
-                // hckv.Value.tile = tile.GetComponent<PolyhedronGenerator>();
                 hckv.Value.tile = tile.GetComponent<MutatronTile>();
 
                 yield return new WaitForSeconds(0.15f);
@@ -765,7 +952,6 @@ public class MutatronEngine : MonoBehaviour
 
         for (int i = 0; i < unboundPolytrons.Count; i++)
         {
-            // BindPolytronToSink(unboundPolytrons[i], unboundSinksOnExternalRing[i]);
             BindPolytronToSink(unboundPolytrons[i], polytronsHomes[unboundPolytrons[i].sealNumber]);
         }
     }
@@ -773,6 +959,12 @@ public class MutatronEngine : MonoBehaviour
 
     void Evolve()
     {
+
+        if (!IsMutatronReady())
+        {
+            return;
+        }
+
         // the idea: for each cell, count how many neighbors have a polytronicNumber higher than the one of the cell.
         // if the number of neighbors lies in the fusionRange, we have a fusion, and a quantum of energy moves from the polytronicNumber
         // of all the neighbors to the cell. 
@@ -905,6 +1097,79 @@ public class MutatronEngine : MonoBehaviour
         Vector3 attractionForce = from1To2Versor * distanceFromEquilibrium * attractionMultiplier;
 
         return (attractionForce, from1To2Versor, from1To2Distance);
+    }
+
+    bool IsHome(HexCellData hcd)
+    {
+        return hcd.ring == 12;
+    }
+
+    bool IsMutatronCell(HexCellData hcd)
+    {
+        return hcd.ring <= actualLevelConfig.actualRingsCount;
+    }
+
+    bool IsHome(HexCoord hc)
+    {
+        return gridCellsMap[hc].ring == 12;
+    }
+
+    bool IsMutatronCell(HexCoord hc)
+    {
+        return gridCellsMap[hc].ring <= actualLevelConfig.actualRingsCount;
+    }
+
+    internal void SetNewArchitron(int newArchitronIdx)
+    {
+        Debug.Log($"changing Architron, old: {architronIdx}, new: {newArchitronIdx}");
+
+        Polytron actualArchitron = polytrons[architronIdx];
+        Polytron newArchitron = polytrons[newArchitronIdx];
+
+        Debug.Assert(actualArchitron.isArchitron == true);
+        Debug.Assert(newArchitron.isArchitron == false);
+
+        PolytronSink actualArchitronSink = actualArchitron.boundSink;
+        PolytronSink newArchitronSink = newArchitron.boundSink;
+
+        // detect if the newly selected architron is at home or on the Mutatron
+        bool isNewArchitronAtHome = IsHome(newArchitron.boundSink.hexCoord);
+
+        if (isNewArchitronAtHome)
+        {
+
+            // the actual architron must be sent back to his home
+            BindPolytronToSink(actualArchitron, polytronsHomes[actualArchitron.sealNumber].Value.sink);
+            // and the new architron must be bound to the metatron center
+            BindPolytronToSink(newArchitron, mutatronCenter.sink);
+        }
+        else
+        {
+            actualArchitronSink.boundPolytron = newArchitron;
+            actualArchitron.boundSink = newArchitronSink;
+
+            newArchitronSink.boundPolytron = actualArchitron;
+            newArchitron.boundSink = actualArchitronSink;
+        }
+
+
+        actualArchitron.isArchitron = false;
+        newArchitron.isArchitron = true;
+
+        architronIdx = newArchitronIdx;
+
+        newArchitron.GetComponent<PolytronInfoPanel>().button4Text = "";
+        actualArchitron.GetComponent<PolytronInfoPanel>().button4Text = "Make Architron";
+
+        Debug.Assert(actualArchitron.isArchitron == false);
+        Debug.Assert(newArchitron.isArchitron == true);
+
+        Debug.Assert(gridCellsMap[newArchitron.boundSink.hexCoord].ring == 0);
+        Debug.Assert(gridCellsMap[newArchitron.boundSink.hexCoord].idxInRing == 0);
+
+        Debug.Assert(actualArchitron.boundSink.boundPolytron == actualArchitron);
+        Debug.Assert(newArchitron.boundSink.boundPolytron == newArchitron);
+
     }
 
 

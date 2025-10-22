@@ -20,19 +20,92 @@ public class PolytronInfoPanel : MonoBehaviour
 
     Transform panelTransform;
 
-    TextMeshProUGUI headerText;
-    TextMeshProUGUI bodyText;
+    TextMeshProUGUI headerText_;
+    TextMeshProUGUI bodyText_;
     Button centerButton;
-    TextMeshProUGUI centerButtonText;
+    TextMeshProUGUI centerButtonText_;
     Button button1;
-    TextMeshProUGUI button1Text;
+    TextMeshProUGUI button1Text_;
     Button button2;
-    TextMeshProUGUI button2Text;
+    TextMeshProUGUI button2Text_;
     Button button3;
-    TextMeshProUGUI button3Text;
+    TextMeshProUGUI button3Text_;
     Button button4;
-    TextMeshProUGUI button4Text;
+    TextMeshProUGUI button4Text_;
 
+    MutatronEngine mutatron;
+
+    // Internal string properties that wrap the TextMeshProUGUI.text fields.
+    // Setting these will update the underlying UI text and call UpdatePanelGUI().
+    internal string headerText
+    {
+        get => headerText_ != null ? headerText_.text : "";
+        set
+        {
+            if (headerText_ != null) headerText_.text = value;
+            UpdatePanelGUI();
+        }
+    }
+
+    internal string bodyText
+    {
+        get => bodyText_ != null ? bodyText_.text : "";
+        set
+        {
+            if (bodyText_ != null) bodyText_.text = value;
+            UpdatePanelGUI();
+        }
+    }
+
+    internal string centerButtonText
+    {
+        get => centerButtonText_ != null ? centerButtonText_.text : "";
+        set
+        {
+            if (centerButtonText_ != null) centerButtonText_.text = value;
+            UpdatePanelGUI();
+        }
+    }
+
+    internal string button1Text
+    {
+        get => button1Text_ != null ? button1Text_.text : "";
+        set
+        {
+            if (button1Text_ != null) button1Text_.text = value;
+            UpdatePanelGUI();
+        }
+    }
+
+    internal string button2Text
+    {
+        get => button2Text_ != null ? button2Text_.text : "";
+        set
+        {
+            if (button2Text_ != null) button2Text_.text = value;
+            UpdatePanelGUI();
+        }
+    }
+
+    internal string button3Text
+    {
+        get => button3Text_ != null ? button3Text_.text : "";
+        set
+        {
+            if (button3Text_ != null) button3Text_.text = value;
+            UpdatePanelGUI();
+        }
+    }
+
+    internal string button4Text
+    {
+        get => button4Text_ != null ? button4Text_.text : "";
+        set
+        {
+            if (button4Text_ != null) button4Text_.text = value;
+            UpdatePanelGUI();
+        }
+    }
 
     Transform cameraTransform;
 
@@ -44,6 +117,9 @@ public class PolytronInfoPanel : MonoBehaviour
     void Start()
     {
         cameraTransform = CrossPlatformUtils.FindCamera().transform;
+
+        mutatron = FindObjectOfType<MutatronEngine>();
+        Debug.Assert(mutatron != null, "MutatronEngine not found in scene, please check");
 
         // Create empty panel if not assigned
         if (canvasComponent == null)
@@ -101,69 +177,88 @@ public class PolytronInfoPanel : MonoBehaviour
         }
         else
         {
-            // canvasComponent.gameObject.AddComponent<GraphicRaycaster>();
+
+//             Debug.Assert(false);
 
             panelTransform = canvasComponent.transform.Find("Panel");
             Debug.Assert(panelTransform != null);
 
-            // panel.GetComponent<Image>().raycastTarget = true;
-
-
-            headerText = panelTransform.Find("HeaderText").GetComponent<TextMeshProUGUI>();
-            bodyText = panelTransform.transform.Find("BodyText").GetComponent<TextMeshProUGUI>();
+            headerText_ = panelTransform.Find("HeaderText").GetComponent<TextMeshProUGUI>();
+            Debug.Assert(headerText_ != null);
+            bodyText_ = panelTransform.transform.Find("BodyText").GetComponent<TextMeshProUGUI>();
             centerButton = panelTransform.transform.Find("CenterButton").GetComponent<Button>();
-            centerButtonText = centerButton.GetComponentInChildren<TextMeshProUGUI>();
+            centerButtonText_ = centerButton.GetComponentInChildren<TextMeshProUGUI>();
             button1 = panelTransform.transform.Find("Button1").GetComponent<Button>();
-            button1Text = button1.GetComponentInChildren<TextMeshProUGUI>();
+            button1Text_ = button1.GetComponentInChildren<TextMeshProUGUI>();
             button2 = panelTransform.transform.Find("Button2").GetComponent<Button>();
-            button2Text = button2.GetComponentInChildren<TextMeshProUGUI>();
+            button2Text_ = button2.GetComponentInChildren<TextMeshProUGUI>();
             button3 = panelTransform.transform.Find("Button3").GetComponent<Button>();
-            button3Text = button3.GetComponentInChildren<TextMeshProUGUI>();
+            button3Text_ = button3.GetComponentInChildren<TextMeshProUGUI>();
             button4 = panelTransform.transform.Find("Button4").GetComponent<Button>();
-            button4Text = button4.GetComponentInChildren<TextMeshProUGUI>();
+            button4Text_ = button4.GetComponentInChildren<TextMeshProUGUI>();
 
-            // button4.GetComponent<Image>().raycastTarget = true;
-
-            ResetPanel();
+            ResetTexts();
 
             Polytron p = GetComponent<Polytron>();
 
-            headerText.text = p.sealName;
-            bodyText.text = $"{PolytronName.GetPeriodString(p.sealNumber)}";
-            button4Text.text = "Make Architron";
-            UpdatePanelGUI();
+            headerText_.text = p.sealName;
+            bodyText_.text = $"{PolytronName.GetPeriodString(p.sealNumber)}";
+
+                UpdatePanelGUI();
+
+            // Hook up button handlers so presses are forwarded to this GameObject (other components can implement handlers)
+            if (centerButton != null) centerButton.onClick.AddListener(OnCenterButtonPressed);
+            if (button1 != null) button1.onClick.AddListener(() => OnButtonPressed(1));
+            if (button2 != null) button2.onClick.AddListener(() => OnButtonPressed(2));
+            if (button3 != null) button3.onClick.AddListener(() => OnButtonPressed(3));
+            if (button4 != null) button4.onClick.AddListener(() => OnButtonPressed(4));
         }
 
         canvasComponent.gameObject.SetActive(false);
         canvasComponent.transform.localScale = Vector3.zero;
     }
 
+    void UpdateTextsAndButtons()
+    {
+        Polytron p = GetComponent<Polytron>();
+        if (p.isArchitron == false)
+        {
+            button4Text_.text = "Make Architron";
+        }
+        else
+
+        {
+            button4Text_.text = "cippa";
+
+        }
+
+        UpdatePanelGUI();
+
+    }
+
     void TestPanelFull()
     {
-        headerText.text = "headerText";
-        bodyText.text = "bodytext bello lungo e che probabilmente va anche a capo, qui ci si può ragionare";
-        centerButtonText.text = "center button";
-        button1Text.text = "button1 text";
-        button2Text.text = "button2 text";
-        button3Text.text = "button3 text";
-        button4Text.text = "button4 text";
+        headerText_.text = "headerText";
+        bodyText_.text = "bodytext bello lungo e che probabilmente va anche a capo, qui ci si può ragionare";
+        centerButtonText_.text = "center button";
+        button1Text_.text = "button1 text";
+        button2Text_.text = "button2 text";
+        button3Text_.text = "button3 text";
+        button4Text_.text = "button4 text";
 
         // Ensure UI visibility matches content
         UpdatePanelGUI();
     }
 
-    void ResetPanel()
+    void ResetTexts()
     {
-        headerText.text = "";
-        bodyText.text = "";
-        centerButtonText.text = "";
-        button1Text.text = "";
-        button2Text.text = "";
-        button3Text.text = "";
-        button4Text.text = "";
-
-        // Ensure UI visibility matches content
-        // UpdatePanelGUI();
+        headerText_.text = "";
+        bodyText_.text = "";
+        centerButtonText_.text = "";
+        button1Text_.text = "";
+        button2Text_.text = "";
+        button3Text_.text = "";
+        button4Text_.text = "";
     }
 
 
@@ -175,13 +270,15 @@ public class PolytronInfoPanel : MonoBehaviour
     {
         bool HasText(TextMeshProUGUI t) => t != null && !string.IsNullOrWhiteSpace(t.text);
 
-        headerText.gameObject.SetActive(HasText(headerText));
-        bodyText.gameObject.SetActive(HasText(bodyText));
-        centerButton.gameObject.SetActive(centerButtonText != null && HasText(centerButtonText));
-        button1.gameObject.SetActive(button1Text != null && HasText(button1Text));
-        button2.gameObject.SetActive(button2Text != null && HasText(button2Text));
-        button3.gameObject.SetActive(button3Text != null && HasText(button3Text));
-        button4.gameObject.SetActive(button4Text != null && HasText(button4Text));
+        Debug.Assert(headerText_ != null);
+
+        headerText_.gameObject.SetActive(HasText(headerText_));
+        bodyText_.gameObject.SetActive(HasText(bodyText_));
+        centerButton.gameObject.SetActive(centerButtonText_ != null && HasText(centerButtonText_));
+        button1.gameObject.SetActive(button1Text_ != null && HasText(button1Text_));
+        button2.gameObject.SetActive(button2Text_ != null && HasText(button2Text_));
+        button3.gameObject.SetActive(button3Text_ != null && HasText(button3Text_));
+        button4.gameObject.SetActive(button4Text_ != null && HasText(button4Text_));
     }
 
     void Update()
@@ -194,6 +291,8 @@ public class PolytronInfoPanel : MonoBehaviour
             if (animCoroutine != null) StopCoroutine(animCoroutine);
             animCoroutine = StartCoroutine(AnimatePanel(shouldShow));
             isVisible = shouldShow;
+
+            // eventually pause the animation
             WaveAnimation wa = GetComponent<WaveAnimation>();
             if (isVisible)
             {
@@ -228,6 +327,28 @@ public class PolytronInfoPanel : MonoBehaviour
         }
         canvasComponent.transform.localScale = endScale;
         if (!show) canvasComponent.gameObject.SetActive(false);
+    }
+
+    // Added handlers for button presses.
+    // These will log the press and forward a message to other components on the same GameObject.
+    // Other components (for example Polytron) can implement:
+    //   void OnCenterButtonPressed() { ... }
+    //   void OnInfoPanelButtonPressed(int buttonIndex) { ... }
+    void OnCenterButtonPressed()
+    {
+        Debug.Log($"[PolytronInfoPanel] Center button pressed on {name}");
+        // SendMessage("OnCenterButtonPressed", SendMessageOptions.DontRequireReceiver);
+    }
+
+    void OnButtonPressed(int index)
+    {
+        Debug.Log($"[PolytronInfoPanel] Button{index} pressed on {name}");
+        // SendMessage("OnInfoPanelButtonPressed", index, SendMessageOptions.DontRequireReceiver);
+        if(index == 4 && button4Text_.text == "Make Architron")
+        {
+            Debug.Log("Changing Architron");
+            mutatron.SetNewArchitron(GetComponent<Polytron>().sealNumber);
+        }
     }
 
     public void Activate(bool show)
