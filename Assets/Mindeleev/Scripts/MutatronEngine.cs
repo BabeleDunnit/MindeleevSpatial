@@ -1323,6 +1323,11 @@ public class MutatronEngine : MonoBehaviour
     {
         if (hovered == null || hovered.isArchitron) return;
 
+        // No-op when hovering a polytron that is already selected in any slot.
+        // This prevents rebuilds when re-entering the same selected polytron.
+        if (hovered == paletteSelector || hovered == operatorsSelector)
+            return;
+
         // If no selection slots active, do nothing (info panel / outline handled by Polytron)
         if (paletteSelector == null && operatorsSelector == null) return;
 
@@ -1345,41 +1350,19 @@ public class MutatronEngine : MonoBehaviour
         else if (paletteSelector != null)
         {
             // palette fixed: hovered provides operators unless hovered is the paletteSelector itself
-            if (hovered == paletteSelector)
-            {
-                // show palette/base of selected combined with current arch operators (use saved hover or current)
-                var archRecipeObj = arch._recipe; // access parsed recipe on PolyhedronGenerator
-                string archOps = archRecipeObj?.OperatorsSequence() ?? "";
-                char baseChar = paletteSelector._recipe.BasePolyhedron;
-                string paletteIdxStr = paletteSelector._recipe.PaletteIdx.ToString("D2");
-                newRecipe = archOps + paletteIdxStr + baseChar;
-            }
-            else
-            {
-                string hoveredOps = hovered._recipe.OperatorsSequence();
-                char baseChar = paletteSelector._recipe.BasePolyhedron;
-                string paletteIdxStr = paletteSelector._recipe.PaletteIdx.ToString("D2");
-                newRecipe = hoveredOps + paletteIdxStr + baseChar;
-            }
+            // (we already returned earlier if hovered == paletteSelector)
+            string hoveredOps = hovered._recipe.OperatorsSequence();
+            char baseChar = paletteSelector._recipe.BasePolyhedron;
+            string paletteIdxStr = paletteSelector._recipe.PaletteIdx.ToString("D2");
+            newRecipe = hoveredOps + paletteIdxStr + baseChar;
         }
         else // operatorsSelector != null
         {
-            if (hovered == operatorsSelector)
-            {
-                var archRecipeObj = arch._recipe;
-                char archBase = archRecipeObj?.BasePolyhedron ?? 'C';
-                string ops = operatorsSelector._recipe.OperatorsSequence();
-                // Keep arch palette index
-                string paletteIdxStr = arch._recipe.PaletteIdx.ToString("D2");
-                newRecipe = ops + paletteIdxStr + archBase;
-            }
-            else
-            {
-                char hoveredBase = hovered._recipe.BasePolyhedron;
-                string paletteIdxStr = hovered._recipe.PaletteIdx.ToString("D2");
-                string ops = operatorsSelector._recipe.OperatorsSequence();
-                newRecipe = ops + paletteIdxStr + hoveredBase;
-            }
+            // (we already returned earlier if hovered == operatorsSelector)
+            char hoveredBase = hovered._recipe.BasePolyhedron;
+            string paletteIdxStr = hovered._recipe.PaletteIdx.ToString("D2");
+            string ops = operatorsSelector._recipe.OperatorsSequence();
+            newRecipe = ops + paletteIdxStr + hoveredBase;
         }
 
         if (newRecipe != null)
