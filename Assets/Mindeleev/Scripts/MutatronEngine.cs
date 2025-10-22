@@ -1210,6 +1210,28 @@ public class MutatronEngine : MonoBehaviour
     private string architronHoverSavedRecipe = null;         // saved when hover preview starts
     private bool architronHoverOverrideActive = false;
 
+    // Helper to clear palette selection (reset outline on previous)
+    void ClearPaletteSelection()
+    {
+        if (paletteSelector != null)
+        {
+            var oldOutline = paletteSelector.GetComponent<PointerOutlineStateController>();
+            oldOutline?.SetState(0);
+            paletteSelector = null;
+        }
+    }
+
+    // Helper to clear operators selection (reset outline on previous)
+    void ClearOperatorsSelection()
+    {
+        if (operatorsSelector != null)
+        {
+            var oldOutline = operatorsSelector.GetComponent<PointerOutlineStateController>();
+            oldOutline?.SetState(0);
+            operatorsSelector = null;
+        }
+    }
+
     // Called by Polytron on click
     internal void OnPolytronClicked(Polytron p)
     {
@@ -1217,41 +1239,55 @@ public class MutatronEngine : MonoBehaviour
 
         var pOutline = p.GetComponent<PointerOutlineStateController>();
 
-        // Selection toggle policy:
-        // - If clicking an already-selected slot, deselect it.
-        // - If clicking an unselected polytron, assign it to the first empty slot:
-        //   prefer palette slot (state 1) if empty, otherwise operators slot (state 2).
+        // Enforce invariant: at most one paletteSelector and one operatorsSelector.
+        // Clicking policy:
+        // - If clicked is paletteSelector -> move it to operators (if necessary clearing previous operator)
+        //   or deselect operators if it was already operators.
+        // - If clicked is operatorsSelector -> deselect operators.
+        // - If clicked is unselected:
+        //     * if a slot is free, assign the clicked polytron to the first free slot (palette preferred)
+        //     * if both occupied, replace the operators slot with clicked (ensuring unique one-per-state)
+        //
+        // This keeps exactly one yellow (palette) and one green (operators) at most.
+
         if (paletteSelector == p)
         {
-            // Move clicked to operators slot (toggle to other state)
-            paletteSelector = null;
+            // Clicked the palette-selected polytron -> move it to operators state.
+            // Clear palette slot, and replace any existing operators selection.
+            ClearPaletteSelection();
+
+            // If an operators selection existed, clear it so we always have at most one.
+            ClearOperatorsSelection();
+
             operatorsSelector = p;
-            pOutline?.SetState(2);
+            pOutline?.SetState(2); // operators (green)
         }
         else if (operatorsSelector == p)
         {
-            // Deselect operator slot
-            operatorsSelector = null;
-            pOutline?.SetState(0);
+            // Clicking the operators-selected polytron toggles it off
+            ClearOperatorsSelection();
         }
         else
         {
-            // Not currently selected: place into first empty slot (palette preferred)
+            // clicked a polytron that is not currently selected
             if (paletteSelector == null)
             {
+                // assign it to palette (yellow) and ensure only one palette exists
+                ClearPaletteSelection();
                 paletteSelector = p;
                 pOutline?.SetState(1);
             }
             else if (operatorsSelector == null)
             {
+                // assign it to operators (green) and ensure only one operators exists
+                ClearOperatorsSelection();
                 operatorsSelector = p;
                 pOutline?.SetState(2);
             }
             else
             {
-                // Both slots occupied: replace operators slot with clicked
-                var oldOutline = operatorsSelector?.GetComponent<PointerOutlineStateController>();
-                oldOutline?.SetState(0);
+                // both slots occupied: replace the operators slot with the clicked polytron
+                ClearOperatorsSelection();
                 operatorsSelector = p;
                 pOutline?.SetState(2);
             }
@@ -1276,7 +1312,7 @@ public class MutatronEngine : MonoBehaviour
                 ApplyRecipeToArchitron(architronSavedRecipeForSelection);
                 architronSavedRecipeForSelection = null;
             }
-            // Otherwise, single-slot behavior is done on hover (transient)
+            // Single-slot behavior remains transient and handled on hover
         }
 
         Debug.Log($"[MutatronEngine.OnPolytronClicked] palette: {(paletteSelector==null?"null":paletteSelector.name)}, operators: {(operatorsSelector==null?"null":operatorsSelector.name)}");
