@@ -50,15 +50,6 @@ public class Polytron : PolyhedronGenerator,
     public void OnBeginDrag(PointerEventData eventData)
     {
         Debug.Log($"[PointerEvent] BeginDrag on {gameObject.name}");
-
-        /*
-                Outline o = GetComponent<Outline>();
-                o.outlineColor = Color.blue;
-                o.outlineWidth = 0.5f;
-                o.DisableOutline();
-                o.EnableOutline();
-                */
-
         BeginDrag();
     }
 
@@ -70,14 +61,7 @@ public class Polytron : PolyhedronGenerator,
     public void OnEndDrag(PointerEventData eventData)
     {
         Debug.Log($"[PointerEvent] EndDrag on {gameObject.name}");
-        /*
-                Outline o = GetComponent<Outline>();
-                o.outlineColor = Color.magenta;
-                o.DisableOutline();
-                o.EnableOutline();
-*/
         EndDrag();
-
     }
 
     public void OnDrop(PointerEventData eventData)
@@ -111,20 +95,12 @@ public class Polytron : PolyhedronGenerator,
         GetComponent<PointerOutlineStateController>()?.OnHoverExit();
         GetComponent<PolytronInfoPanel>()?.Activate(false);
 
-        // mutatron.currentlyHoveredPolytronSealNumber = -1;
         mutatron.OnPolytronPointerExit(sealNumber);
 
     }
 
     public void OnPointerClick(PointerEventData eventData)
     {
-
-        /*
-        Outline o = GetComponent<Outline>();
-        o.outlineColor = Color.green;
-        o.DisableOutline();
-        o.EnableOutline();
-        */
 
         if (eventData?.clickCount == 2)
         {
