@@ -35,6 +35,8 @@ public class Polytron : PolyhedronGenerator,
 
     internal bool isArchitron = false;
 
+    MutatronEngine mutatron;
+
     public void OnPointerDown(PointerEventData eventData)
     {
         Debug.Log($"[PointerEvent] Down on {gameObject.name}");
@@ -98,28 +100,20 @@ public class Polytron : PolyhedronGenerator,
         GetComponent<PointerOutlineStateController>()?.OnHoverEnter();
         GetComponent<PolytronInfoPanel>()?.Activate(true);
 
-        /*
-                Outline o = GetComponent<Outline>();
-                o.outlineColor = Color.white;
-                o.outlineWidth = 0.1f;
-                o.RebuildOutline();
-        */
-
+        // mutatron.currentlyHoveredPolytronSealNumber = sealNumber;
+        mutatron.OnPolytronPointerEnter(sealNumber);
     }
 
     public void OnPointerExit(PointerEventData eventData)
     {
         Debug.Log("OnPointerExit");
 
-        // Outline o = GetComponent<Outline>();
-        //         o.DisableOutline();
-
         GetComponent<PointerOutlineStateController>()?.OnHoverExit();
-
         GetComponent<PolytronInfoPanel>()?.Activate(false);
 
-        //        WorldSpacePanel wsp = GameObject.Find("InspectorCanvas").GetComponent<WorldSpacePanel>();
-        //        wsp.pname.text = "exit " + sealName;
+        // mutatron.currentlyHoveredPolytronSealNumber = -1;
+        mutatron.OnPolytronPointerExit(sealNumber);
+
     }
 
     public void OnPointerClick(PointerEventData eventData)
@@ -174,7 +168,6 @@ public class Polytron : PolyhedronGenerator,
     {
         base.Start();
 
-
         RigidBody = GetComponent<Rigidbody>();
         if (RigidBody == null)
         {
@@ -182,6 +175,11 @@ public class Polytron : PolyhedronGenerator,
         }
 
         mainCamera = CrossPlatformUtils.FindCamera();
+
+        mutatron = FindObjectOfType<MutatronEngine>();
+
+        Debug.Assert(mutatron != null);
+
 
     }
 

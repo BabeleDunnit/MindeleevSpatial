@@ -31,6 +31,8 @@ public class MutatronEngine : MonoBehaviour
 
     int evolveCount = 0;
 
+    internal int currentlyHoveredPolytronSealNumber = -1;
+
     public class HexCellData
     {
         internal int ring;
@@ -94,9 +96,9 @@ public class MutatronEngine : MonoBehaviour
             if (polytron.boundSink)
             {
                 polytron.boundSink.boundPolytron = null;
-//                 polytron.boundSink = null;
+                //                 polytron.boundSink = null;
             }
-                polytron.boundSink = null;
+            polytron.boundSink = null;
         }
 
         SendUnboundPolytronsHome();
@@ -107,14 +109,14 @@ public class MutatronEngine : MonoBehaviour
     {
         Debug.Assert(polytronsHomes.Count == 72);
         int i = 0;
-        foreach(var ph in polytronsHomes)
+        foreach (var ph in polytronsHomes)
         {
             HexCellData hcd = ph.Value;
             PolytronSink sink = hcd.sink;
             Debug.Assert(sink.boundPolytron == polytrons[i]);
             Debug.Assert(sink.boundPolytron.boundSink == sink);
             i++;
-        }   
+        }
     }
 
 
@@ -1169,6 +1171,36 @@ public class MutatronEngine : MonoBehaviour
 
         Debug.Assert(actualArchitron.boundSink.boundPolytron == actualArchitron);
         Debug.Assert(newArchitron.boundSink.boundPolytron == newArchitron);
+
+    }
+
+    string oldArchitronRecipe;
+
+    internal void OnPolytronPointerEnter(int sealNum)
+    {
+        currentlyHoveredPolytronSealNumber = sealNum;
+
+        // if I am hovering on a polytron which is not the Architron, get its recipe
+        Polytron hoveredPolytron = polytrons[sealNum];
+        if (hoveredPolytron.isArchitron == false)
+        {
+            string newArchitronRecipe = hoveredPolytron._recipe.PaletteIdx.ToString("D2") + hoveredPolytron._recipe.BasePolyhedron;
+            oldArchitronRecipe = polytrons[architronIdx].recipe;
+            polytrons[architronIdx].recipe = newArchitronRecipe;
+            polytrons[architronIdx].RebuildMesh();
+        }
+    }
+
+    internal void OnPolytronPointerExit(int sealNum)
+    {
+        currentlyHoveredPolytronSealNumber = -1;
+
+        Polytron hoveredPolytron = polytrons[sealNum];
+        if (hoveredPolytron.isArchitron == false)
+        {
+            polytrons[architronIdx].recipe = oldArchitronRecipe;
+            polytrons[architronIdx].RebuildMesh();
+        }
 
     }
 
