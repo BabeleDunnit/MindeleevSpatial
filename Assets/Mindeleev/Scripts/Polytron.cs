@@ -84,8 +84,8 @@ public class Polytron : PolyhedronGenerator,
         GetComponent<PointerOutlineStateController>()?.OnHoverEnter();
         GetComponent<PolytronInfoPanel>()?.Activate(true);
 
-        // mutatron.currentlyHoveredPolytronSealNumber = sealNumber;
-        mutatron.OnPolytronPointerEnter(sealNumber);
+        // Delegate hover handling to MutatronEngine (which will be a no-op if no selection)
+        mutatron?.OnPolytronPointerEnter(this);
     }
 
     public void OnPointerExit(PointerEventData eventData)
@@ -95,8 +95,7 @@ public class Polytron : PolyhedronGenerator,
         GetComponent<PointerOutlineStateController>()?.OnHoverExit();
         GetComponent<PolytronInfoPanel>()?.Activate(false);
 
-        mutatron.OnPolytronPointerExit(sealNumber);
-
+        mutatron?.OnPolytronPointerExit(this);
     }
 
     public void OnPointerClick(PointerEventData eventData)
@@ -107,8 +106,17 @@ public class Polytron : PolyhedronGenerator,
             Debug.Log("double click");
         }
 
-        PointerOutlineStateController csc = GetComponent<PointerOutlineStateController>();
-        csc.AdvanceState();
+        // Forward click to MutatronEngine which manages selection states and outline states.
+        if (mutatron != null)
+        {
+            mutatron.OnPolytronClicked(this);
+        }
+        else
+        {
+            // fallback local behaviour
+            PointerOutlineStateController csc = GetComponent<PointerOutlineStateController>();
+            csc?.AdvanceState();
+        }
 
         Debug.Log("[Polytron.OnPointerClick()] Object clicked!");
 
