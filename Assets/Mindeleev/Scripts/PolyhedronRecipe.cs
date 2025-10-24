@@ -195,9 +195,15 @@ public class PolyhedronRecipe
 
     public override string ToString()
     {
-        string ops = string.Concat(Tokens.Select(t => t.ToString()));
+//         string ops = string.Concat(Tokens.Select(t => t.ToString()));
+        string ops = OperatorsSequence();
         string paletteStr = PaletteIdx.ToString("D2");
         return $"{ops}{paletteStr}{BasePolyhedron}";
+    }
+
+    public string OperatorsSequence()
+    {
+        return string.Concat(Tokens.Select(t => t.ToString()));
     }
 
     /// <summary>

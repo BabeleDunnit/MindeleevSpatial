@@ -35,6 +35,8 @@ public class Polytron : PolyhedronGenerator,
 
     internal bool isArchitron = false;
 
+    MutatronEngine mutatron;
+
     public void OnPointerDown(PointerEventData eventData)
     {
         Debug.Log($"[PointerEvent] Down on {gameObject.name}");
@@ -48,15 +50,6 @@ public class Polytron : PolyhedronGenerator,
     public void OnBeginDrag(PointerEventData eventData)
     {
         Debug.Log($"[PointerEvent] BeginDrag on {gameObject.name}");
-
-        /*
-                Outline o = GetComponent<Outline>();
-                o.outlineColor = Color.blue;
-                o.outlineWidth = 0.5f;
-                o.DisableOutline();
-                o.EnableOutline();
-                */
-
         BeginDrag();
     }
 
@@ -68,14 +61,7 @@ public class Polytron : PolyhedronGenerator,
     public void OnEndDrag(PointerEventData eventData)
     {
         Debug.Log($"[PointerEvent] EndDrag on {gameObject.name}");
-        /*
-                Outline o = GetComponent<Outline>();
-                o.outlineColor = Color.magenta;
-                o.DisableOutline();
-                o.EnableOutline();
-*/
         EndDrag();
-
     }
 
     public void OnDrop(PointerEventData eventData)
@@ -98,47 +84,39 @@ public class Polytron : PolyhedronGenerator,
         GetComponent<PointerOutlineStateController>()?.OnHoverEnter();
         GetComponent<PolytronInfoPanel>()?.Activate(true);
 
-        /*
-                Outline o = GetComponent<Outline>();
-                o.outlineColor = Color.white;
-                o.outlineWidth = 0.1f;
-                o.RebuildOutline();
-        */
-
+        // Delegate hover handling to MutatronEngine (which will be a no-op if no selection)
+        mutatron?.OnPolytronPointerEnter(this);
     }
 
     public void OnPointerExit(PointerEventData eventData)
     {
         Debug.Log("OnPointerExit");
 
-        // Outline o = GetComponent<Outline>();
-        //         o.DisableOutline();
-
         GetComponent<PointerOutlineStateController>()?.OnHoverExit();
-
         GetComponent<PolytronInfoPanel>()?.Activate(false);
 
-        //        WorldSpacePanel wsp = GameObject.Find("InspectorCanvas").GetComponent<WorldSpacePanel>();
-        //        wsp.pname.text = "exit " + sealName;
+        mutatron?.OnPolytronPointerExit(this);
     }
 
     public void OnPointerClick(PointerEventData eventData)
     {
-
-        /*
-        Outline o = GetComponent<Outline>();
-        o.outlineColor = Color.green;
-        o.DisableOutline();
-        o.EnableOutline();
-        */
 
         if (eventData?.clickCount == 2)
         {
             Debug.Log("double click");
         }
 
-        PointerOutlineStateController csc = GetComponent<PointerOutlineStateController>();
-        csc.AdvanceState();
+        // Forward click to MutatronEngine which manages selection states and outline states.
+        if (mutatron != null)
+        {
+            mutatron.OnPolytronClicked(this);
+        }
+        else
+        {
+            // fallback local behaviour
+            PointerOutlineStateController csc = GetComponent<PointerOutlineStateController>();
+            csc?.AdvanceState();
+        }
 
         Debug.Log("[Polytron.OnPointerClick()] Object clicked!");
 
@@ -174,7 +152,6 @@ public class Polytron : PolyhedronGenerator,
     {
         base.Start();
 
-
         RigidBody = GetComponent<Rigidbody>();
         if (RigidBody == null)
         {
@@ -182,6 +159,11 @@ public class Polytron : PolyhedronGenerator,
         }
 
         mainCamera = CrossPlatformUtils.FindCamera();
+
+        mutatron = FindObjectOfType<MutatronEngine>();
+
+        Debug.Assert(mutatron != null);
+
 
     }
 
