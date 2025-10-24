@@ -1316,89 +1316,6 @@ public class MutatronEngine : MonoBehaviour
         Debug.Log($"[MutatronEngine.OnPolytronClicked] palette: {(paletteSelector == null ? "null" : paletteSelector.name)}, operators: {(operatorsSelector == null ? "null" : operatorsSelector.name)}");
     }
 
-    // Called by Polytron on pointer enter
-    internal void OnPolytronPointerEnter_unused(Polytron hovered)
-    {
-        if (hovered == null || hovered.isArchitron) return;
-
-        // No-op when hovering a polytron that is already selected in any slot.
-        // This prevents rebuilds when re-entering the same selected polytron.
-        if (hovered == paletteSelector || hovered == operatorsSelector)
-            return;
-
-        // If no selection slots active, do nothing (info panel / outline handled by Polytron)
-        if (paletteSelector == null && operatorsSelector == null) return;
-
-        var arch = polytrons[architronIdx];
-
-        // Save pre-hover arch recipe once
-        if (!architronHoverOverrideActive)
-        {
-            architronHoverSavedRecipe = arch.recipe;
-            architronHoverOverrideActive = true;
-        }
-
-        string newRecipe = null;
-
-        if (paletteSelector != null && operatorsSelector != null)
-        {
-            // both fixed -> permanent combination (already applied on click) but ensure consistency
-            newRecipe = CombineUsingSelectors(paletteSelector, operatorsSelector);
-        }
-        else if (paletteSelector != null)
-        {
-            // palette fixed: hovered provides operators unless hovered is the paletteSelector itself
-            // (we already returned earlier if hovered == paletteSelector)
-            string hoveredOps = hovered._recipe.OperatorsSequence();
-            char baseChar = paletteSelector._recipe.BasePolyhedron;
-            string paletteIdxStr = paletteSelector._recipe.PaletteIdx.ToString("D2");
-            newRecipe = hoveredOps + paletteIdxStr + baseChar;
-        }
-        else // operatorsSelector != null
-        {
-            // (we already returned earlier if hovered == operatorsSelector)
-            char hoveredBase = hovered._recipe.BasePolyhedron;
-            string paletteIdxStr = hovered._recipe.PaletteIdx.ToString("D2");
-            string ops = operatorsSelector._recipe.OperatorsSequence();
-            newRecipe = ops + paletteIdxStr + hoveredBase;
-        }
-
-        if (newRecipe != null)
-            ApplyRecipeToArchitron(newRecipe);
-    }
-
-    // Called by Polytron on pointer exit
-    internal void OnPolytronPointerExit_unused(Polytron p)
-    {
-        var arch = polytrons[architronIdx];
-
-        if (!architronHoverOverrideActive) return;
-
-        // If both slots present -> ensure permanent combined recipe remains
-        if (paletteSelector != null && operatorsSelector != null)
-        {
-            string combined = CombineUsingSelectors(paletteSelector, operatorsSelector);
-            ApplyRecipeToArchitron(combined);
-        }
-        else
-        {
-            // If any permanent saved recipe exists (selection created earlier), restore it
-            if (architronSavedRecipeForSelection != null)
-            {
-                ApplyRecipeToArchitron(architronSavedRecipeForSelection);
-            }
-            else
-            {
-                // restore the recipe saved before hover
-                if (architronHoverSavedRecipe != null)
-                    ApplyRecipeToArchitron(architronHoverSavedRecipe);
-            }
-        }
-
-        architronHoverOverrideActive = false;
-        architronHoverSavedRecipe = null;
-    }
-
     // Build combined recipe string from two selected Polytrons:
     // paletteSelector provides PaletteIdx and BasePolyhedron,
     // operatorsSelector provides OperatorsSequence().
@@ -1420,12 +1337,6 @@ public class MutatronEngine : MonoBehaviour
         arch.RebuildMesh();
         arch.name = $"Architron_{recipe}";
     }
-
-
-
-    // +++++++
-
-// ...existing code...
 
     // Called by Polytron on pointer enter
     internal void OnPolytronPointerEnter(Polytron hovered)
@@ -1530,11 +1441,4 @@ public class MutatronEngine : MonoBehaviour
         char baseChar = p._recipe.BasePolyhedron;
         return paletteIdxStr + baseChar;
     }
-
-// ...existing code...
-
-
-
-
-
 }
