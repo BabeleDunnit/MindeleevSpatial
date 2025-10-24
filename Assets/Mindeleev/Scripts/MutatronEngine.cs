@@ -482,7 +482,8 @@ public class MutatronEngine : MonoBehaviour
                 // BindPolytronToHome(polytronGameObject.GetComponent<Polytron>(), hckv);
                 BindPolytronToSink(polytronGameObject.GetComponent<Polytron>(), hckv);
 
-                yield return new WaitForSeconds(0.15f);
+//                 yield return new WaitForSeconds(0.15f);
+                yield return new WaitForSeconds(0.01f);
 
                 PolytronInfoPanel pip = polytronGameObject.GetComponent<PolytronInfoPanel>();
                 if (polytronComponent.isArchitron == false)
@@ -1312,11 +1313,11 @@ public class MutatronEngine : MonoBehaviour
             // Single-slot behavior remains transient and handled on hover
         }
 
-        Debug.Log($"[MutatronEngine.OnPolytronClicked] palette: {(paletteSelector==null?"null":paletteSelector.name)}, operators: {(operatorsSelector==null?"null":operatorsSelector.name)}");
+        Debug.Log($"[MutatronEngine.OnPolytronClicked] palette: {(paletteSelector == null ? "null" : paletteSelector.name)}, operators: {(operatorsSelector == null ? "null" : operatorsSelector.name)}");
     }
 
     // Called by Polytron on pointer enter
-    internal void OnPolytronPointerEnter(Polytron hovered)
+    internal void OnPolytronPointerEnter_unused(Polytron hovered)
     {
         if (hovered == null || hovered.isArchitron) return;
 
@@ -1367,7 +1368,7 @@ public class MutatronEngine : MonoBehaviour
     }
 
     // Called by Polytron on pointer exit
-    internal void OnPolytronPointerExit(Polytron p)
+    internal void OnPolytronPointerExit_unused(Polytron p)
     {
         var arch = polytrons[architronIdx];
 
@@ -1419,19 +1420,121 @@ public class MutatronEngine : MonoBehaviour
         arch.RebuildMesh();
         arch.name = $"Architron_{recipe}";
     }
-/*
-    void Update()
+
+
+
+    // +++++++
+
+// ...existing code...
+
+    // Called by Polytron on pointer enter
+    internal void OnPolytronPointerEnter(Polytron hovered)
     {
-        if (Input.GetKeyDown(KeyCode.M))
+        if (hovered == null || hovered.isArchitron) return;
+
+        var arch = polytrons[architronIdx];
+
+        // If hovering a selected polytron -> temporarily show its radix (palette + base)
+        if (hovered == paletteSelector || hovered == operatorsSelector)
         {
-            BuildLevel(0);
+            // save current arch recipe once for restore
+            if (!architronHoverOverrideActive)
+            {
+                architronHoverSavedRecipe = arch.recipe;
+                architronHoverOverrideActive = true;
+            }
+
+            string radix = GetRadixRecipe(hovered);
+            ApplyRecipeToArchitron(radix);
+            return;
         }
 
-        if (Input.GetKeyDown(KeyCode.E))
+        // If no selection slots active, do nothing (info panel / outline handled by Polytron)
+        if (paletteSelector == null && operatorsSelector == null) return;
+
+        // Save pre-hover arch recipe once
+        if (!architronHoverOverrideActive)
         {
-            Evolve();
+            architronHoverSavedRecipe = arch.recipe;
+            architronHoverOverrideActive = true;
         }
+
+        string newRecipe = null;
+
+        if (paletteSelector != null && operatorsSelector != null)
+        {
+            // both fixed -> permanent combination (already applied on click) but ensure consistency
+            newRecipe = CombineUsingSelectors(paletteSelector, operatorsSelector);
+        }
+        else if (paletteSelector != null)
+        {
+            // palette fixed: hovered provides operators
+            string hoveredOps = hovered._recipe?.OperatorsSequence() ?? "";
+            string paletteIdxStr = paletteSelector._recipe?.PaletteIdx.ToString("D2") ?? "00";
+            char baseChar = paletteSelector._recipe?.BasePolyhedron ?? 'C';
+            newRecipe = hoveredOps + paletteIdxStr + baseChar;
+        }
+        else // operatorsSelector != null
+        {
+            // operators fixed: hovered provides palette/base
+            string ops = operatorsSelector._recipe?.OperatorsSequence() ?? "";
+            string paletteIdxStr = hovered._recipe?.PaletteIdx.ToString("D2") ?? "00";
+            char baseChar = hovered._recipe?.BasePolyhedron ?? 'C';
+            newRecipe = ops + paletteIdxStr + baseChar;
+        }
+
+        if (newRecipe != null)
+            ApplyRecipeToArchitron(newRecipe);
     }
-    */
-    
+
+    // Called by Polytron on pointer exit
+    internal void OnPolytronPointerExit(Polytron p)
+    {
+        var arch = polytrons[architronIdx];
+
+        if (!architronHoverOverrideActive) return;
+
+        // restore architron to either selection-based permanent recipe (if both slots set)
+        // or to the saved pre-hover recipe (if only hover was active)
+        if (paletteSelector != null && operatorsSelector != null)
+        {
+            string combined = CombineUsingSelectors(paletteSelector, operatorsSelector);
+            ApplyRecipeToArchitron(combined);
+        }
+        else
+        {
+            // if a selection-based saved recipe exists (user had selected something before)
+            if (architronSavedRecipeForSelection != null)
+            {
+                ApplyRecipeToArchitron(architronSavedRecipeForSelection);
+            }
+            else
+            {
+                // restore the recipe saved before hover
+                if (architronHoverSavedRecipe != null)
+                {
+                    ApplyRecipeToArchitron(architronHoverSavedRecipe);
+                }
+            }
+        }
+
+        architronHoverOverrideActive = false;
+        architronHoverSavedRecipe = null;
+    }
+
+    // Return a recipe string representing only the radix (palette index + base polyhedron)
+    private string GetRadixRecipe(Polytron p)
+    {
+        if (p == null || p._recipe == null) return "";
+        string paletteIdxStr = p._recipe.PaletteIdx.ToString("D2");
+        char baseChar = p._recipe.BasePolyhedron;
+        return paletteIdxStr + baseChar;
+    }
+
+// ...existing code...
+
+
+
+
+
 }
