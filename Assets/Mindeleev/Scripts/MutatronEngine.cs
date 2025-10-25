@@ -124,11 +124,8 @@ public class MutatronEngine : MonoBehaviour
 
         isRebuildingLevel = true;
 
-        // DeselectAllPolytrons();
-
         // the level number will determine the Metatron complexity
         // and set actualRingsCount, etc.
-
 
         actualLevelConfig.actualRingsCount = 4 - levelNumber; // max con 72 polytroni se riempi tutto: 4
         actualLevelConfig.energyQuantumExchanged = 1;
@@ -927,7 +924,7 @@ public class MutatronEngine : MonoBehaviour
             return;
         }
 
-        DeselectAllPolytrons();
+        // DeselectAllPolytrons();
 
         // the idea: for each cell, count how many neighbors have a polytronicNumber higher than the one of the cell.
         // if the number of neighbors lies in the fusionRange, we have a fusion, and a quantum of energy moves from the polytronicNumber
@@ -1204,6 +1201,51 @@ public class MutatronEngine : MonoBehaviour
             var oldOutline = operatorsSelector.GetComponent<PointerOutlineStateController>();
             oldOutline?.SetState(0);
             operatorsSelector = null;
+        }
+    }
+
+    // Deselect all polytrons: remove outlines, reset selection state and hover state,
+    // and restore the Architron to the "no selection" recipe (saved before selection) and rebuild it.
+    internal void DeselectAllPolytrons()
+    {
+        Debug.Log("[MutatronEngine] DeselectAllPolytrons()");
+
+        // remove outlines on every polytron to ensure no visual selection remains
+        foreach (var p in polytrons)
+        {
+            if (p == null) continue;
+            var outline = p.GetComponent<PointerOutlineStateController>();
+            outline?.SetState(0);
+        }
+
+        // reset selection slots
+        paletteSelector = null;
+        operatorsSelector = null;
+
+        // reset hover bookkeeping
+        architronHoverOverrideActive = false;
+        architronHoverSavedRecipe = null;
+        currentlyHoveredPolytronSealNumber = -1;
+
+        // restore Architron recipe: prefer the saved pre-selection recipe if present,
+        // otherwise restore the pre-hover recipe if available.
+        var arch = polytrons[architronIdx];
+        if (arch == null) return;
+
+        if (!string.IsNullOrEmpty(architronSavedRecipeForSelection))
+        {
+            ApplyRecipeToArchitron(architronSavedRecipeForSelection);
+            architronSavedRecipeForSelection = null;
+        }
+        else if (!string.IsNullOrEmpty(architronHoverSavedRecipe))
+        {
+            ApplyRecipeToArchitron(architronHoverSavedRecipe);
+            architronHoverSavedRecipe = null;
+        }
+        else
+        {
+            // ensure architron mesh is consistent (rebuild current recipe)
+            ApplyRecipeToArchitron(arch.recipe);
         }
     }
 
