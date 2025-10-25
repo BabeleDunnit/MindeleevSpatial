@@ -124,6 +124,8 @@ public class MutatronEngine : MonoBehaviour
 
         isRebuildingLevel = true;
 
+        // DeselectAllPolytrons();
+
         // the level number will determine the Metatron complexity
         // and set actualRingsCount, etc.
 
@@ -145,11 +147,8 @@ public class MutatronEngine : MonoBehaviour
 
     void AfterTilesCreation()
     {
+        DeselectAllPolytrons();
         UpdatePolytronsSinks();
-
-        // PolytronInfoPanel pip = polytrons[architronIdx].GetComponent<PolytronInfoPanel>();
-        // pip.button4Text = "Make Architron";
-
 
         isRebuildingLevel = false;
     }
@@ -272,7 +271,7 @@ public class MutatronEngine : MonoBehaviour
 
             // special treatment for the center of the Mutatron, reserved for the architron.
             // we always force bind the Architron to the (0,0) cell.
-            if (/*hckv.Value.ring == 0 && hckv.Value.idxInRing == 0*/ IsMutatronCenter(hckv.Value))
+            if (IsMutatronCenter(hckv.Value))
             {
                 Polytron architron = polytrons[architronIdx];
                 Debug.Assert(hckv.Value.sink.boundPolytron == null);
@@ -291,7 +290,8 @@ public class MutatronEngine : MonoBehaviour
                 {
                     BindPolytronToSink(p, hckv);
                     string tileRecipe = hckv.Value.tile.recipe;
-                    RebuildPolytronMesh(p, tileRecipe);
+//                     RebuildPolytronMesh(p, tileRecipe);
+                    RebuildPolytronFromRecipe(p, tileRecipe);
                     rebuiltPolytrons++;
                 }
             }
@@ -300,34 +300,8 @@ public class MutatronEngine : MonoBehaviour
         Debug.Log($"[UpdatePolytronsSinks] moved: {movedPolytrons}, rebuilt: {rebuiltPolytrons}");
     }
 
-    void RebuildPolytronMesh(Polytron p, string recipe)
-    {
-        p.recipe = recipe;
-        p.RebuildMesh();
-        // p.name = $"Polytron_{recipe}";
-    }
-
-    /*
-        void BindPolytronToHome(Polytron p, KeyValuePair<HexCoord, HexCellData> hckv)
-        {
-            // every polytron has a home which will not change
-            hckv.Value.tile.sealHome = p.sealNumber;
-        }
-    */
-
     void BindPolytronToSink(Polytron p, KeyValuePair<HexCoord, HexCellData> hckv)
     {
-        // if the polytron is alread bound to an old sink, reset the bound polytron of that sink
-        // if (p.boundSink) p.boundSink.boundPolytron = null;
-
-        // now bound the polytron to this sink
-        // PolytronSink sinkOfThisCell = hckv.Value.sink;
-
-        /*
-        p.boundSink = sinkOfThisCell;
-        sinkOfThisCell.boundPolytron = p;
-        */
-
         BindPolytronToSink(p, hckv.Value.sink);
     }
 
@@ -345,27 +319,6 @@ public class MutatronEngine : MonoBehaviour
         p.boundSink = ps;
         ps.boundPolytron = p;
     }
-
-
-
-    /*
-        // nearly all polytrons have sinks as their targets, but the architron has a different behaviour
-        void AttractPolytronsToTargets()
-        {
-            foreach (var hckv in gridCellsMap)
-            {
-                // if (hckv.Value.ring > actualLevelConfig.actualRingsCount) continue;
-
-                PolytronSink sink = hckv.Value.sink;
-                if (sink && sink.boundPolytron)
-                {
-                    (Vector3 attractionForce, Vector3 from1To2Versor, float from1To2Distance) = CalcSpringForce(sink.boundPolytron.transform.position, sink.transform.position, sink.weight * 5f, 0.01f);
-                    sink.boundPolytron.GetComponent<Rigidbody>().AddForce(attractionForce);
-                }
-
-            }
-        }
-        */
 
     bool IsMutatronReady()
     {
@@ -507,9 +460,11 @@ public class MutatronEngine : MonoBehaviour
                 polytronGameObject.name += $"_{polytronId}";
 
                 Polytron polytronComponent = polytronGameObject.GetComponent<Polytron>();
+
+                // RebuildPolytronFromRecipe(polytronComponent, PolyhedronRecipeKabbalah.IntToOperatorsSequence(polytronId) + $"{(polytronId % 11):D2}" + "C");
                 polytronComponent.recipe = PolyhedronRecipeKabbalah.IntToOperatorsSequence(polytronId) + $"{(polytronId % 11):D2}" + "C";
-                Debug.Log(polytronComponent.recipe);
                 polytronComponent.RebuildMesh();
+
                 Debug.Assert(polytronId == polytronComponent.sealNumber); // sealNumber is set by the factory
 
                 polytrons.Add(polytronGameObject.GetComponent<Polytron>());
@@ -519,6 +474,13 @@ public class MutatronEngine : MonoBehaviour
         }
     }
 
+
+    void RebuildPolytronFromRecipe(Polytron p, string r)
+    {
+        p.recipe = r;
+        p.RebuildMesh();
+        p.GetComponent<PolytronInfoPanel>().bodyText = r;
+    }
 
 
     /*
@@ -965,6 +927,8 @@ public class MutatronEngine : MonoBehaviour
             return;
         }
 
+        DeselectAllPolytrons();
+
         // the idea: for each cell, count how many neighbors have a polytronicNumber higher than the one of the cell.
         // if the number of neighbors lies in the fusionRange, we have a fusion, and a quantum of energy moves from the polytronicNumber
         // of all the neighbors to the cell. 
@@ -1161,6 +1125,15 @@ public class MutatronEngine : MonoBehaviour
         newArchitron.GetComponent<PolytronInfoPanel>().button4Text = "";
         actualArchitron.GetComponent<PolytronInfoPanel>().button4Text = "Make Architron";
 
+        /*
+                string r = actualArchitron.recipe;
+                actualArchitron.recipe = newArchitron.recipe;
+                newArchitron.recipe = r;
+                actualArchitron.RebuildMesh();
+                newArchitron.RebuildMesh();
+        */
+
+
         Debug.Assert(actualArchitron.isArchitron == false);
         Debug.Assert(newArchitron.isArchitron == true);
 
@@ -1173,34 +1146,35 @@ public class MutatronEngine : MonoBehaviour
     }
 
     string oldArchitronRecipe;
-
-    internal void OnPolytronPointerEnter(int sealNum)
-    {
-        currentlyHoveredPolytronSealNumber = sealNum;
-
-        // if I am hovering on a polytron which is not the Architron, get its recipe
-        Polytron hoveredPolytron = polytrons[sealNum];
-        if (hoveredPolytron.isArchitron == false)
+    /*
+        internal void OnPolytronPointerEnter(int sealNum)
         {
-            string newArchitronRecipe = hoveredPolytron._recipe.PaletteIdx.ToString("D2") + hoveredPolytron._recipe.BasePolyhedron;
-            oldArchitronRecipe = polytrons[architronIdx].recipe;
-            polytrons[architronIdx].recipe = newArchitronRecipe;
-            polytrons[architronIdx].RebuildMesh();
-        }
-    }
+            currentlyHoveredPolytronSealNumber = sealNum;
 
-    internal void OnPolytronPointerExit(int sealNum)
-    {
-        currentlyHoveredPolytronSealNumber = -1;
-
-        Polytron hoveredPolytron = polytrons[sealNum];
-        if (hoveredPolytron.isArchitron == false)
-        {
-            polytrons[architronIdx].recipe = oldArchitronRecipe;
-            polytrons[architronIdx].RebuildMesh();
+            // if I am hovering on a polytron which is not the Architron, get its recipe
+            Polytron hoveredPolytron = polytrons[sealNum];
+            if (hoveredPolytron.isArchitron == false)
+            {
+                string newArchitronRecipe = hoveredPolytron._recipe.PaletteIdx.ToString("D2") + hoveredPolytron._recipe.BasePolyhedron;
+                oldArchitronRecipe = polytrons[architronIdx].recipe;
+                polytrons[architronIdx].recipe = newArchitronRecipe;
+                polytrons[architronIdx].RebuildMesh();
+            }
         }
 
-    }
+        internal void OnPolytronPointerExit(int sealNum)
+        {
+            currentlyHoveredPolytronSealNumber = -1;
+
+            Polytron hoveredPolytron = polytrons[sealNum];
+            if (hoveredPolytron.isArchitron == false)
+            {
+                polytrons[architronIdx].recipe = oldArchitronRecipe;
+                polytrons[architronIdx].RebuildMesh();
+            }
+
+        }
+    */
 
     // Selection slots
     private Polytron paletteSelector = null;    // state 1: fix palette index + base polyhedron

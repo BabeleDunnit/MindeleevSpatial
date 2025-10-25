@@ -225,15 +225,7 @@ public class PolytronInfoPanel : MonoBehaviour
         {
             button4Text_.text = "Make Architron";
         }
-        else
-
-        {
-            button4Text_.text = "cippa";
-
-        }
-
         UpdatePanelGUI();
-
     }
 
     void TestPanelFull()
