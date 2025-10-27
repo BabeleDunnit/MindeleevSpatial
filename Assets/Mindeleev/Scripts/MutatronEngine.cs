@@ -831,6 +831,8 @@ public class MutatronEngine : MonoBehaviour
             return;
         }
 
+        DeselectAllPolytrons();
+
         foreach (var hckv in gridCellsMap)
         {
             if (hckv.Value.ring > actualLevelConfig.actualRingsCount) continue;
@@ -1043,7 +1045,12 @@ public class MutatronEngine : MonoBehaviour
     private bool geneticModeActive = false;
     private List<Polytron> geneticFriends = new List<Polytron>();
     private Dictionary<Polytron, PolytronStateBackup> geneticBackups = new Dictionary<Polytron, PolytronStateBackup>();
-    private Dictionary<Polytron, Vector3> geneticTargets = new Dictionary<Polytron, Vector3>();
+    // Targets previously were absolute; now we keep relative offsets (around architron) for active genetic attraction
+    private Dictionary<Polytron, Vector3> geneticRelativeOffsets = new Dictionary<Polytron, Vector3>();
+    // When friends are being returned to their original positions (on dismissal), we use absolute return targets
+    private Dictionary<Polytron, Vector3> geneticReturnTargets = new Dictionary<Polytron, Vector3>();
+    private HashSet<Polytron> geneticReturning = new HashSet<Polytron>();
+
     private float geneticFriendsRadius = 4f;
     private float geneticFriendsHeight = 2f;
     private float geneticAttractionStrength = 5f;
@@ -1379,7 +1386,9 @@ public class MutatronEngine : MonoBehaviour
     {
         if (crossoverRecipes == null || crossoverRecipes.Count == 0) return;
 
-        ClearGeneticFriends();
+        // ensure any previous genetic return / state is cleared immediately
+        // (this aborts any pending returns and will restore sinks if necessary)
+        AbortPendingGeneticReturnImmediate();
 
         int needed = crossoverRecipes.Count;
         int totalPolytrons = polytrons.Count;
@@ -1392,6 +1401,13 @@ public class MutatronEngine : MonoBehaviour
 
         var arch = polytrons[architronIdx];
         if (arch == null) return;
+
+        // clear any previous lists
+        geneticFriends.Clear();
+        geneticBackups.Clear();
+        geneticRelativeOffsets.Clear();
+        geneticReturnTargets.Clear();
+        geneticReturning.Clear();
 
         while (assigned < needed && offsetIdx < offsets.Length)
         {
@@ -1415,18 +1431,21 @@ public class MutatronEngine : MonoBehaviour
             geneticBackups[candidate] = backup;
             geneticFriends.Add(candidate);
 
+            // detach from sink to suspend global attraction
             if (candidate.boundSink != null)
             {
                 candidate.boundSink.boundPolytron = null;
             }
             candidate.boundSink = null;
 
+            // assign new recipe and rebuild
             candidate.recipe = crossoverRecipes[assigned];
             candidate.RebuildMesh();
 
-            float angle = (float)assigned / needed * Mathf.PI * 2f;
-            Vector3 target = arch.transform.position + Vector3.up * geneticFriendsHeight + new Vector3(Mathf.Cos(angle), 0f, Mathf.Sin(angle)) * geneticFriendsRadius;
-            geneticTargets[candidate] = target;
+            // compute relative offset (so target is recomputed each frame relative to arch position)
+            float angle = (float)assigned / Mathf.Max(1, needed) * Mathf.PI * 2f;
+            Vector3 rel = Vector3.up * geneticFriendsHeight + new Vector3(Mathf.Cos(angle), 0f, Mathf.Sin(angle)) * geneticFriendsRadius;
+            geneticRelativeOffsets[candidate] = rel;
 
             assigned++;
         }
@@ -1436,57 +1455,162 @@ public class MutatronEngine : MonoBehaviour
         Debug.Log($"[MutatronEngine] SetupGeneticFriends: assigned {geneticFriends.Count} friends for {needed} recipes");
     }
 
-    // Clear genetic friends restoring backed-up recipes, bound sinks and positions.
+    // Clear genetic friends: start a physics-driven return to their backed-up positions (no teleport),
+    // restore recipes immediately, then let AttractGeneticFriends pull them back; final rebind happens when close.
     private void ClearGeneticFriends()
     {
         if (!geneticModeActive && geneticFriends.Count == 0 && geneticBackups.Count == 0) return;
 
-        Debug.Log("[MutatronEngine] ClearGeneticFriends");
+        Debug.Log("[MutatronEngine] ClearGeneticFriends - begin return phase");
 
+        // For each friend, restore recipe immediately and schedule a return target (absolute)
         foreach (var friend in geneticFriends)
         {
             if (friend == null) continue;
+            if (!geneticBackups.TryGetValue(friend, out var backup)) continue;
 
-            if (geneticBackups.TryGetValue(friend, out var backup))
+            // restore recipe and rebuild so visuals reflect original state while returning
+            friend.recipe = backup.recipe;
+            friend.RebuildMesh();
+
+            // schedule absolute return target (previous world position)
+            geneticReturnTargets[friend] = backup.position;
+            geneticReturning.Add(friend);
+
+            // remove any orbit-relative target so orbit attraction stops immediately
+            geneticRelativeOffsets.Remove(friend);
+
+            // keep them unbound for now so AttractGeneticFriends moves them toward target
+            if (friend.boundSink != null)
             {
-                friend.recipe = backup.recipe;
-                friend.RebuildMesh();
-
-                if (backup.boundSink != null)
-                {
-                    friend.boundSink = backup.boundSink;
-                    backup.boundSink.boundPolytron = friend;
-                }
-
-                friend.transform.position = backup.position;
+                friend.boundSink.boundPolytron = null;
+                friend.boundSink = null;
             }
 
+            // ensure outline reset
             var outline = friend.GetComponent<PointerOutlineStateController>();
             outline?.SetState(0);
         }
 
-        geneticFriends.Clear();
-        geneticBackups.Clear();
-        geneticTargets.Clear();
+        // geneticRelativeOffsets no longer used for these friends; we keep geneticBackups until final rebind.
+        geneticModeActive = geneticReturning.Count > 0;
+    }
+
+    // If a new genetic setup cancels a pending return, this forces immediate cleanup:
+    // rebind pending-return friends immediately to their original sinks (best-effort) and clear state.
+    private void AbortPendingGeneticReturnImmediate()
+    {
+        if (geneticReturning.Count == 0) return;
+
+        Debug.Log("[MutatronEngine] AbortPendingGeneticReturnImmediate - force restore");
+
+        foreach (var friend in geneticReturning.ToList())
+        {
+            if (friend == null) continue;
+            if (!geneticBackups.TryGetValue(friend, out var backup)) continue;
+
+            // immediate rebind to previous sink if available
+            if (backup.boundSink != null)
+            {
+                friend.boundSink = backup.boundSink;
+                backup.boundSink.boundPolytron = friend;
+            }
+            // restore recipe has already been restored earlier when scheduled; ensure mesh OK
+            friend.RebuildMesh();
+
+            // clear per-friend return state
+            geneticReturnTargets.Remove(friend);
+            geneticReturning.Remove(friend);
+            geneticBackups.Remove(friend);
+            geneticFriends.Remove(friend);
+        }
+
+        geneticRelativeOffsets.Clear();
+        geneticReturnTargets.Clear();
+        geneticReturning.Clear();
         geneticModeActive = false;
     }
 
     // Apply attraction to genetic friends (called from FixedUpdate)
     private void AttractGeneticFriends()
     {
-        if (!geneticModeActive || geneticFriends.Count == 0) return;
-
-        foreach (var friend in geneticFriends.ToList())
+        // First handle active genetic friends that orbit the architron (use relative offsets recomputed every frame)
+        if (geneticRelativeOffsets.Count > 0)
         {
-            if (friend == null) continue;
-            if (!geneticTargets.TryGetValue(friend, out var target)) continue;
+            var arch = polytrons[architronIdx];
+            if (arch != null)
+            {
+                foreach (var kv in geneticRelativeOffsets.ToList())
+                {
+                    var friend = kv.Key;
+                    var rel = kv.Value;
+                    if (friend == null) continue;
+                    // skip friends that are currently returning to home
+                    if (geneticReturning.Contains(friend)) continue;
+                    var rb = friend.GetComponent<Rigidbody>();
+                    if (rb == null) continue;
 
-            var rb = friend.GetComponent<Rigidbody>();
-            if (rb == null) continue;
+                    Vector3 target = arch.transform.position + rel;
+                    Vector3 toTarget = target - friend.transform.position;
+                    Vector3 force = toTarget * geneticAttractionStrength;
+                    rb.AddForce(force);
+                }
+            }
+        }
 
-            Vector3 toTarget = target - friend.transform.position;
-            Vector3 force = toTarget * geneticAttractionStrength;
-            rb.AddForce(force);
+        // Now handle friends that are returning to their saved positions
+        if (geneticReturning.Count > 0)
+        {
+            foreach (var friend in geneticReturning.ToList())
+            {
+                if (friend == null) 
+                {
+                    geneticReturning.Remove(friend);
+                    continue;
+                }
+                if (!geneticReturnTargets.TryGetValue(friend, out var returnTarget)) continue;
+
+                var rb = friend.GetComponent<Rigidbody>();
+                if (rb == null) continue;
+
+                Vector3 toTarget = returnTarget - friend.transform.position;
+                Vector3 force = toTarget * geneticAttractionStrength;
+                rb.AddForce(force);
+
+                // when close enough, finalize and rebind to original sink (if any)
+                if (toTarget.magnitude < 0.25f)
+                {
+                    if (geneticBackups.TryGetValue(friend, out var backup))
+                    {
+                        if (backup.boundSink != null)
+                        {
+                            friend.boundSink = backup.boundSink;
+                            backup.boundSink.boundPolytron = friend;
+                        }
+                        // cleanup backup and lists
+                        geneticBackups.Remove(friend);
+                    }
+
+                    geneticReturnTargets.Remove(friend);
+                    geneticReturning.Remove(friend);
+                    geneticFriends.Remove(friend);
+                    geneticRelativeOffsets.Remove(friend);
+                }
+            }
+
+            // if all returns finalized, clear global flags
+            if (geneticReturning.Count == 0)
+            {
+                geneticModeActive = geneticRelativeOffsets.Count > 0;
+                if (!geneticModeActive)
+                {
+                    // fully cleared
+                    geneticBackups.Clear();
+                    geneticFriends.Clear();
+                    geneticReturnTargets.Clear();
+                    geneticRelativeOffsets.Clear();
+                }
+            }
         }
     }
 
