@@ -1134,6 +1134,14 @@ public class MutatronEngine : MonoBehaviour
 
         var pOutline = p.GetComponent<PointerOutlineStateController>();
 
+        // Ensure we keep a copy of the architron recipe before we do any selection/clear logic,
+        // so SetupGeneticFriends can restore the original recipe reliably.
+        var archBefore = polytrons.Count > 0 ? polytrons[architronIdx] : null;
+        if (archBefore != null && architronSavedRecipeForSelection == null)
+        {
+            architronSavedRecipeForSelection = archBefore.recipe;
+        }
+
         // Ensure any previous genetic friends are cleared before changing selection.
         ClearGeneticFriends();
 
@@ -1251,6 +1259,9 @@ public class MutatronEngine : MonoBehaviour
     {
         if (hovered == null || hovered.isArchitron) return;
 
+        // When genetic friends are active, hovering must not change the Architron.
+        if (geneticModeActive) return;
+        
         var arch = polytrons[architronIdx];
 
         // If hovering a selected polytron -> temporarily show its radix (palette + base)
@@ -1304,6 +1315,9 @@ public class MutatronEngine : MonoBehaviour
     // Called by Polytron on pointer exit
     internal void OnPolytronPointerExit(Polytron p)
     {
+        // If genetic friends active, ignore pointer-exit restore logic.
+        if (geneticModeActive) return;
+        
         var arch = polytrons[architronIdx];
 
         if (!architronHoverOverrideActive) return;
@@ -1451,6 +1465,18 @@ public class MutatronEngine : MonoBehaviour
         }
 
         geneticModeActive = geneticFriends.Count > 0;
+
+        // Ensure the Architron returns to its original, unmodified recipe/mesh when genetic friends are displayed.
+        // Use the saved pre-selection recipe if available, otherwise keep current arch recipe.
+        if (architronSavedRecipeForSelection != null)
+        {
+            ApplyRecipeToArchitron(architronSavedRecipeForSelection);
+        }
+        else
+        {
+            // force a rebuild of current recipe to ensure consistent state
+            ApplyRecipeToArchitron(arch.recipe);
+        }
 
         Debug.Log($"[MutatronEngine] SetupGeneticFriends: assigned {geneticFriends.Count} friends for {needed} recipes");
     }
