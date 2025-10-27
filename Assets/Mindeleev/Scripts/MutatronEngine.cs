@@ -80,9 +80,6 @@ public class MutatronEngine : MonoBehaviour
             }
         }
 
-        //FindCellByRingAndIdx(2, 2).Value.Value.polytronicNumber = 17;
-        //FindCellByRingAndIdx(2, 3).Value.Value.polytronicNumber = 17;
-
         PrintDebugStats("End of InitializeCellsForCurrentLevel");
     }
 
@@ -93,7 +90,6 @@ public class MutatronEngine : MonoBehaviour
             if (polytron.boundSink)
             {
                 polytron.boundSink.boundPolytron = null;
-                //                 polytron.boundSink = null;
             }
             polytron.boundSink = null;
         }
@@ -159,31 +155,6 @@ public class MutatronEngine : MonoBehaviour
         Create72PolytronsImmediate();
         StartCoroutine(Create72PolytronsAndHomesCoroutine());
     }
-
-    /*
-        // questo non dovrebbe farlo uno per uno, altrimenti può essere che ci sia un polytrone che matcha 
-        // ma arriva il suo turno troppo tardi per essere scelto
-        // dovrebbe fare un giro globale prima di updatare i sink
-        int polyCount = 0;
-        Polytron ChoosePolytronToAssignToSink(KeyValuePair<HexCoord, HexCellData> hckv)
-        {
-
-            PolytronSink sink = hckv.Value.sink;
-            Debug.Assert(sink);
-
-            string tileRecipe = hckv.Value.tile.recipe;
-
-            // is there any unbound polytron already with the sinkRecipe?
-            var matchingRecipePolytrons = polytrons.Where(p => p.recipe == tileRecipe && p.boundSink == null).ToList();
-            if (matchingRecipePolytrons.Count > 0)
-            {
-                return matchingRecipePolytrons[0];
-            }
-
-            if (polyCount >= 72) polyCount = 0;
-            return polytrons[polyCount++];
-        }
-    */
 
     Polytron FindPolytronToBind()
     {
@@ -287,7 +258,6 @@ public class MutatronEngine : MonoBehaviour
                 {
                     BindPolytronToSink(p, hckv);
                     string tileRecipe = hckv.Value.tile.recipe;
-//                     RebuildPolytronMesh(p, tileRecipe);
                     RebuildPolytronFromRecipe(p, tileRecipe);
                     rebuiltPolytrons++;
                 }
@@ -304,15 +274,12 @@ public class MutatronEngine : MonoBehaviour
 
     void BindPolytronToSink(Polytron p, PolytronSink ps)
     {
-
-        // if the polytron is alread bound to an old sink, reset the bound polytron of that sink
         if (p.boundSink)
         {
             Debug.Assert(p.boundSink.boundPolytron == p);
             p.boundSink.boundPolytron = null;
         }
 
-        // and now bind the polytron and the sink
         p.boundSink = ps;
         ps.boundPolytron = p;
     }
@@ -326,7 +293,6 @@ public class MutatronEngine : MonoBehaviour
     {
         foreach (Polytron p in polytrons)
         {
-
             // special behaviour for the architron
             if (p.isArchitron)
             {
@@ -410,10 +376,6 @@ public class MutatronEngine : MonoBehaviour
                     polytronComponent.isArchitron = true;
                 }
 
-                //PolytronInfoPanel pip = polytronGameObject.GetComponent<PolytronInfoPanel>();
-                // pip.button4Text = "Make Architron";
-
-
                 GameObject tile = PolytronsFactory.Instance.Create($"tile/{polytronComponent.recipe}", 1f);
                 tile.transform.localScale = new Vector3(1f, 0.01f, 1f);
                 tile.transform.position = hckv.Value.worldCoords + new Vector3(0, 0.1f, 0);
@@ -426,13 +388,8 @@ public class MutatronEngine : MonoBehaviour
                 label.transform.rotation = Quaternion.Euler(0, (-60f * (r1 + 2)) + 180, 0);
                 label.transform.position = tile.transform.position + new Vector3(0, 3.5f, 0);
 
-                // bind the polytron to his home. The home will not change.
-                // This makes all the polytrons being attracted to their homes at the start
-                // of the game; the Architron has a behaviour override in AttractPolytronsToTargrets.
-                // BindPolytronToHome(polytronGameObject.GetComponent<Polytron>(), hckv);
                 BindPolytronToSink(polytronGameObject.GetComponent<Polytron>(), hckv);
 
-//                 yield return new WaitForSeconds(0.15f);
                 yield return new WaitForSeconds(0.01f);
 
                 PolytronInfoPanel pip = polytronGameObject.GetComponent<PolytronInfoPanel>();
@@ -458,7 +415,6 @@ public class MutatronEngine : MonoBehaviour
 
                 Polytron polytronComponent = polytronGameObject.GetComponent<Polytron>();
 
-                // RebuildPolytronFromRecipe(polytronComponent, PolyhedronRecipeKabbalah.IntToOperatorsSequence(polytronId) + $"{(polytronId % 11):D2}" + "C");
                 polytronComponent.recipe = PolyhedronRecipeKabbalah.IntToOperatorsSequence(polytronId) + $"{(polytronId % 11):D2}" + "C";
                 polytronComponent.RebuildMesh();
 
@@ -471,7 +427,6 @@ public class MutatronEngine : MonoBehaviour
         }
     }
 
-
     void RebuildPolytronFromRecipe(Polytron p, string r)
     {
         p.recipe = r;
@@ -479,43 +434,24 @@ public class MutatronEngine : MonoBehaviour
         p.GetComponent<PolytronInfoPanel>().bodyText = r;
     }
 
-
-    /*
-        static Color blueFloor
-        {
-            // [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            get
-            {
-                return new Color(52, 56, 87, 255);
-            }
-        }
-    */
-
-
     public static GameObject CreateTileLabel(string s, Vector3 position)
     {
         GameObject label = new GameObject($"Label_{s}");
-        // label.transform.localPosition = Vector3.down * 1.5f;
-        // label.transform.localPosition = position;
 
         TextMeshPro tmpText = label.AddComponent<TextMeshPro>();
         tmpText.text = s;
         tmpText.fontSize = 7;
         tmpText.alignment = TextAlignmentOptions.Center;
         tmpText.color = new Color(0.2f, 0.22f, 0.55f);
-        // tmpText.enableAutoSizing = true;
         tmpText.fontSizeMin = 1;
         tmpText.fontSizeMax = 20;
         tmpText.material = new Material(Shader.Find("TextMeshPro/Mobile/Distance Field"));
         label.transform.localRotation = Quaternion.identity;
         var rectTransform = tmpText.GetComponent<RectTransform>();
-        //         rectTransform.sizeDelta = new Vector2(2, 0.5f);
         rectTransform.sizeDelta = new Vector2(5, 1f);
 
         return label;
     }
-
-
 
     void DrawCircle(HexCellData hcd, float radius, Color color, float lineWidth = 0.05f, int segments = 20)
     {
@@ -758,9 +694,6 @@ public class MutatronEngine : MonoBehaviour
 
         // Draw opposite equilateral triangles
         {
-            // simplify.... :)
-            // for (int r = ringsToBuild; r <= ringsToBuild; r++)
-            //{
             int r = actualLevelConfig.actualRingsCount;
             for (int i = 0; i < 2; i++)
             {
@@ -822,10 +755,8 @@ public class MutatronEngine : MonoBehaviour
             // msg += $"Cell (ring={kvp.Key.ring}, idxInRing={kvp.Key.idxInRing}) has polytronic number = {kvp.Value}\n";
         }
 
-        msg += $"total quantized energy: {totalQuantizedEnergy}, most energy: {energyCellsList[0]}";
-
+        msg += $"total quantized energy: {totalQuantizedEnergy}, most energy: {(energyCellsList.Count>0?energyCellsList[0].ToString():"none")}";
         Debug.Log(msg);
-
     }
 
     IEnumerator BuildTilesCoroutine()
@@ -843,7 +774,6 @@ public class MutatronEngine : MonoBehaviour
                 float angleToCenter = hckv.Key.PolarAngle();
                 Quaternion tileRotation = Quaternion.Euler(0f, -angleToCenter * 360f / 6.28f, 0f);
 
-                // string tileRecipe = hckv.Value.actualState ? "ttC" : "C";
                 string tileRecipe = PolyhedronRecipeKabbalah.IntToOperatorsSequence(hckv.Value.polytronicNumber) + hckv.Value.tileBasePolyhedron;
 
                 GameObject tile = PolytronsFactory.Instance.Create($"tile/{tileRecipe}", 1f);
@@ -874,7 +804,6 @@ public class MutatronEngine : MonoBehaviour
             {
                 polytronBoundToSink.boundSink = null;
                 sink.boundPolytron = null;
-                // polytronBoundToSink.NextPalette();
             }
             else
             {
@@ -885,36 +814,14 @@ public class MutatronEngine : MonoBehaviour
         Debug.Log($"[UnbindNonMatchingPolytrons] polytronsThatWillNotMove: {polytronsThatWillNotMove}");
     }
 
-    /*
-        void SendUnboundPolytronsHome()
-        {
-            var unboundPolytrons = polytrons.Where(p => p.boundSink == null).ToList();
-            var unboundSinksOnExternalRing = gridCellsMap.Where(hckv => hckv.Value.ring == 12 && hckv.Value.sink.boundPolytron == null).ToList();
-
-            Debug.Assert(unboundSinksOnExternalRing.Count >= unboundPolytrons.Count);
-            Debug.Log($"unboundPolytrons: {unboundPolytrons.Count}, unboundSinksOnExternalRing: {unboundSinksOnExternalRing.Count}");
-
-            for (int i = 0; i < unboundPolytrons.Count; i++)
-            {
-                BindPolytronToSink(unboundPolytrons[i], unboundSinksOnExternalRing[i]);
-            }
-        }
-        */
-
     void SendUnboundPolytronsHome()
     {
         var unboundPolytrons = polytrons.Where(p => p.boundSink == null).ToList();
-        var unboundSinksOnExternalRing = gridCellsMap.Where(hckv => hckv.Value.ring == 12 && hckv.Value.sink.boundPolytron == null).ToList();
-
-        Debug.Assert(unboundSinksOnExternalRing.Count >= unboundPolytrons.Count);
-        Debug.Log($"unboundPolytrons: {unboundPolytrons.Count}, unboundSinksOnExternalRing: {unboundSinksOnExternalRing.Count}");
-
         for (int i = 0; i < unboundPolytrons.Count; i++)
         {
             BindPolytronToSink(unboundPolytrons[i], polytronsHomes[unboundPolytrons[i].sealNumber]);
         }
     }
-
 
     void Evolve()
     {
@@ -924,11 +831,6 @@ public class MutatronEngine : MonoBehaviour
             return;
         }
 
-        // DeselectAllPolytrons();
-
-        // the idea: for each cell, count how many neighbors have a polytronicNumber higher than the one of the cell.
-        // if the number of neighbors lies in the fusionRange, we have a fusion, and a quantum of energy moves from the polytronicNumber
-        // of all the neighbors to the cell. 
         foreach (var hckv in gridCellsMap)
         {
             if (hckv.Value.ring > actualLevelConfig.actualRingsCount) continue;
@@ -947,20 +849,6 @@ public class MutatronEngine : MonoBehaviour
                     neighborsWithHigherPolytronicNumber.Add(neighborCellData);
                 }
             }
-
-            /*
-                        if (cellData.fusionRange.Contains(neighborsWithHigherPolytronicNumber.Count))
-                        {
-                            // we have a fusion. The neighbors release one quantum of energy
-                            cellData.nextPolytronicNumberAccumulator += (neighborsWithHigherPolytronicNumber.Count * actualLevelConfig.energyQuantumExchanged);
-                            foreach (var neighborCellData in neighborsWithHigherPolytronicNumber) { neighborCellData.nextPolytronicNumberAccumulator -= actualLevelConfig.energyQuantumExchanged; }
-                        }
-                        else
-                        {
-                            cellData.nextPolytronicNumberAccumulator--;
-                        }
-                        */
-
 
             if (neighborsWithHigherPolytronicNumber.Count % 2 == 0)
             {
@@ -981,7 +869,6 @@ public class MutatronEngine : MonoBehaviour
 
             HexCellData cellData = hckv.Value;
             cellData.polytronicNumber += cellData.nextPolytronicNumberAccumulator;
-            // if (cellData.polytronicNumber < 0) cellData.polytronicNumber = 0;
             cellData.nextPolytronicNumberAccumulator = 0;
         }
 
@@ -1030,6 +917,7 @@ public class MutatronEngine : MonoBehaviour
     void FixedUpdate()
     {
         AttractPolytronsToTargets();
+        AttractGeneticFriends(); // apply attraction to genetic friends if any
     }
 
     int levelCount = 0;
@@ -1122,15 +1010,6 @@ public class MutatronEngine : MonoBehaviour
         newArchitron.GetComponent<PolytronInfoPanel>().button4Text = "";
         actualArchitron.GetComponent<PolytronInfoPanel>().button4Text = "Make Architron";
 
-        /*
-                string r = actualArchitron.recipe;
-                actualArchitron.recipe = newArchitron.recipe;
-                newArchitron.recipe = r;
-                actualArchitron.RebuildMesh();
-                newArchitron.RebuildMesh();
-        */
-
-
         Debug.Assert(actualArchitron.isArchitron == false);
         Debug.Assert(newArchitron.isArchitron == true);
 
@@ -1143,48 +1022,37 @@ public class MutatronEngine : MonoBehaviour
     }
 
     string oldArchitronRecipe;
-    /*
-        internal void OnPolytronPointerEnter(int sealNum)
-        {
-            currentlyHoveredPolytronSealNumber = sealNum;
-
-            // if I am hovering on a polytron which is not the Architron, get its recipe
-            Polytron hoveredPolytron = polytrons[sealNum];
-            if (hoveredPolytron.isArchitron == false)
-            {
-                string newArchitronRecipe = hoveredPolytron._recipe.PaletteIdx.ToString("D2") + hoveredPolytron._recipe.BasePolyhedron;
-                oldArchitronRecipe = polytrons[architronIdx].recipe;
-                polytrons[architronIdx].recipe = newArchitronRecipe;
-                polytrons[architronIdx].RebuildMesh();
-            }
-        }
-
-        internal void OnPolytronPointerExit(int sealNum)
-        {
-            currentlyHoveredPolytronSealNumber = -1;
-
-            Polytron hoveredPolytron = polytrons[sealNum];
-            if (hoveredPolytron.isArchitron == false)
-            {
-                polytrons[architronIdx].recipe = oldArchitronRecipe;
-                polytrons[architronIdx].RebuildMesh();
-            }
-
-        }
-    */
 
     // Selection slots
-    private Polytron paletteSelector = null;    // state 1: fix palette index + base polyhedron
-    private Polytron operatorsSelector = null;  // state 2: fix operator sequence
+    private Polytron paletteSelector = null;    // state 1: fix palette index + base polyhedron (yellow)
+    private Polytron operatorsSelector = null;  // state 2: fix operator sequence (green)
 
     // Architron backup recipes for restore semantics
     private string architronSavedRecipeForSelection = null;   // saved when first selection is made (for permanent restore)
     private string architronHoverSavedRecipe = null;         // saved when hover preview starts
     private bool architronHoverOverrideActive = false;
 
+    // --- Genetic / friends state ---
+    private struct PolytronStateBackup
+    {
+        public string recipe;
+        public PolytronSink boundSink;
+        public Vector3 position;
+    }
+
+    private bool geneticModeActive = false;
+    private List<Polytron> geneticFriends = new List<Polytron>();
+    private Dictionary<Polytron, PolytronStateBackup> geneticBackups = new Dictionary<Polytron, PolytronStateBackup>();
+    private Dictionary<Polytron, Vector3> geneticTargets = new Dictionary<Polytron, Vector3>();
+    private float geneticFriendsRadius = 4f;
+    private float geneticFriendsHeight = 2f;
+    private float geneticAttractionStrength = 5f;
+
     // Helper to clear palette selection (reset outline on previous)
     void ClearPaletteSelection()
     {
+        ClearGeneticFriends();
+
         if (paletteSelector != null)
         {
             var oldOutline = paletteSelector.GetComponent<PointerOutlineStateController>();
@@ -1196,6 +1064,8 @@ public class MutatronEngine : MonoBehaviour
     // Helper to clear operators selection (reset outline on previous)
     void ClearOperatorsSelection()
     {
+        ClearGeneticFriends();
+
         if (operatorsSelector != null)
         {
             var oldOutline = operatorsSelector.GetComponent<PointerOutlineStateController>();
@@ -1209,6 +1079,8 @@ public class MutatronEngine : MonoBehaviour
     internal void DeselectAllPolytrons()
     {
         Debug.Log("[MutatronEngine] DeselectAllPolytrons()");
+
+        ClearGeneticFriends();
 
         // remove outlines on every polytron to ensure no visual selection remains
         foreach (var p in polytrons)
@@ -1244,7 +1116,6 @@ public class MutatronEngine : MonoBehaviour
         }
         else
         {
-            // ensure architron mesh is consistent (rebuild current recipe)
             ApplyRecipeToArchitron(arch.recipe);
         }
     }
@@ -1256,6 +1127,9 @@ public class MutatronEngine : MonoBehaviour
 
         var pOutline = p.GetComponent<PointerOutlineStateController>();
 
+        // Ensure any previous genetic friends are cleared before changing selection.
+        ClearGeneticFriends();
+
         // New selection rules:
         // - At most one paletteSelector and one operatorsSelector.
         // - If only one slot is occupied and you click the same polytron, cycle 0 -> 1 -> 2 -> 0.
@@ -1265,7 +1139,6 @@ public class MutatronEngine : MonoBehaviour
 
         if (paletteSelector == p)
         {
-            // Clicked the polytron that is currently the palette selection.
             if (operatorsSelector == null)
             {
                 // Only palette selected -> cycle it to operators.
@@ -1281,8 +1154,7 @@ public class MutatronEngine : MonoBehaviour
         }
         else if (operatorsSelector == p)
         {
-            // Clicked the polytron that is currently the operators selection.
-            // Regardless of the other slot, clicking an operators-selected polytron should deselect it.
+            // Clicking the operators-selected polytron toggles it off.
             ClearOperatorsSelection();
         }
         else
@@ -1312,21 +1184,34 @@ public class MutatronEngine : MonoBehaviour
         if ((paletteSelector != null || operatorsSelector != null) && architronSavedRecipeForSelection == null)
             architronSavedRecipeForSelection = arch.recipe;
 
-        // If both slots present -> set architron permanently to their union
+        // If both slots present -> set architron permanently to their union or activate genetic mode
         if (paletteSelector != null && operatorsSelector != null)
         {
-            string combined = CombineUsingSelectors(paletteSelector, operatorsSelector);
-            ApplyRecipeToArchitron(combined);
+            if (paletteSelector.recipe == operatorsSelector.recipe)
+            {
+                string combined = CombineUsingSelectors(paletteSelector, operatorsSelector);
+                ApplyRecipeToArchitron(combined);
+            }
+            else
+            {
+                var crossovers = ComputeCrossoverRecipes(paletteSelector, operatorsSelector);
+                if (crossovers.Count == 1)
+                {
+                    ApplyRecipeToArchitron(crossovers[0]);
+                }
+                else
+                {
+                    SetupGeneticFriends(crossovers);
+                }
+            }
         }
         else
         {
-            // If both cleared -> restore saved pre-selection recipe
             if (paletteSelector == null && operatorsSelector == null && architronSavedRecipeForSelection != null)
             {
                 ApplyRecipeToArchitron(architronSavedRecipeForSelection);
                 architronSavedRecipeForSelection = null;
             }
-            // Single-slot behavior remains transient and handled on hover
         }
 
         Debug.Log($"[MutatronEngine.OnPolytronClicked] palette: {(paletteSelector == null ? "null" : paletteSelector.name)}, operators: {(operatorsSelector == null ? "null" : operatorsSelector.name)}");
@@ -1364,7 +1249,6 @@ public class MutatronEngine : MonoBehaviour
         // If hovering a selected polytron -> temporarily show its radix (palette + base)
         if (hovered == paletteSelector || hovered == operatorsSelector)
         {
-            // save current arch recipe once for restore
             if (!architronHoverOverrideActive)
             {
                 architronHoverSavedRecipe = arch.recipe;
@@ -1379,7 +1263,6 @@ public class MutatronEngine : MonoBehaviour
         // If no selection slots active, do nothing (info panel / outline handled by Polytron)
         if (paletteSelector == null && operatorsSelector == null) return;
 
-        // Save pre-hover arch recipe once
         if (!architronHoverOverrideActive)
         {
             architronHoverSavedRecipe = arch.recipe;
@@ -1390,12 +1273,10 @@ public class MutatronEngine : MonoBehaviour
 
         if (paletteSelector != null && operatorsSelector != null)
         {
-            // both fixed -> permanent combination (already applied on click) but ensure consistency
             newRecipe = CombineUsingSelectors(paletteSelector, operatorsSelector);
         }
         else if (paletteSelector != null)
         {
-            // palette fixed: hovered provides operators
             string hoveredOps = hovered._recipe?.OperatorsSequence() ?? "";
             string paletteIdxStr = paletteSelector._recipe?.PaletteIdx.ToString("D2") ?? "00";
             char baseChar = paletteSelector._recipe?.BasePolyhedron ?? 'C';
@@ -1403,7 +1284,6 @@ public class MutatronEngine : MonoBehaviour
         }
         else // operatorsSelector != null
         {
-            // operators fixed: hovered provides palette/base
             string ops = operatorsSelector._recipe?.OperatorsSequence() ?? "";
             string paletteIdxStr = hovered._recipe?.PaletteIdx.ToString("D2") ?? "00";
             char baseChar = hovered._recipe?.BasePolyhedron ?? 'C';
@@ -1421,8 +1301,6 @@ public class MutatronEngine : MonoBehaviour
 
         if (!architronHoverOverrideActive) return;
 
-        // restore architron to either selection-based permanent recipe (if both slots set)
-        // or to the saved pre-hover recipe (if only hover was active)
         if (paletteSelector != null && operatorsSelector != null)
         {
             string combined = CombineUsingSelectors(paletteSelector, operatorsSelector);
@@ -1430,14 +1308,12 @@ public class MutatronEngine : MonoBehaviour
         }
         else
         {
-            // if a selection-based saved recipe exists (user had selected something before)
             if (architronSavedRecipeForSelection != null)
             {
                 ApplyRecipeToArchitron(architronSavedRecipeForSelection);
             }
             else
             {
-                // restore the recipe saved before hover
                 if (architronHoverSavedRecipe != null)
                 {
                     ApplyRecipeToArchitron(architronHoverSavedRecipe);
@@ -1457,4 +1333,162 @@ public class MutatronEngine : MonoBehaviour
         char baseChar = p._recipe.BasePolyhedron;
         return paletteIdxStr + baseChar;
     }
+
+    // --- Genetic feature helpers ---
+
+    // Compute cartesian product of ops / palette / base between two polytrons.
+    // Returns unique recipe strings (ops + paletteIdx D2 + baseChar).
+    private List<string> ComputeCrossoverRecipes(Polytron a, Polytron b)
+    {
+        var result = new HashSet<string>();
+
+        var opsSet = new HashSet<string>();
+        var paletteSet = new HashSet<int>();
+        var baseSet = new HashSet<char>();
+
+        if (a?._recipe != null)
+        {
+            opsSet.Add(a._recipe.OperatorsSequence());
+            paletteSet.Add(a._recipe.PaletteIdx);
+            baseSet.Add(a._recipe.BasePolyhedron);
+        }
+        if (b?._recipe != null)
+        {
+            opsSet.Add(b._recipe.OperatorsSequence());
+            paletteSet.Add(b._recipe.PaletteIdx);
+            baseSet.Add(b._recipe.BasePolyhedron);
+        }
+
+        foreach (var ops in opsSet)
+        {
+            foreach (var pal in paletteSet)
+            {
+                foreach (var bas in baseSet)
+                {
+                    string recipe = (ops ?? "") + pal.ToString("D2") + bas;
+                    result.Add(recipe);
+                }
+            }
+        }
+
+        return result.ToList();
+    }
+
+    // Setup genetic friends around the architron and assign them the crossover recipes.
+    private void SetupGeneticFriends(List<string> crossoverRecipes)
+    {
+        if (crossoverRecipes == null || crossoverRecipes.Count == 0) return;
+
+        ClearGeneticFriends();
+
+        int needed = crossoverRecipes.Count;
+        int totalPolytrons = polytrons.Count;
+        if (totalPolytrons == 0) return;
+
+        int[] offsets = new int[] { 1, -1, 2, -2, 3, -3, 4, -4 };
+
+        int assigned = 0;
+        int offsetIdx = 0;
+
+        var arch = polytrons[architronIdx];
+        if (arch == null) return;
+
+        while (assigned < needed && offsetIdx < offsets.Length)
+        {
+            int idx = (architronIdx + offsets[offsetIdx]) % totalPolytrons;
+            if (idx < 0) idx += totalPolytrons;
+            var candidate = polytrons[idx];
+
+            offsetIdx++;
+
+            if (candidate == null) continue;
+            if (candidate == arch) continue;
+            if (candidate == paletteSelector || candidate == operatorsSelector) continue;
+            if (geneticBackups.ContainsKey(candidate)) continue;
+
+            var backup = new PolytronStateBackup
+            {
+                recipe = candidate.recipe,
+                boundSink = candidate.boundSink,
+                position = candidate.transform.position
+            };
+            geneticBackups[candidate] = backup;
+            geneticFriends.Add(candidate);
+
+            if (candidate.boundSink != null)
+            {
+                candidate.boundSink.boundPolytron = null;
+            }
+            candidate.boundSink = null;
+
+            candidate.recipe = crossoverRecipes[assigned];
+            candidate.RebuildMesh();
+
+            float angle = (float)assigned / needed * Mathf.PI * 2f;
+            Vector3 target = arch.transform.position + Vector3.up * geneticFriendsHeight + new Vector3(Mathf.Cos(angle), 0f, Mathf.Sin(angle)) * geneticFriendsRadius;
+            geneticTargets[candidate] = target;
+
+            assigned++;
+        }
+
+        geneticModeActive = geneticFriends.Count > 0;
+
+        Debug.Log($"[MutatronEngine] SetupGeneticFriends: assigned {geneticFriends.Count} friends for {needed} recipes");
+    }
+
+    // Clear genetic friends restoring backed-up recipes, bound sinks and positions.
+    private void ClearGeneticFriends()
+    {
+        if (!geneticModeActive && geneticFriends.Count == 0 && geneticBackups.Count == 0) return;
+
+        Debug.Log("[MutatronEngine] ClearGeneticFriends");
+
+        foreach (var friend in geneticFriends)
+        {
+            if (friend == null) continue;
+
+            if (geneticBackups.TryGetValue(friend, out var backup))
+            {
+                friend.recipe = backup.recipe;
+                friend.RebuildMesh();
+
+                if (backup.boundSink != null)
+                {
+                    friend.boundSink = backup.boundSink;
+                    backup.boundSink.boundPolytron = friend;
+                }
+
+                friend.transform.position = backup.position;
+            }
+
+            var outline = friend.GetComponent<PointerOutlineStateController>();
+            outline?.SetState(0);
+        }
+
+        geneticFriends.Clear();
+        geneticBackups.Clear();
+        geneticTargets.Clear();
+        geneticModeActive = false;
+    }
+
+    // Apply attraction to genetic friends (called from FixedUpdate)
+    private void AttractGeneticFriends()
+    {
+        if (!geneticModeActive || geneticFriends.Count == 0) return;
+
+        foreach (var friend in geneticFriends.ToList())
+        {
+            if (friend == null) continue;
+            if (!geneticTargets.TryGetValue(friend, out var target)) continue;
+
+            var rb = friend.GetComponent<Rigidbody>();
+            if (rb == null) continue;
+
+            Vector3 toTarget = target - friend.transform.position;
+            Vector3 force = toTarget * geneticAttractionStrength;
+            rb.AddForce(force);
+        }
+    }
+
+    // end of class
 }
