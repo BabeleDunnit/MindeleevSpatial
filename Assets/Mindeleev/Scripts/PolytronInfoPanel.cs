@@ -11,7 +11,11 @@ using Unity.VisualScripting;
 public class PolytronInfoPanel : MonoBehaviour
 {
     // [Header("Panel Settings")]
-    float showDistance = 1.5f;
+
+    // disable this
+    float showDistance = 0f;
+
+    
     float animationDuration = 0.5f;
     // Vector3 panelOffset = new Vector3(0, 0.5f, 0);
 

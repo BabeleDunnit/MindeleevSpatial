@@ -113,8 +113,13 @@ public class MutatronEngine : MonoBehaviour
     }
 
 
-    void BuildLevel(int levelNumber)
+    bool BuildLevel(int levelNumber)
     {
+
+        if(isRebuildingLevel)
+        {
+            return false;
+        }
 
         Debug.Log($"Building level {levelNumber}");
 
@@ -136,6 +141,7 @@ public class MutatronEngine : MonoBehaviour
 
         mustBuildFirstTime = false;
         evolveCount = 0;
+        return true;
     }
 
     void AfterTilesCreation()
@@ -862,7 +868,6 @@ public class MutatronEngine : MonoBehaviour
             {
                 cellData.nextPolytronicNumberAccumulator--;
             }
-
         }
 
         foreach (var hckv in gridCellsMap)
@@ -927,7 +932,10 @@ public class MutatronEngine : MonoBehaviour
     {
         if (Input.GetKeyDown(KeyCode.M))
         {
-            BuildLevel(levelCount++);
+            if(BuildLevel(levelCount))
+            {
+                levelCount++;   
+            }
         }
 
         if (Input.GetKeyDown(KeyCode.E))
