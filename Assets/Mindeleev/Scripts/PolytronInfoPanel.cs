@@ -216,7 +216,7 @@ public class PolytronInfoPanel : MonoBehaviour
  
             Polytron p = GetComponent<Polytron>();
  
-            headerText_.text = p.sealName;
+            headerText_.text = (p.sealNumber + 1) + " - " + p.sealName;
             bodyText_.text = $"{PolytronName.GetPeriodString(p.sealNumber)}";
  
             UpdatePanelGUI();

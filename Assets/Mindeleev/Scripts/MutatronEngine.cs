@@ -265,7 +265,7 @@ public class MutatronEngine : MonoBehaviour, IPolytronStateProvider
                 {
                     BindPolytronToSink(p, hckv);
                     string tileRecipe = hckv.Value.tile.recipe;
-                    RebuildPolytronFromRecipe(p, tileRecipe);
+                    // RebuildPolytronFromRecipe(p, tileRecipe);
                     rebuiltPolytrons++;
                 }
             }
