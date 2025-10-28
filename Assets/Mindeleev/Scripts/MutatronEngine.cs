@@ -1085,8 +1085,8 @@ public class MutatronEngine : MonoBehaviour
     private Dictionary<Polytron, Vector3> geneticReturnTargets = new Dictionary<Polytron, Vector3>();
     private HashSet<Polytron> geneticReturning = new HashSet<Polytron>();
 
-    private float geneticFriendsRadius = 4f;
-    private float geneticFriendsHeight = 2f;
+    private float geneticFriendsRadius = 1.7f;
+    private float geneticFriendsHeight = 1f;
     private float geneticAttractionStrength = 5f;
     // dynamic crown orientation used by the spring-mass solver
 
@@ -1463,7 +1463,7 @@ public class MutatronEngine : MonoBehaviour
         float horizRadius = 0f;
         if (R > Mathf.Abs(h)) horizRadius = Mathf.Sqrt(R * R - h * h);
         // allow varying absolute orientation of the whole crown
-        float baseAngle = UnityEngine.Random.Range(0f, Mathf.PI * 2f);
+//         float baseAngle = UnityEngine.Random.Range(0f, Mathf.PI * 2f);
 
         while (assigned < needed && offsetIdx < offsets.Length)
         {
@@ -1485,6 +1485,7 @@ public class MutatronEngine : MonoBehaviour
                 position = candidate.transform.position,
                 localScale = candidate.transform.localScale
             };
+
             geneticBackups[candidate] = backup;
             geneticFriends.Add(candidate);
 
@@ -1495,11 +1496,13 @@ public class MutatronEngine : MonoBehaviour
             candidate.recipe = crossoverRecipes[assigned];
             candidate.RebuildMesh();
 
-            // scale to half size while in genetic state
-            candidate.transform.localScale = backup.localScale * 0.5f;
+            candidate.GetComponent<WaveAnimation>().Pause(true);
+
+            // scale while in genetic state
+            candidate.transform.localScale = backup.localScale * 0.3f;
             
             // compute relative offset on the horizontal circle above architron
-            float angle = baseAngle + ((float)assigned / Mathf.Max(1, needed)) * Mathf.PI * 2f;
+            float angle = /*baseAngle + */((float)assigned / Mathf.Max(1, needed)) * Mathf.PI * 2f;
             Vector3 rel = arch.transform.InverseTransformDirection(Vector3.zero); // placeholder, not used
             // place on circle at height h and horiz radius computed above
             rel = Vector3.up * h + new Vector3(Mathf.Cos(angle) * horizRadius, 0f, Mathf.Sin(angle) * horizRadius);
@@ -1540,6 +1543,7 @@ public class MutatronEngine : MonoBehaviour
             friend.RebuildMesh();
 
             // restore scale to original immediately when genetic behaviour is dismissed
+            friend.GetComponent<WaveAnimation>().Pause(false);
             friend.transform.localScale = backup.localScale;
 
             // schedule absolute return target (previous world position)
