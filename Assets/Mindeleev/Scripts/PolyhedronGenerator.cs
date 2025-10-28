@@ -32,7 +32,7 @@ public class PolyhedronGenerator : MonoBehaviour
         MeshFilter filter = GetComponent<MeshFilter>();
         MeshRenderer renderer = GetComponent<MeshRenderer>();
 
-        /*PolyhedronRecipe*/ _recipe = PolyhedronRecipeParser.Parse(recipe);
+        _recipe = PolyhedronRecipeParser.Parse(recipe);
         currentPaletteIndex = _recipe.PaletteIdx;
 
         var palette = GetCurrentPalette();

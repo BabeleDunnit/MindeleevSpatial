@@ -442,7 +442,9 @@ public class MutatronEngine : MonoBehaviour
 
                 Polytron polytronComponent = polytronGameObject.GetComponent<Polytron>();
 
-                polytronComponent.recipe = PolyhedronRecipeKabbalah.IntToOperatorsSequence(polytronId) + $"{(polytronId % 11):D2}" + "C";
+                polytronComponent.recipe = PolyhedronRecipeKabbalah.IntToOperatorsSequence(polytronId) 
+                    + $"{(polytronId % 11):D2}" 
+                    + (hckv.Value.idxInRing == 0 ? "T" : "C");
                 polytronComponent.RebuildMesh();
 
                 Debug.Assert(polytronId == polytronComponent.sealNumber); // sealNumber is set by the factory
@@ -1073,20 +1075,20 @@ public class MutatronEngine : MonoBehaviour
         public string recipe;
         public PolytronSink boundSink;
         public Vector3 position;
+        public Vector3 localScale;
     }
 
     private bool geneticModeActive = false;
     private List<Polytron> geneticFriends = new List<Polytron>();
     private Dictionary<Polytron, PolytronStateBackup> geneticBackups = new Dictionary<Polytron, PolytronStateBackup>();
-    // Targets previously were absolute; now we keep relative offsets (around architron) for active genetic attraction
     private Dictionary<Polytron, Vector3> geneticRelativeOffsets = new Dictionary<Polytron, Vector3>();
-    // When friends are being returned to their original positions (on dismissal), we use absolute return targets
     private Dictionary<Polytron, Vector3> geneticReturnTargets = new Dictionary<Polytron, Vector3>();
     private HashSet<Polytron> geneticReturning = new HashSet<Polytron>();
 
     private float geneticFriendsRadius = 4f;
     private float geneticFriendsHeight = 2f;
     private float geneticAttractionStrength = 5f;
+    // dynamic crown orientation used by the spring-mass solver
 
     // Helper to clear palette selection (reset outline on previous)
     void ClearPaletteSelection()
@@ -1433,8 +1435,6 @@ public class MutatronEngine : MonoBehaviour
     {
         if (crossoverRecipes == null || crossoverRecipes.Count == 0) return;
 
-        // ensure any previous genetic return / state is cleared immediately
-        // (this aborts any pending returns and will restore sinks if necessary)
         AbortPendingGeneticReturnImmediate();
 
         int needed = crossoverRecipes.Count;
@@ -1456,6 +1456,15 @@ public class MutatronEngine : MonoBehaviour
         geneticReturnTargets.Clear();
         geneticReturning.Clear();
 
+        // compute horizontal circle radius (intersection of sphere radius geneticFriendsRadius
+        // and plane geneticFriendsHeight above arch: r_horiz = sqrt(R^2 - h^2))
+        float R = geneticFriendsRadius;
+        float h = geneticFriendsHeight;
+        float horizRadius = 0f;
+        if (R > Mathf.Abs(h)) horizRadius = Mathf.Sqrt(R * R - h * h);
+        // allow varying absolute orientation of the whole crown
+        float baseAngle = UnityEngine.Random.Range(0f, Mathf.PI * 2f);
+
         while (assigned < needed && offsetIdx < offsets.Length)
         {
             int idx = (architronIdx + offsets[offsetIdx]) % totalPolytrons;
@@ -1473,38 +1482,40 @@ public class MutatronEngine : MonoBehaviour
             {
                 recipe = candidate.recipe,
                 boundSink = candidate.boundSink,
-                position = candidate.transform.position
+                position = candidate.transform.position,
+                localScale = candidate.transform.localScale
             };
             geneticBackups[candidate] = backup;
             geneticFriends.Add(candidate);
 
             // detach from sink to suspend global attraction
-            // make the unbind atomic and symmetric
             UnbindPolytron(candidate);
 
             // assign new recipe and rebuild
             candidate.recipe = crossoverRecipes[assigned];
             candidate.RebuildMesh();
 
-            // compute relative offset (so target is recomputed each frame relative to arch position)
-            float angle = (float)assigned / Mathf.Max(1, needed) * Mathf.PI * 2f;
-            Vector3 rel = Vector3.up * geneticFriendsHeight + new Vector3(Mathf.Cos(angle), 0f, Mathf.Sin(angle)) * geneticFriendsRadius;
+            // scale to half size while in genetic state
+            candidate.transform.localScale = backup.localScale * 0.5f;
+            
+            // compute relative offset on the horizontal circle above architron
+            float angle = baseAngle + ((float)assigned / Mathf.Max(1, needed)) * Mathf.PI * 2f;
+            Vector3 rel = arch.transform.InverseTransformDirection(Vector3.zero); // placeholder, not used
+            // place on circle at height h and horiz radius computed above
+            rel = Vector3.up * h + new Vector3(Mathf.Cos(angle) * horizRadius, 0f, Mathf.Sin(angle) * horizRadius);
             geneticRelativeOffsets[candidate] = rel;
-
             assigned++;
         }
 
         geneticModeActive = geneticFriends.Count > 0;
 
         // Ensure the Architron returns to its original, unmodified recipe/mesh when genetic friends are displayed.
-        // Use the saved pre-selection recipe if available, otherwise keep current arch recipe.
         if (architronSavedRecipeForSelection != null)
         {
             ApplyRecipeToArchitron(architronSavedRecipeForSelection);
         }
         else
         {
-            // force a rebuild of current recipe to ensure consistent state
             ApplyRecipeToArchitron(arch.recipe);
         }
 
@@ -1519,7 +1530,6 @@ public class MutatronEngine : MonoBehaviour
 
         Debug.Log("[MutatronEngine] ClearGeneticFriends - begin return phase");
 
-        // For each friend, restore recipe immediately and schedule a return target (absolute)
         foreach (var friend in geneticFriends)
         {
             if (friend == null) continue;
@@ -1528,6 +1538,9 @@ public class MutatronEngine : MonoBehaviour
             // restore recipe and rebuild so visuals reflect original state while returning
             friend.recipe = backup.recipe;
             friend.RebuildMesh();
+
+            // restore scale to original immediately when genetic behaviour is dismissed
+            friend.transform.localScale = backup.localScale;
 
             // schedule absolute return target (previous world position)
             geneticReturnTargets[friend] = backup.position;
@@ -1544,7 +1557,6 @@ public class MutatronEngine : MonoBehaviour
             outline?.SetState(0);
         }
 
-        // geneticRelativeOffsets no longer used for these friends; we keep geneticBackups until final rebind.
         geneticModeActive = geneticReturning.Count > 0;
     }
 
@@ -1569,6 +1581,9 @@ public class MutatronEngine : MonoBehaviour
             // restore recipe has already been restored earlier when scheduled; ensure mesh OK
             friend.RebuildMesh();
 
+            // ensure scale is restored too
+            friend.transform.localScale = backup.localScale;
+
             // clear per-friend return state
             geneticReturnTargets.Remove(friend);
             geneticReturning.Remove(friend);
@@ -1585,26 +1600,80 @@ public class MutatronEngine : MonoBehaviour
     // Apply attraction to genetic friends (called from FixedUpdate)
     private void AttractGeneticFriends()
     {
-        // First handle active genetic friends that orbit the architron (use relative offsets recomputed every frame)
-        if (geneticRelativeOffsets.Count > 0)
+        // Dynamic spring-mass crown solver:
+        // - prefer friend to lie near the horizontal circle (centered above arch)
+        // - prefer a target separation between friends (spring between friends)
+        // - prefer a soft attraction to the crown circle (keeps them near the ring)
+        if (geneticFriends.Count > 0)
         {
             var arch = polytrons[architronIdx];
             if (arch != null)
             {
-                foreach (var kv in geneticRelativeOffsets.ToList())
+                // recompute circle geometry each frame
+                float R = geneticFriendsRadius;
+                float h = geneticFriendsHeight;
+                float horizRadius = 0f;
+                if (R > Mathf.Abs(h)) horizRadius = Mathf.Sqrt(R * R - h * h);
+                Vector3 crownCenter = arch.transform.position + Vector3.up * h;
+
+                // small slow rotation of the crown base angle so orientation is not fixed
+                // geneticCrownBaseAngle += Time.fixedDeltaTime * 0.2f;
+                // keep crown orientation fixed (no automatic rotation)
+                // geneticCrownBaseAngle is initialized in SetupGeneticFriends and must stay constant
+
+                int N = geneticFriends.Count;
+                // target separation along circle (approx arc length / chord)
+                float targetSeparation = (N > 0 && horizRadius > 0f) ? (2f * Mathf.PI * horizRadius / N) : 1.0f;
+
+                // constants (tweakable)
+                float kToCircle = geneticAttractionStrength * 0.75f; // pull toward corresponding circle point
+                float kBetween = geneticAttractionStrength * 0.5f;  // spring between friends
+                float kHeight = geneticAttractionStrength * 0.5f;   // keep near crown height
+
+                // Build an index map to provide stable angular ordering for nicer initial distribution
+                var friendsList = geneticFriends.Where(f => f != null && !geneticReturning.Contains(f)).ToList();
+                for (int i = 0; i < friendsList.Count; i++)
                 {
-                    var friend = kv.Key;
-                    var rel = kv.Value;
+                    var friend = friendsList[i];
                     if (friend == null) continue;
-                    // skip friends that are currently returning to home
-                    if (geneticReturning.Contains(friend)) continue;
                     var rb = friend.GetComponent<Rigidbody>();
                     if (rb == null) continue;
 
-                    Vector3 target = arch.transform.position + rel;
-                    Vector3 toTarget = target - friend.transform.position;
-                    Vector3 force = toTarget * geneticAttractionStrength;
-                    rb.AddForce(force);
+                    // compute preferred point on the circle for this friend (stable order)
+                    float angle = ((float)i / Mathf.Max(1, friendsList.Count)) * Mathf.PI * 2f;
+                    Vector3 desiredOnCircle = crownCenter + new Vector3(Mathf.Cos(angle) * horizRadius, 0f, Mathf.Sin(angle) * horizRadius);
+                    desiredOnCircle.y = crownCenter.y;
+
+                    // 1) attraction toward the circle point (spring)
+                    Vector3 toCircle = desiredOnCircle - friend.transform.position;
+                    Vector3 fCircle = toCircle * kToCircle;
+
+                    // 2) mild height correction toward crown center.y
+                    Vector3 heightDelta = new Vector3(0f, crownCenter.y - friend.transform.position.y, 0f);
+                    Vector3 fHeight = heightDelta * kHeight;
+
+                    // 3) inter-friend spring/repulsion to keep separation ~ targetSeparation
+                    Vector3 fBetweenTotal = Vector3.zero;
+                    for (int j = 0; j < friendsList.Count; j++)
+                    {
+                        if (j == i) continue;
+                        var other = friendsList[j];
+                        if (other == null) continue;
+                        Vector3 d = friend.transform.position - other.transform.position;
+                        float dist = d.magnitude;
+                        if (dist < 0.001f) continue;
+                        Vector3 dir = d / dist;
+                        float displacement = dist - targetSeparation;
+                        // spring that repels when too close, attracts when too far
+                        Vector3 fj = -dir * (displacement * kBetween * 0.5f);
+                        fBetweenTotal += fj;
+                    }
+
+                    // sum forces and apply (clamped to avoid explosion)
+                    Vector3 totalForce = fCircle + fBetweenTotal + fHeight;
+                    float maxForce = 200f;
+                    if (totalForce.magnitude > maxForce) totalForce = totalForce.normalized * maxForce;
+                    rb.AddForce(totalForce);
                 }
             }
         }
@@ -1639,6 +1708,8 @@ public class MutatronEngine : MonoBehaviour
                         }
                         // cleanup backup and lists
                         geneticBackups.Remove(friend);
+                        // ensure final scale restore just in case
+                        friend.transform.localScale = backup.localScale;
                     }
 
                     geneticReturnTargets.Remove(friend);
