@@ -5,8 +5,11 @@ using System.Linq;
 using System;
 using TMPro;
 
-public class MutatronEngine : MonoBehaviour
+public class MutatronEngine : MonoBehaviour, IPolytronStateProvider
 {
+    // event panels can subscribe to (polytron, newState)
+    public event Action<Polytron, PolytronState> OnPolytronStateChanged;
+
     bool mustBuildFirstTime = true;
     bool isRebuildingLevel = false;
 
@@ -402,6 +405,7 @@ public class MutatronEngine : MonoBehaviour
                 if (polytronComponent.sealNumber == architronIdx)
                 {
                     polytronComponent.isArchitron = true;
+                    NotifyPolytronStateChanged(polytronComponent);
                 }
 
                 GameObject tile = PolytronsFactory.Instance.Create($"tile/{polytronComponent.recipe}", 1f);
@@ -420,11 +424,16 @@ public class MutatronEngine : MonoBehaviour
 
                 yield return new WaitForSeconds(0.01f);
 
-                PolytronInfoPanel pip = polytronGameObject.GetComponent<PolytronInfoPanel>();
-                if (polytronComponent.isArchitron == false)
-                {
-                    pip.button4Text = "Make Architron";
-                }
+                /*
+                                PolytronInfoPanel pip = polytronGameObject.GetComponent<PolytronInfoPanel>();
+                                if (polytronComponent.isArchitron == false)
+                                {
+                                    pip.button4Text = "Make Architron";
+                                }
+                                */
+
+
+
             }
         }
     }
@@ -461,7 +470,8 @@ public class MutatronEngine : MonoBehaviour
     {
         p.recipe = r;
         p.RebuildMesh();
-        p.GetComponent<PolytronInfoPanel>().bodyText = r;
+        //p.GetComponent<PolytronInfoPanel>().bodyText = r;
+        NotifyPolytronStateChanged(p);
     }
 
     public static GameObject CreateTileLabel(string s, Vector3 position)
@@ -1045,8 +1055,8 @@ public class MutatronEngine : MonoBehaviour
 
         architronIdx = newArchitronIdx;
 
-        newArchitron.GetComponent<PolytronInfoPanel>().button4Text = "";
-        actualArchitron.GetComponent<PolytronInfoPanel>().button4Text = "Make Architron";
+        NotifyPolytronStateChanged(actualArchitron);
+        NotifyPolytronStateChanged(newArchitron);
 
         Debug.Assert(actualArchitron.isArchitron == false);
         Debug.Assert(newArchitron.isArchitron == true);
@@ -1526,6 +1536,8 @@ public class MutatronEngine : MonoBehaviour
             ApplyRecipeToArchitron(arch.recipe);
         }
 
+        NotifyPolytronStateChanged(arch);
+
         Debug.Log($"[MutatronEngine] SetupGeneticFriends: assigned {geneticFriends.Count} friends for {needed} recipes");
     }
 
@@ -1566,6 +1578,8 @@ public class MutatronEngine : MonoBehaviour
             var outline = friend.GetComponent<PointerOutlineStateController>();
             outline?.SetState(0);
         }
+
+        NotifyPolytronStateChanged(polytrons[architronIdx]);
 
         geneticModeActive = geneticReturning.Count > 0;
     }
@@ -1748,5 +1762,71 @@ public class MutatronEngine : MonoBehaviour
         }
     }
 
-    // end of class
+    // authoritative single-shot state computation
+    public PolytronState ComputeState(Polytron p)
+    {
+        var s = new PolytronState();
+
+        if (p == null)
+        {
+            s.Location = PolytronLocation.Unknown;
+            s.Role = PolytronRole.Normal;
+            s.Selection = SelectionSlot.None;
+            s.Interactive = false;
+            s.SealNumber = -1;
+            s.SealName = null;
+            s.Recipe = null;
+            return s;
+        }
+
+        s.SealNumber = p.sealNumber;
+        s.SealName = p.sealName;
+        s.Recipe = p.recipe;
+        s.Interactive = p.interactive;
+        s.IsBound = p.boundSink != null;
+        s.IsReturning = geneticReturning != null && geneticReturning.Contains(p);
+
+        // Role
+        if (p.isArchitron) s.Role = PolytronRole.Architron;
+        else if (s.IsReturning || (geneticFriends != null && geneticFriends.Contains(p))) s.Role = PolytronRole.GeneticFriend;
+        else s.Role = PolytronRole.Normal;
+
+        // Location: home / mutatron center / mutatron
+        if (p.boundSink == null) s.Location = PolytronLocation.Home;
+        else if (mutatronCenter != null && p.boundSink == mutatronCenter.sink) s.Location = PolytronLocation.MutatronCenter;
+        else s.Location = PolytronLocation.Mutatron;
+
+        // Selection slots (authoritative from this engine)
+        if (paletteSelector == p) s.Selection = SelectionSlot.Palette;
+        else if (operatorsSelector == p) s.Selection = SelectionSlot.Operators;
+        else s.Selection = SelectionSlot.None;
+
+        return s;
+    }
+
+    // call this from places where bindings/selection/genetic state change
+    public void NotifyPolytronStateChanged(Polytron p)
+    {
+        if (p == null) return;
+        try
+        {
+            OnPolytronStateChanged?.Invoke(p, ComputeState(p));
+        }
+        catch (Exception ex)
+        {
+            Debug.LogWarning($"NotifyPolytronStateChanged threw: {ex}");
+        }
+    }
+
+    // Example: places you should insert NotifyPolytronStateChanged calls (not exhaustive)
+    // - after BindPolytronToSink(...) and UnbindPolytron(...)
+    // - at end of SetupGeneticFriends(...)
+    // - at end of ClearGeneticFriends(...)
+    // - after SetNewArchitron(...)
+    // - when paletteSelector/operatorsSelector change
+    //
+    // Example:
+    // BindPolytronToSink(a, sink);
+    // NotifyPolytronStateChanged(a);
+    // NotifyPolytronStateChanged(otherAffectedPolytron);
 }
