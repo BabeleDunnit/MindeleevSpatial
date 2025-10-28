@@ -24,6 +24,9 @@ public class Polytron : PolyhedronGenerator,
   IScrollHandler
 {
 
+    // new: when false, pointer handlers/selection/hover are ignored
+    public bool interactive = true;
+
     // 0..71
     internal int sealNumber = -1;
 
@@ -39,67 +42,39 @@ public class Polytron : PolyhedronGenerator,
 
     public void OnPointerDown(PointerEventData eventData)
     {
+        if (!interactive) return;
         Debug.Log($"[PointerEvent] Down on {gameObject.name}");
     }
 
     public void OnPointerUp(PointerEventData eventData)
     {
+        if (!interactive) return;
         Debug.Log($"[PointerEvent] Up on {gameObject.name}");
     }
 
     public void OnBeginDrag(PointerEventData eventData)
     {
+        if (!interactive) return;
         Debug.Log($"[PointerEvent] BeginDrag on {gameObject.name}");
         BeginDrag();
     }
 
     public void OnDrag(PointerEventData eventData)
     {
+        if (!interactive) return;
         Debug.Log($"[PointerEvent] Drag on {gameObject.name}");
     }
 
     public void OnEndDrag(PointerEventData eventData)
     {
+        if (!interactive) return;
         Debug.Log($"[PointerEvent] EndDrag on {gameObject.name}");
         EndDrag();
     }
 
-    public void OnDrop(PointerEventData eventData)
-    {
-        Debug.Log($"[PointerEvent] Drop on {gameObject.name}");
-    }
-
-    public void OnScroll(PointerEventData eventData)
-    {
-        PointerOutlineStateController csc = GetComponent<PointerOutlineStateController>();
-        csc.AdvanceState();
-
-        Debug.Log($"[PointerEvent] Scroll on {gameObject.name}, delta: {eventData.scrollDelta}");
-    }
-
-    public void OnPointerEnter(PointerEventData eventData)
-    {
-        Debug.Log("OnPointerEnter");
-
-        GetComponent<PointerOutlineStateController>()?.OnHoverEnter();
-        GetComponent<PolytronInfoPanel>()?.Activate(true);
-
-        // Delegate hover handling to MutatronEngine (which will be a no-op if no selection)
-        mutatron?.OnPolytronPointerEnter(this);
-    }
-
-    public void OnPointerExit(PointerEventData eventData)
-    {
-        Debug.Log("OnPointerExit");
-
-        GetComponent<PointerOutlineStateController>()?.OnHoverExit();
-        GetComponent<PolytronInfoPanel>()?.Activate(false);
-
-        mutatron?.OnPolytronPointerExit(this);
-    }
-
     public void OnPointerClick(PointerEventData eventData)
     {
+        if (!interactive) return;
 
         if (eventData?.clickCount == 2)
         {
@@ -120,6 +95,44 @@ public class Polytron : PolyhedronGenerator,
 
         Debug.Log("[Polytron.OnPointerClick()] Object clicked!");
 
+    }
+
+    public void OnPointerEnter(PointerEventData eventData)
+    {
+        if (!interactive) return;
+        Debug.Log("OnPointerEnter");
+
+        GetComponent<PointerOutlineStateController>()?.OnHoverEnter();
+        GetComponent<PolytronInfoPanel>()?.Activate(true);
+
+        // Delegate hover handling to MutatronEngine (which will be a no-op if no selection)
+        mutatron?.OnPolytronPointerEnter(this);
+    }
+
+    public void OnPointerExit(PointerEventData eventData)
+    {
+        if (!interactive) return;
+        Debug.Log("OnPointerExit");
+
+        GetComponent<PointerOutlineStateController>()?.OnHoverExit();
+        GetComponent<PolytronInfoPanel>()?.Activate(false);
+
+        mutatron?.OnPolytronPointerExit(this);
+    }
+
+    public void OnDrop(PointerEventData eventData)
+    {
+        if (!interactive) return;
+        Debug.Log($"[PointerEvent] Drop on {gameObject.name}");
+    }
+
+    public void OnScroll(PointerEventData eventData)
+    {
+        if (!interactive) return;
+        PointerOutlineStateController csc = GetComponent<PointerOutlineStateController>();
+        csc.AdvanceState();
+
+        Debug.Log($"[PointerEvent] Scroll on {gameObject.name}, delta: {eventData.scrollDelta}");
     }
 
     private bool isDragging = false;

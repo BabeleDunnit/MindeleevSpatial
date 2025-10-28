@@ -1496,7 +1496,10 @@ public class MutatronEngine : MonoBehaviour
             candidate.recipe = crossoverRecipes[assigned];
             candidate.RebuildMesh();
 
-            candidate.GetComponent<WaveAnimation>().Pause(true);
+            // pause wave animation and make non-interactive while in genetic state
+            var wa = candidate.GetComponent<WaveAnimation>();
+            if (wa != null) wa.Pause(true);
+            candidate.interactive = false;
 
             // scale while in genetic state
             candidate.transform.localScale = backup.localScale * 0.3f;
@@ -1525,8 +1528,6 @@ public class MutatronEngine : MonoBehaviour
         Debug.Log($"[MutatronEngine] SetupGeneticFriends: assigned {geneticFriends.Count} friends for {needed} recipes");
     }
 
-    // Clear genetic friends: start a physics-driven return to their backed-up positions (no teleport),
-    // restore recipes immediately, then let AttractGeneticFriends pull them back; final rebind happens when close.
     private void ClearGeneticFriends()
     {
         if (!geneticModeActive && geneticFriends.Count == 0 && geneticBackups.Count == 0) return;
@@ -1543,8 +1544,12 @@ public class MutatronEngine : MonoBehaviour
             friend.RebuildMesh();
 
             // restore scale to original immediately when genetic behaviour is dismissed
-            friend.GetComponent<WaveAnimation>().Pause(false);
+            var wa = friend.GetComponent<WaveAnimation>();
+            if (wa != null) wa.Pause(false);
             friend.transform.localScale = backup.localScale;
+
+            // make selectable again only when returning (we will re-enable fully on finalize)
+            friend.interactive = false; // remain non-interactive while physically returning
 
             // schedule absolute return target (previous world position)
             geneticReturnTargets[friend] = backup.position;
@@ -1564,8 +1569,6 @@ public class MutatronEngine : MonoBehaviour
         geneticModeActive = geneticReturning.Count > 0;
     }
 
-    // If a new genetic setup cancels a pending return, this forces immediate cleanup:
-    // rebind pending-return friends immediately to their original sinks (best-effort) and clear state.
     private void AbortPendingGeneticReturnImmediate()
     {
         if (geneticReturning.Count == 0) return;
@@ -1588,11 +1591,11 @@ public class MutatronEngine : MonoBehaviour
             // ensure scale is restored too
             friend.transform.localScale = backup.localScale;
 
-            // clear per-friend return state
-            geneticReturnTargets.Remove(friend);
-            geneticReturning.Remove(friend);
-            geneticBackups.Remove(friend);
-            geneticFriends.Remove(friend);
+            // ensure wave animation resumed and interactivity restored
+            var wa = friend.GetComponent<WaveAnimation>();
+            if (wa != null) wa.Pause(false);
+            friend.interactive = true;
+
         }
 
         geneticRelativeOffsets.Clear();
@@ -1714,6 +1717,11 @@ public class MutatronEngine : MonoBehaviour
                         geneticBackups.Remove(friend);
                         // ensure final scale restore just in case
                         friend.transform.localScale = backup.localScale;
+
+                        // restore wave animation and interactivity now that return is finished
+                        var wa2 = friend.GetComponent<WaveAnimation>();
+                        if (wa2 != null) wa2.Pause(false);
+                        friend.interactive = true;
                     }
 
                     geneticReturnTargets.Remove(friend);
