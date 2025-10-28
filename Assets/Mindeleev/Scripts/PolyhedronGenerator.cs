@@ -36,7 +36,7 @@ public class PolyhedronGenerator : MonoBehaviour
         currentPaletteIndex = _recipe.PaletteIdx;
 
         var palette = GetCurrentPalette();
-        Debug.Log($"[RebuildMesh] palette: {palette}, currentPaletteIndex: {currentPaletteIndex}");
+        // Debug.Log($"[RebuildMesh] palette: {palette}, currentPaletteIndex: {currentPaletteIndex}");
         var polyData = PolyhedronRecipeBuilder.Build(_recipe, palette.colors.Count);
         var polyFinalData = Polyhedronisme.ApplyFlatShade(polyData);
         filter.mesh = Polyhedronisme.BuildMesh(polyFinalData, palette);

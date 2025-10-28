@@ -85,13 +85,10 @@ public class MutatronEngine : MonoBehaviour
 
     void SendAllPolytronsHome()
     {
+        // Use the symmetric unbind helper to keep the two-way invariant intact.
         foreach (var polytron in polytrons)
         {
-            if (polytron.boundSink)
-            {
-                polytron.boundSink.boundPolytron = null;
-            }
-            polytron.boundSink = null;
+            UnbindPolytron(polytron);
         }
 
         SendUnboundPolytronsHome();
@@ -280,14 +277,38 @@ public class MutatronEngine : MonoBehaviour
 
     void BindPolytronToSink(Polytron p, PolytronSink ps)
     {
-        if (p.boundSink)
+        // Clear previous binding of this polytron (both sides)
+        if (p == null) return;
+
+        if (p.boundSink != null)
         {
-            Debug.Assert(p.boundSink.boundPolytron == p);
-            p.boundSink.boundPolytron = null;
+            if (p.boundSink.boundPolytron == p) p.boundSink.boundPolytron = null;
+            p.boundSink = null;
         }
 
+        // If the sink is already owned by another polytron, clear that other polytron's pointer too
+        if (ps != null && ps.boundPolytron != null && ps.boundPolytron != p)
+        {
+            var prev = ps.boundPolytron;
+            if (prev.boundSink == ps) prev.boundSink = null;
+            ps.boundPolytron = null;
+        }
+
+        // Now do the symmetric bind
         p.boundSink = ps;
-        ps.boundPolytron = p;
+        if (ps != null) ps.boundPolytron = p;
+    }
+
+    // Safe unbind helper: clears both sides of the binding
+    void UnbindPolytron(Polytron p)
+    {
+        if (p == null) return;
+        var sink = p.boundSink;
+        if (sink != null)
+        {
+            if (sink.boundPolytron == p) sink.boundPolytron = null;
+            p.boundSink = null;
+        }
     }
 
     bool IsMutatronReady()
@@ -808,8 +829,8 @@ public class MutatronEngine : MonoBehaviour
 
             if (polytronBoundToSink && polytronBoundToSink.recipe != hckv.Value.tile.recipe)
             {
-                polytronBoundToSink.boundSink = null;
-                sink.boundPolytron = null;
+                // Use UnbindPolytron to clear both sides safely
+                UnbindPolytron(polytronBoundToSink);
             }
             else
             {
@@ -1004,11 +1025,15 @@ public class MutatronEngine : MonoBehaviour
         }
         else
         {
-            actualArchitronSink.boundPolytron = newArchitron;
-            actualArchitron.boundSink = newArchitronSink;
+            // swap bindings atomically using helpers
+            var aSink = actualArchitron.boundSink;
+            var nSink = newArchitron.boundSink;
 
-            newArchitronSink.boundPolytron = actualArchitron;
-            newArchitron.boundSink = actualArchitronSink;
+            UnbindPolytron(actualArchitron);
+            UnbindPolytron(newArchitron);
+
+            BindPolytronToSink(actualArchitron, nSink);
+            BindPolytronToSink(newArchitron, aSink);
         }
 
 
@@ -1454,11 +1479,8 @@ public class MutatronEngine : MonoBehaviour
             geneticFriends.Add(candidate);
 
             // detach from sink to suspend global attraction
-            if (candidate.boundSink != null)
-            {
-                candidate.boundSink.boundPolytron = null;
-            }
-            candidate.boundSink = null;
+            // make the unbind atomic and symmetric
+            UnbindPolytron(candidate);
 
             // assign new recipe and rebuild
             candidate.recipe = crossoverRecipes[assigned];
@@ -1515,11 +1537,7 @@ public class MutatronEngine : MonoBehaviour
             geneticRelativeOffsets.Remove(friend);
 
             // keep them unbound for now so AttractGeneticFriends moves them toward target
-            if (friend.boundSink != null)
-            {
-                friend.boundSink.boundPolytron = null;
-                friend.boundSink = null;
-            }
+            UnbindPolytron(friend);
 
             // ensure outline reset
             var outline = friend.GetComponent<PointerOutlineStateController>();
@@ -1546,8 +1564,7 @@ public class MutatronEngine : MonoBehaviour
             // immediate rebind to previous sink if available
             if (backup.boundSink != null)
             {
-                friend.boundSink = backup.boundSink;
-                backup.boundSink.boundPolytron = friend;
+                BindPolytronToSink(friend, backup.boundSink);
             }
             // restore recipe has already been restored earlier when scheduled; ensure mesh OK
             friend.RebuildMesh();
@@ -1618,8 +1635,7 @@ public class MutatronEngine : MonoBehaviour
                     {
                         if (backup.boundSink != null)
                         {
-                            friend.boundSink = backup.boundSink;
-                            backup.boundSink.boundPolytron = friend;
+                            BindPolytronToSink(friend, backup.boundSink);
                         }
                         // cleanup backup and lists
                         geneticBackups.Remove(friend);
