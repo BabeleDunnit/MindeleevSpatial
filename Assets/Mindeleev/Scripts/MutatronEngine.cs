@@ -122,6 +122,8 @@ public class MutatronEngine : MonoBehaviour
 
         isRebuildingLevel = true;
 
+        DeselectAllPolytrons();
+
         // the level number will determine the Metatron complexity
         // and set actualRingsCount, etc.
 
@@ -143,7 +145,6 @@ public class MutatronEngine : MonoBehaviour
 
     void AfterTilesCreation()
     {
-        DeselectAllPolytrons();
         UpdatePolytronsSinks();
 
         isRebuildingLevel = false;

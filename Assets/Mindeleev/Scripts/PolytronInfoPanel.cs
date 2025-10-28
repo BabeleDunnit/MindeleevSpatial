@@ -2,7 +2,7 @@ using UnityEngine;
 using UnityEngine.UI;
 using System.Collections;
 using TMPro;
-using Unity.VisualScripting;
+using System.Linq;
 
 /// <summary>
 /// Displays an info panel for a Polytron. Pops up when the player is near, collapses when far.
@@ -225,10 +225,94 @@ public class PolytronInfoPanel : MonoBehaviour
     void UpdateTextsAndButtons()
     {
         Polytron p = GetComponent<Polytron>();
-        if (p.isArchitron == false)
+
+        // Try to find an authoritative state provider (e.g. MutatronEngine implementing IPolytronStateProvider)
+        IPolytronStateProvider provider = null;
+        var providers = FindObjectsOfType<MonoBehaviour>().OfType<IPolytronStateProvider>();
+        provider = providers.FirstOrDefault();
+
+        PolytronState state;
+        if (provider != null)
         {
-            button4Text_.text = "Make Architron";
+            state = provider.ComputeState(p);
         }
+        else
+        {
+            // fallback: local heuristic
+            state = LocalPolytronStateEvaluator.ComputeState(p);
+        }
+
+        ApplyStateToPanel(state);
+    }
+
+    // Centralized mapping of state -> visible texts and button availability.
+    void ApplyStateToPanel(PolytronState state)
+    {
+        // Header always shows name and role
+        headerText_.text = state.SealName ?? $"Polytron {state.SealNumber}";
+
+        // Body shows location and recipe, and a short status
+        string locText = state.Location switch
+        {
+            PolytronLocation.Home => "At Home",
+            PolytronLocation.MutatronCenter => "Architron (center)",
+            PolytronLocation.Mutatron => "On Mutatron",
+            PolytronLocation.Returning => "Returning",
+            _ => "Unknown"
+        };
+
+        string roleText = state.Role == PolytronRole.Architron ? "Architron" : (state.Role == PolytronRole.GeneticFriend ? "Genetic Friend" : "Polytron");
+        bodyText_.text = $"{roleText}\n{locText}\nRecipe: {state.Recipe}";
+
+        // Center button: available when on Mutatron to "focus" / center camera (example)
+        if (centerButton != null)
+        {
+            if (state.Location == PolytronLocation.Mutatron || state.Location == PolytronLocation.MutatronCenter)
+            {
+                centerButton.gameObject.SetActive(true);
+                centerButtonText_.text = "Focus";
+            }
+            else
+            {
+                centerButton.gameObject.SetActive(false);
+            }
+        }
+
+        // Button 4: Make Architron (only if not already architron and interactive and on mutatron)
+        if (button4 != null)
+        {
+            if (state.Role != PolytronRole.Architron && state.Interactive && (state.Location == PolytronLocation.Mutatron || state.Location == PolytronLocation.Home))
+            {
+                button4.gameObject.SetActive(true);
+                button4Text_.text = "Make Architron";
+            }
+            else
+            {
+                button4.gameObject.SetActive(false);
+            }
+        }
+
+        // Button1..3: example: quick actions depend on state
+        if (button1 != null)
+        {
+            // Example: if not interactive, hide action buttons
+            if (!state.Interactive)
+            {
+                button1.gameObject.SetActive(false);
+                button2.gameObject.SetActive(false);
+                button3.gameObject.SetActive(false);
+            }
+            else
+            {
+                button1.gameObject.SetActive(true);
+                button1Text_.text = "Teleport Home";
+                button2.gameObject.SetActive(true);
+                button2Text_.text = "Send to Mutatron";
+                button3.gameObject.SetActive(true);
+                button3Text_.text = "Inspect";
+            }
+        }
+
         UpdatePanelGUI();
     }
 
