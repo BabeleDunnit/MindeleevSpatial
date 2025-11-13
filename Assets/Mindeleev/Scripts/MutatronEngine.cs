@@ -166,13 +166,14 @@ public class MutatronEngine : MonoBehaviour, IPolytronStateProvider
     Polytron FindPolytronToBind()
     {
         // first try with polytrons at home
-        var toReturn = polytrons.Where(p => p.boundSink != null && gridCellsMap[p.boundSink.hexCoord].ring == 12);
+        // exclude polytrons reserved for genetic friends
+        var toReturn = polytrons.Where(p => !p.reservedForGenetics && p.boundSink != null && gridCellsMap[p.boundSink.hexCoord].ring == 12);
 
         // if no polytrons at home
         if (toReturn.Count() == 0)
         {
-            // try with unbound polytrons
-            toReturn = polytrons.Where(p => p.boundSink == null);
+            // try with unbound polytrons (also excluding reserved genetic friends)
+            toReturn = polytrons.Where(p => !p.reservedForGenetics && p.boundSink == null);
         }
 
         return toReturn.FirstOrDefault();
@@ -203,8 +204,10 @@ public class MutatronEngine : MonoBehaviour, IPolytronStateProvider
 
         // now collect all the unbound polytrons which are already set on a tile recipe which did not change 
         // (but maybe changed place) and bind them
-        var matchingRecipeUnboundPolytrons = polytrons.Where(p => tilesRecipes.Contains(p.recipe) && p.boundSink == null && p.isArchitron == false);
-        Debug.Log($"[UpdatePolytronsSinks] unbound polytrons with matching recipe: {matchingRecipeUnboundPolytrons.Count()}");
+    // exclude polytrons reserved for genetic friends from being rebound
+    var matchingRecipeUnboundPolytrons = polytrons.Where(p => !p.reservedForGenetics && tilesRecipes.Contains(p.recipe) && p.boundSink == null && p.isArchitron == false);
+        Debug.Log($"[UpdatePolytronsSinks] unbound polytrons with matching recipe: {matchingRecipeUnboundPolytrons.Count()} (excluding {polytrons.Count(p => p.reservedForGenetics)} reserved genetic friends)");
+        Debug.Log($"[UpdatePolytronsSinks] reserved polytrons: {string.Join(",", polytrons.Where(p => p.reservedForGenetics).Select(p => p.sealNumber))}");
 
         int rebuiltPolytrons = 0;
         int movedPolytrons = 0;
@@ -233,7 +236,8 @@ public class MutatronEngine : MonoBehaviour, IPolytronStateProvider
 
         // maybe not all the matchingRecipeUnboundPolytrons have been bind, because maybe there were not
         // enough matching sinks. Let us send them home to relax at the END of the ring 12
-        foreach (var pp in matchingRecipeUnboundPolytrons.Where(p => p.boundSink == null))
+        // IMPORTANT: Skip reserved genetic friends, they must not be rebound
+        foreach (var pp in matchingRecipeUnboundPolytrons.Where(p => p.boundSink == null && !p.reservedForGenetics))
         {
             var unboundSinkOnExternalRing = gridCellsMap.Where(hckv => hckv.Value.ring == 12 && hckv.Value.sink.boundPolytron == null).Last();
             BindPolytronToSink(pp, unboundSinkOnExternalRing);
@@ -259,9 +263,10 @@ public class MutatronEngine : MonoBehaviour, IPolytronStateProvider
 
             if (hckv.Value.sink.boundPolytron == null)
             {
+                // IMPORTANT: Skip reserved genetic friends when filling empty sinks
                 Polytron p = FindPolytronToBind();
                 // there could be no more polytrons...
-                if (p)
+                if (p && !p.reservedForGenetics)
                 {
                     BindPolytronToSink(p, hckv);
                     string tileRecipe = hckv.Value.tile.recipe;
@@ -300,7 +305,19 @@ public class MutatronEngine : MonoBehaviour, IPolytronStateProvider
 
         // Now do the symmetric bind
         p.boundSink = ps;
-        if (ps != null) ps.boundPolytron = p;
+        if (ps != null)
+        {
+            ps.boundPolytron = p;
+            // Log binding if this might be a genetic friend
+            if (p.reservedForGenetics)
+            {
+                Debug.LogWarning($"[BindPolytronToSink] WARNING: REBINDING reserved polytron_id={p.sealNumber} (reservedForGenetics={p.reservedForGenetics}) to sink={ps.name}");
+            }
+            else
+            {
+                Debug.Log($"[BindPolytronToSink] binding polytron_id={p.sealNumber} to sink={ps.name}");
+            }
+        }
     }
 
     // Safe unbind helper: clears both sides of the binding
@@ -310,6 +327,7 @@ public class MutatronEngine : MonoBehaviour, IPolytronStateProvider
         var sink = p.boundSink;
         if (sink != null)
         {
+            Debug.Log($"[UnbindPolytron] UNBINDING polytron_id={p.sealNumber} from sink={sink.name}");
             if (sink.boundPolytron == p) sink.boundPolytron = null;
             p.boundSink = null;
         }
@@ -842,6 +860,13 @@ public class MutatronEngine : MonoBehaviour, IPolytronStateProvider
 
             if (polytronBoundToSink && polytronBoundToSink.recipe != hckv.Value.tile.recipe)
             {
+                // IMPORTANT: Skip reserved genetic friends, they must NOT be unbound during evolution
+                if (polytronBoundToSink.reservedForGenetics)
+                {
+                    Debug.Log($"[UnbindNonMatchingPolytrons] SKIPPING reserved friend polytron_id={polytronBoundToSink.sealNumber} (recipe mismatch but reserved)");
+                    polytronsThatWillNotMove++;
+                    continue;
+                }
                 // Use UnbindPolytron to clear both sides safely
                 UnbindPolytron(polytronBoundToSink);
             }
@@ -856,7 +881,9 @@ public class MutatronEngine : MonoBehaviour, IPolytronStateProvider
 
     void SendUnboundPolytronsHome()
     {
-        var unboundPolytrons = polytrons.Where(p => p.boundSink == null).ToList();
+        // Skip polytrons reserved for genetic friends: they must remain unbound until cleared/returned
+        var unboundPolytrons = polytrons.Where(p => p.boundSink == null && !p.reservedForGenetics).ToList();
+        Debug.Log($"[SendUnboundPolytronsHome] sending home {unboundPolytrons.Count} unbound polytrons (skipping {polytrons.Count(p => p.reservedForGenetics)} reserved)");
         for (int i = 0; i < unboundPolytrons.Count; i++)
         {
             BindPolytronToSink(unboundPolytrons[i], polytronsHomes[unboundPolytrons[i].sealNumber]);
@@ -924,6 +951,20 @@ public class MutatronEngine : MonoBehaviour, IPolytronStateProvider
         evolveCount++;
 
         PrintDebugStats($"End of Evolve() call #{evolveCount}");
+
+        // Extra diagnostics to help trace rebinding/reservation races
+        try
+        {
+            var reservedList = polytrons.Where(p => p != null && p.reservedForGenetics).Select(p => p.sealNumber.ToString()).ToList();
+            Debug.Log($"[Evolve] reserved polytrons: {string.Join(",", reservedList)}");
+
+            var unboundList = polytrons.Where(p => p != null && p.boundSink == null).Select(p => p.sealNumber + (p.interactive ? "(interactive)" : "")).ToList();
+            Debug.Log($"[Evolve] unbound polytrons: {string.Join(",", unboundList)}");
+        }
+        catch (Exception ex)
+        {
+            Debug.LogWarning($"[Evolve] diagnostics failed: {ex}");
+        }
 
     }
 
@@ -1454,8 +1495,7 @@ public class MutatronEngine : MonoBehaviour, IPolytronStateProvider
 
         int[] offsets = new int[] { 1, -1, 2, -2, 3, -3, 4, -4 };
 
-        int assigned = 0;
-        int offsetIdx = 0;
+    int assigned = 0;
 
         var arch = polytrons[architronIdx];
         if (arch == null) return;
@@ -1473,20 +1513,53 @@ public class MutatronEngine : MonoBehaviour, IPolytronStateProvider
         float h = geneticFriendsHeight;
         float horizRadius = 0f;
         if (R > Mathf.Abs(h)) horizRadius = Mathf.Sqrt(R * R - h * h);
-        // allow varying absolute orientation of the whole crown
-//         float baseAngle = UnityEngine.Random.Range(0f, Mathf.PI * 2f);
 
-        while (assigned < needed && offsetIdx < offsets.Length)
+        // Build an ordered neighbor index list (1, -1, 2, -2, ...), large enough to scan whole ring if needed.
+        var neighborOffsets = new List<int>();
+        for (int d = 1; neighborOffsets.Count < totalPolytrons - 1 && d < totalPolytrons; d++)
         {
-            int idx = (architronIdx + offsets[offsetIdx]) % totalPolytrons;
+            neighborOffsets.Add(d);
+            if (neighborOffsets.Count >= totalPolytrons - 1) break;
+            neighborOffsets.Add(-d);
+        }
+
+        // Build an ordered candidate list (stable local neighbors first).
+        var orderedCandidates = new List<Polytron>();
+        foreach (var off in neighborOffsets)
+        {
+            int idx = (architronIdx + off) % totalPolytrons;
             if (idx < 0) idx += totalPolytrons;
             var candidate = polytrons[idx];
-
-            offsetIdx++;
-
             if (candidate == null) continue;
             if (candidate == arch) continue;
             if (candidate == paletteSelector || candidate == operatorsSelector) continue;
+            if (orderedCandidates.Contains(candidate)) continue;
+            orderedCandidates.Add(candidate);
+        }
+
+        // Partition candidates: prefer those already on the Mutatron (bound to a mutatron sink)
+        var onMutatron = orderedCandidates
+            .Where(c => c.boundSink != null && IsMutatronCell(c.boundSink.hexCoord))
+            .ToList();
+        var atHome = orderedCandidates
+            .Where(c => c.boundSink == null || IsHome(c.boundSink.hexCoord))
+            .ToList();
+
+    // Selection: take from onMutatron first, then from atHome, until we have 'needed'
+        List<Polytron> pickPool = new List<Polytron>();
+        pickPool.AddRange(onMutatron);
+        pickPool.AddRange(atHome);
+
+    // Debug: print the candidate pools to help diagnose selection issues
+    Debug.Log($"[SetupGeneticFriends] needed={needed} orderedCandidates={orderedCandidates.Count} onMutatron={onMutatron.Count} atHome={atHome.Count} pickPool={pickPool.Count}");
+    Debug.Log("[SetupGeneticFriends] ordered: " + string.Join(",", orderedCandidates.Select(c => c?.sealNumber.ToString() ?? "null")));
+    Debug.Log("[SetupGeneticFriends] onMutatron: " + string.Join(",", onMutatron.Select(c => c?.sealNumber.ToString() ?? "null")));
+    Debug.Log("[SetupGeneticFriends] atHome: " + string.Join(",", atHome.Select(c => c?.sealNumber.ToString() ?? "null")));
+
+        for (int i = 0; i < pickPool.Count && assigned < needed; i++)
+        {
+            var candidate = pickPool[i];
+            if (candidate == null) continue;
             if (geneticBackups.ContainsKey(candidate)) continue;
 
             var backup = new PolytronStateBackup
@@ -1500,8 +1573,15 @@ public class MutatronEngine : MonoBehaviour, IPolytronStateProvider
             geneticBackups[candidate] = backup;
             geneticFriends.Add(candidate);
 
-            // detach from sink to suspend global attraction
+            Debug.Log($"[SetupGeneticFriends] PICKED friend #{assigned}: polytron_id={candidate.sealNumber} (seal:{candidate.sealName}) boundSink={backup.boundSink?.name} position={candidate.transform.position}");
+
+            // detach from sink to suspend global attraction (atomic helper)
             UnbindPolytron(candidate);
+            // mark reserved so binding logic won't pick it up
+            candidate.reservedForGenetics = true;
+            NotifyPolytronStateChanged(candidate);
+
+            Debug.Log($"[SetupGeneticFriends] UNBOUND and RESERVED friend #{assigned}: polytron_id={candidate.sealNumber} reservedForGenetics={candidate.reservedForGenetics}");
 
             // assign new recipe and rebuild
             candidate.recipe = crossoverRecipes[assigned];
@@ -1514,31 +1594,33 @@ public class MutatronEngine : MonoBehaviour, IPolytronStateProvider
 
             // scale while in genetic state
             candidate.transform.localScale = backup.localScale * 0.3f;
-            
-            // compute relative offset on the horizontal circle above architron
-            float angle = /*baseAngle + */((float)assigned / Mathf.Max(1, needed)) * Mathf.PI * 2f;
-            Vector3 rel = arch.transform.InverseTransformDirection(Vector3.zero); // placeholder, not used
-            // place on circle at height h and horiz radius computed above
-            rel = Vector3.up * h + new Vector3(Mathf.Cos(angle) * horizRadius, 0f, Mathf.Sin(angle) * horizRadius);
+
+            // compute relative offset on the horizontal circle above architron (uniformly distributed)
+            float angle = ((float)assigned / Mathf.Max(1, needed)) * Mathf.PI * 2f;
+            Vector3 rel = Vector3.up * h + new Vector3(Mathf.Cos(angle) * horizRadius, 0f, Mathf.Sin(angle) * horizRadius);
             geneticRelativeOffsets[candidate] = rel;
+
+            // notify UI about this change
+            NotifyPolytronStateChanged(candidate);
+
             assigned++;
         }
-
-        geneticModeActive = geneticFriends.Count > 0;
-
-        // Ensure the Architron returns to its original, unmodified recipe/mesh when genetic friends are displayed.
-        if (architronSavedRecipeForSelection != null)
-        {
-            ApplyRecipeToArchitron(architronSavedRecipeForSelection);
-        }
-        else
-        {
-            ApplyRecipeToArchitron(arch.recipe);
-        }
-
-        NotifyPolytronStateChanged(arch);
-
-        Debug.Log($"[MutatronEngine] SetupGeneticFriends: assigned {geneticFriends.Count} friends for {needed} recipes");
+ 
+         geneticModeActive = geneticFriends.Count > 0;
+ 
+         // Ensure the Architron returns to its original, unmodified recipe/mesh when genetic friends are displayed.
+         if (architronSavedRecipeForSelection != null)
+         {
+             ApplyRecipeToArchitron(architronSavedRecipeForSelection);
+         }
+         else
+         {
+             ApplyRecipeToArchitron(arch.recipe);
+         }
+ 
+         NotifyPolytronStateChanged(arch);
+ 
+         Debug.Log($"[MutatronEngine] SetupGeneticFriends: assigned {geneticFriends.Count} friends for {needed} recipes");
     }
 
     private void ClearGeneticFriends()
@@ -1547,6 +1629,9 @@ public class MutatronEngine : MonoBehaviour, IPolytronStateProvider
 
         Debug.Log("[MutatronEngine] ClearGeneticFriends - begin return phase");
 
+        // We'll try to rebind immediately to the original sink if it's still free; otherwise schedule a
+        // physical return so they move back by physics and rebind when close.
+        var friendsToKeepForPhysicsReturn = new List<Polytron>();
         foreach (var friend in geneticFriends)
         {
             if (friend == null) continue;
@@ -1561,27 +1646,52 @@ public class MutatronEngine : MonoBehaviour, IPolytronStateProvider
             if (wa != null) wa.Pause(false);
             friend.transform.localScale = backup.localScale;
 
-            // make selectable again only when returning (we will re-enable fully on finalize)
-            friend.interactive = false; // remain non-interactive while physically returning
+            // prefer an immediate, atomic rebind if the original sink is still free
+            if (backup.boundSink != null && backup.boundSink.boundPolytron == null)
+            {
+                Debug.Log($"[ClearGeneticFriends] immediate rebind available for polytron_id={friend.sealNumber} to sink={backup.boundSink.name}");
+                BindPolytronToSink(friend, backup.boundSink);
+                // clear reservation so normal flows resume
+                friend.reservedForGenetics = false;
 
-            // schedule absolute return target (previous world position)
-            geneticReturnTargets[friend] = backup.position;
-            geneticReturning.Add(friend);
+                // restore interactivity immediately
+                friend.interactive = true;
 
-            // remove any orbit-relative target so orbit attraction stops immediately
-            geneticRelativeOffsets.Remove(friend);
+                // cleanup backup entry
+                geneticBackups.Remove(friend);
+                // ensure outline reset
+                var outline = friend.GetComponent<PointerOutlineStateController>();
+                outline?.SetState(0);
+                // notify UI of final state
+                NotifyPolytronStateChanged(friend);
+            }
+            else
+            {
+                // schedule absolute return target (previous world position)
+                friend.interactive = false; // remain non-interactive while physically returning
+                geneticReturnTargets[friend] = backup.position;
+                geneticReturning.Add(friend);
 
-            // keep them unbound for now so AttractGeneticFriends moves them toward target
-            UnbindPolytron(friend);
+                // remove any orbit-relative target so orbit attraction stops immediately
+                geneticRelativeOffsets.Remove(friend);
 
-            // ensure outline reset
-            var outline = friend.GetComponent<PointerOutlineStateController>();
-            outline?.SetState(0);
+                // keep them unbound for now so AttractGeneticFriends moves them toward target
+                UnbindPolytron(friend);
+
+                // ensure outline reset
+                var outline = friend.GetComponent<PointerOutlineStateController>();
+                outline?.SetState(0);
+
+                friendsToKeepForPhysicsReturn.Add(friend);
+            }
         }
+
+        // Replace geneticFriends with the subset that will physically return; the others were restored immediately.
+        geneticFriends = friendsToKeepForPhysicsReturn;
 
         NotifyPolytronStateChanged(polytrons[architronIdx]);
 
-        geneticModeActive = geneticReturning.Count > 0;
+        geneticModeActive = geneticReturning.Count > 0 || geneticFriends.Count > 0;
     }
 
     private void AbortPendingGeneticReturnImmediate()
@@ -1599,6 +1709,8 @@ public class MutatronEngine : MonoBehaviour, IPolytronStateProvider
             if (backup.boundSink != null)
             {
                 BindPolytronToSink(friend, backup.boundSink);
+                // clear reservation so normal flows resume
+                friend.reservedForGenetics = false;
             }
             // restore recipe has already been restored earlier when scheduled; ensure mesh OK
             friend.RebuildMesh();
@@ -1727,6 +1839,8 @@ public class MutatronEngine : MonoBehaviour, IPolytronStateProvider
                         if (backup.boundSink != null)
                         {
                             BindPolytronToSink(friend, backup.boundSink);
+                            // clear reservation so normal flows resume
+                            friend.reservedForGenetics = false;
                         }
                         // cleanup backup and lists
                         geneticBackups.Remove(friend);

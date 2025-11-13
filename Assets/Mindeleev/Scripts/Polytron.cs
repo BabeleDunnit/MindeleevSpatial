@@ -26,6 +26,9 @@ public class Polytron : PolyhedronGenerator,
 
     // new: when false, pointer handlers/selection/hover are ignored
     public bool interactive = true;
+    // when true this polytron is temporarily reserved by the genetic mechanism and must be
+    // excluded from normal binding/selection flows until it is returned
+    public bool reservedForGenetics = false;
 
     // 0..71
     internal int sealNumber = -1;
