@@ -69,7 +69,7 @@ public class MutatronEngine : MonoBehaviour, IPolytronStateProvider
 
     LevelConfig actualLevelConfig;
 
-    void InitializeCellsForCurrentLevel()
+    void InitializeCellsCAParametersForCurrentLevel()
     {
         foreach (var hckv in gridCellsMap)
         {
@@ -135,7 +135,7 @@ public class MutatronEngine : MonoBehaviour, IPolytronStateProvider
 
         ResetLevelGraphics();
         SendAllPolytronsHome();
-        InitializeCellsForCurrentLevel();
+        InitializeCellsCAParametersForCurrentLevel();
 
 
         StartCoroutine(DrawMetatronGraphicsCoroutine());
@@ -318,6 +318,8 @@ public class MutatronEngine : MonoBehaviour, IPolytronStateProvider
                 Debug.Log($"[BindPolytronToSink] binding polytron_id={p.sealNumber} to sink={ps.name}");
             }
         }
+
+        NotifyPolytronStateChanged(p);
     }
 
     // Safe unbind helper: clears both sides of the binding
@@ -331,6 +333,8 @@ public class MutatronEngine : MonoBehaviour, IPolytronStateProvider
             if (sink.boundPolytron == p) sink.boundPolytron = null;
             p.boundSink = null;
         }
+
+        NotifyPolytronStateChanged(p);
     }
 
     bool IsMutatronReady()
@@ -343,7 +347,7 @@ public class MutatronEngine : MonoBehaviour, IPolytronStateProvider
         foreach (Polytron p in polytrons)
         {
             // special behaviour for the architron
-            if (p.isArchitron)
+            if (p.isArchitron && false)
             {
                 // the Architron has a special, dynamic behaviour. 
                 // if it is outside the Mutatron it will follow the avatar
@@ -1050,7 +1054,8 @@ public class MutatronEngine : MonoBehaviour, IPolytronStateProvider
 
     bool IsMutatronCell(HexCoord hc)
     {
-        return gridCellsMap[hc].ring <= actualLevelConfig.actualRingsCount;
+        HexCellData hcd = gridCellsMap[hc];
+        return hcd.ring <= actualLevelConfig.actualRingsCount && !IsMutatronCenter(hcd);
     }
 
     internal void SetNewArchitron(int newArchitronIdx)
@@ -1881,6 +1886,8 @@ public class MutatronEngine : MonoBehaviour, IPolytronStateProvider
     {
         var s = new PolytronState();
 
+        // Debug.Assert(p.boundSink != null);
+
         if (p == null)
         {
             s.Location = PolytronLocation.Unknown;
@@ -1906,9 +1913,65 @@ public class MutatronEngine : MonoBehaviour, IPolytronStateProvider
         else s.Role = PolytronRole.Normal;
 
         // Location: home / mutatron center / mutatron
+        /*
         if (p.boundSink == null) s.Location = PolytronLocation.Home;
         else if (mutatronCenter != null && p.boundSink == mutatronCenter.sink) s.Location = PolytronLocation.MutatronCenter;
         else s.Location = PolytronLocation.Mutatron;
+        */
+
+        s.Location = PolytronLocation.Unknown;
+        if(p.boundSink != null)
+        {
+            PolytronSink ps = p.boundSink;
+            HexCoord hc = ps.hexCoord;
+            HexCellData hcd = gridCellsMap[hc];
+
+            /*
+            HexCellData hcd = gridCellsMap[hc];
+            if(hcd.idxInRing == p.sealNumber && hcd.ring == 12)
+            {
+                s.Location = PolytronLocation.Home;
+            }
+            else if (mutatronCenter != null && p.boundSink == mutatronCenter.sink) s.Location = PolytronLocation.MutatronCenter;
+            */
+
+            if(IsHome(hc))
+            {
+//                 HexCellData hcd = gridCellsMap[hc];
+                Debug.Assert(hcd.idxInRing == p.sealNumber && hcd.ring == 12);
+                s.Location = PolytronLocation.Home;                
+            }
+/*            else if(IsMutatronCenter(hcd))
+            {
+                s.Location = PolytronLocation.MutatronCenter;                
+            }
+            */
+            /*
+            else if (mutatronCenter != null && p.boundSink == mutatronCenter.sink) 
+            {
+                s.Location = PolytronLocation.MutatronCenter;
+            }
+            */
+            else if(IsMutatronCell(hc))
+            {
+                s.Location = PolytronLocation.Mutatron;                
+            }
+            else if(IsMutatronCenter(hcd))
+            {
+                s.Location = PolytronLocation.MutatronCenter;                
+            }
+            /*
+            else if (mutatronCenter != null && p.boundSink == mutatronCenter.sink) 
+            {
+                s.Location = PolytronLocation.MutatronCenter;
+            }
+            */
+
+
+
+        }
+
+
 
         // Selection slots (authoritative from this engine)
         if (paletteSelector == p) s.Selection = SelectionSlot.Palette;

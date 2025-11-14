@@ -179,8 +179,6 @@ public class Polytron : PolyhedronGenerator,
         mutatron = FindObjectOfType<MutatronEngine>();
 
         Debug.Assert(mutatron != null);
-
-
     }
 
     // Update is called once per frame    

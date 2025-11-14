@@ -15,7 +15,7 @@ public class PolytronInfoPanel : MonoBehaviour
     // disable this
     float showDistance = 0f;
 
-    
+
     float animationDuration = 0.5f;
     // Vector3 panelOffset = new Vector3(0, 0.5f, 0);
 
@@ -123,51 +123,51 @@ public class PolytronInfoPanel : MonoBehaviour
     Polytron myPolytron;
     // if state arrives before UI is built, keep it here and apply after UI creation
     private PolytronState? pendingState = null;
- 
+
     void Start()
     {
         cameraTransform = CrossPlatformUtils.FindCamera().transform;
- 
+
         mutatron = FindObjectOfType<MutatronEngine>();
         Debug.Assert(mutatron != null, "MutatronEngine not found in scene, please check");
- 
+
         myPolytron = GetComponent<Polytron>();
- 
+
         // Note: defer provider subscription until after the panel UI is created below.
         // we'll look it up later and subscribe once header/body/button references exist.
- 
+
         // Create empty panel if not assigned
         if (canvasComponent == null)
         {
             // Debug.Assert(1 == 0);
             var canvasGO = new GameObject("PolytronInfoPanelCanvas", typeof(Canvas), typeof(GraphicRaycaster));
             canvasGO.transform.SetParent(transform, false);
- 
+
             canvasComponent = canvasGO.GetComponent<Canvas>();
             canvasComponent.renderMode = RenderMode.WorldSpace;
             canvasComponent.transform.localScale = Vector3.one;
- 
+
             // Ensure the world-space canvas has a camera assigned (some raycasters need this)
             var cam = CrossPlatformUtils.FindCamera();
             if (cam != null)
                 canvasComponent.worldCamera = cam;
- 
+
             // Make sure the canvas sorts above default geometry so raycasters see it first
             canvasComponent.overrideSorting = true;
             canvasComponent.sortingOrder = 100;
- 
+
             var panelGO = new GameObject("Panel", typeof(RectTransform), typeof(Image));
             panelGO.transform.SetParent(canvasGO.transform, false);
- 
+
             var panelRT = panelGO.GetComponent<RectTransform>();
             panelRT.sizeDelta = new Vector2(5, 4);
             panelRT.transform.localPosition = new Vector3(0, 1.5f, 0);
- 
+
             var img = panelGO.GetComponent<Image>();
             // img.color = new Color(1, 1, 1, 0.001f); // invisible
             img.color = new Color(0.1f, 0.1f, 0.2f, 0.8f); // semi-transparent for debugging
             img.raycastTarget = true;
- 
+
             /*
                         var textGO = new GameObject("PolytronName", typeof(TextMeshProUGUI));
                         textGO.transform.SetParent(panelGO.transform, false);
@@ -192,12 +192,12 @@ public class PolytronInfoPanel : MonoBehaviour
         }
         else
         {
- 
-//             Debug.Assert(false);
- 
+
+            //             Debug.Assert(false);
+
             panelTransform = canvasComponent.transform.Find("Panel");
             Debug.Assert(panelTransform != null);
- 
+
             headerText_ = panelTransform.Find("HeaderText").GetComponent<TextMeshProUGUI>();
             Debug.Assert(headerText_ != null);
             bodyText_ = panelTransform.transform.Find("BodyText").GetComponent<TextMeshProUGUI>();
@@ -211,16 +211,18 @@ public class PolytronInfoPanel : MonoBehaviour
             button3Text_ = button3.GetComponentInChildren<TextMeshProUGUI>();
             button4 = panelTransform.transform.Find("Button4").GetComponent<Button>();
             button4Text_ = button4.GetComponentInChildren<TextMeshProUGUI>();
- 
+
             ResetTexts();
- 
+
             Polytron p = GetComponent<Polytron>();
- 
-            headerText_.text = (p.sealNumber + 1) + " - " + p.sealName;
-            bodyText_.text = $"{PolytronName.GetPeriodString(p.sealNumber)}";
- 
+
+            /*
+                       headerText_.text = (p.sealNumber + 1) + " - " + p.sealName;
+                       bodyText_.text = $"{PolytronName.GetPeriodString(p.sealNumber)}";
+            */
+
             UpdatePanelGUI();
- 
+
             // Hook up button handlers so presses are forwarded to this GameObject (other components can implement handlers)
             if (centerButton != null) centerButton.onClick.AddListener(OnCenterButtonPressed);
             if (button1 != null) button1.onClick.AddListener(() => OnButtonPressed(1));
@@ -228,7 +230,7 @@ public class PolytronInfoPanel : MonoBehaviour
             if (button3 != null) button3.onClick.AddListener(() => OnButtonPressed(3));
             if (button4 != null) button4.onClick.AddListener(() => OnButtonPressed(4));
         }
- 
+
         // Now that UI refs are created, find provider and subscribe safely.
         provider = FindObjectsOfType<MutatronEngine>().OfType<IPolytronStateProvider>().FirstOrDefault();
         providerEngine = provider as MutatronEngine;
@@ -239,31 +241,31 @@ public class PolytronInfoPanel : MonoBehaviour
             var st = providerEngine.ComputeState(myPolytron);
             ApplyStateToPanel(st);
         }
- 
+
         // If a state arrived before UI was ready, apply it now
         if (pendingState.HasValue)
         {
             ApplyStateToPanel(pendingState.Value);
             pendingState = null;
         }
- 
+
         canvasComponent.gameObject.SetActive(false);
         canvasComponent.transform.localScale = Vector3.zero;
     }
- 
+
     void OnDestroy()
     {
         if (providerEngine != null)
             providerEngine.OnPolytronStateChanged -= OnPolytronStateChanged;
     }
- 
+
     // handler invoked by MutatronEngine when a polytron state changes
     void OnPolytronStateChanged(Polytron p, PolytronState state)
     {
         if (p != myPolytron) return;
         ApplyStateToPanel(state);
     }
- 
+
     void UpdateTextsAndButtons()
     {
         // keep a fallback/polling path for safety if no provider is present
@@ -278,7 +280,7 @@ public class PolytronInfoPanel : MonoBehaviour
         }
         ApplyStateToPanel(state);
     }
- 
+
     // Centralized mapping of state -> visible texts and button availability.
     void ApplyStateToPanel(PolytronState state)
     {
@@ -289,24 +291,41 @@ public class PolytronInfoPanel : MonoBehaviour
             return;
         }
 
-        /*
+
+        headerText_.text = (state.SealNumber + 1) + " - " + state.SealName;
+/*
+        if (state.Location == PolytronLocation.Home)
+        {
+//             bodyText_.text = $"{PolytronName.GetPeriodString(state.SealNumber)}";
+            bodyText_.text = $"HOME";
+        }
+        else if (state.Location == PolytronLocation.Unknown)
+        {
+            bodyText_.text = $"UNKNOWN LOCATION";
+        }
+*/
+
+
+
+    
 
         // Header always shows name and role
-        headerText_.text = state.SealName ?? $"Polytron {state.SealNumber}";
+        // headerText_.text = state.SealName ?? $"Polytron {state.SealNumber}";
  
         // Body shows location and recipe, and a short status
         string locText = state.Location switch
         {
             PolytronLocation.Home => "At Home",
-            PolytronLocation.MutatronCenter => "Architron (center)",
+            PolytronLocation.MutatronCenter => "Mutatron Center",
             PolytronLocation.Mutatron => "On Mutatron",
             PolytronLocation.Returning => "Returning",
             _ => "Unknown"
         };
  
         string roleText = state.Role == PolytronRole.Architron ? "Architron" : (state.Role == PolytronRole.GeneticFriend ? "Genetic Friend" : "Polytron");
-        bodyText_.text = $"{roleText}\n{locText}\nRecipe: {state.Recipe}";
+        bodyText_.text = $"Role: {roleText}\nLocation: {locText}\nRecipe: {state.Recipe}";
  
+ /*
         // Center button: available when on Mutatron to "focus" / center camera (example)
         if (centerButton != null)
         {
@@ -358,29 +377,29 @@ public class PolytronInfoPanel : MonoBehaviour
  
         */
 
-        
-                // Button 4: Make Architron (only if not already architron and interactive and on mutatron)
-                if (button4 != null)
-                {
-                    if (state.Role != PolytronRole.Architron
-                        && state.Interactive
-                        && (state.Location == PolytronLocation.Mutatron || state.Location == PolytronLocation.Home))
-                    {
-                        //                 button4.gameObject.SetActive(true);
-                        button4Text = "Make Architron";
-                    }
-                    else
-                    {
-                        //                 button4.gameObject.SetActive(false);
-                        button4Text = "";
-                    }
-                }
-        
+
+        // Button 4: Make Architron (only if not already architron and interactive and on mutatron)
+        if (button4 != null)
+        {
+            if (state.Role != PolytronRole.Architron
+                && state.Interactive
+                && (state.Location == PolytronLocation.Mutatron || state.Location == PolytronLocation.Home))
+            {
+                //                 button4.gameObject.SetActive(true);
+                button4Text = "Make Architron";
+            }
+            else
+            {
+                //                 button4.gameObject.SetActive(false);
+                button4Text = "";
+            }
+        }
+
 
 
         UpdatePanelGUI();
     }
- 
+
     void TestPanelFull()
     {
         headerText_.text = "headerText";
@@ -451,7 +470,7 @@ public class PolytronInfoPanel : MonoBehaviour
 
         if (isVisible)
         {
-//             canvasComponent.transform.rotation = Quaternion.LookRotation(canvasComponent.transform.position - cameraTransform.position, Vector3.up /*+ new Vector3(30f, 30f, 30f)*/);
+            //             canvasComponent.transform.rotation = Quaternion.LookRotation(canvasComponent.transform.position - cameraTransform.position, Vector3.up /*+ new Vector3(30f, 30f, 30f)*/);
             canvasComponent.transform.rotation = Quaternion.LookRotation(panelTransform.position - cameraTransform.position, Vector3.up /*+ new Vector3(30f, 30f, 30f)*/);
         }
 
@@ -489,7 +508,7 @@ public class PolytronInfoPanel : MonoBehaviour
     {
         Debug.Log($"[PolytronInfoPanel] Button{index} pressed on {name}");
         // SendMessage("OnInfoPanelButtonPressed", index, SendMessageOptions.DontRequireReceiver);
-        if(index == 4 && button4Text_.text == "Make Architron")
+        if (index == 4 && button4Text_.text == "Make Architron")
         {
             Debug.Log("Changing Architron");
             mutatron.SetNewArchitron(GetComponent<Polytron>().sealNumber);
