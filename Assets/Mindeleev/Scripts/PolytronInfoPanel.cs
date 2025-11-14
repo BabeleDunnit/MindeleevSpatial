@@ -292,25 +292,8 @@ public class PolytronInfoPanel : MonoBehaviour
         }
 
 
-        headerText_.text = (state.SealNumber + 1) + " - " + state.SealName;
-/*
-        if (state.Location == PolytronLocation.Home)
-        {
-//             bodyText_.text = $"{PolytronName.GetPeriodString(state.SealNumber)}";
-            bodyText_.text = $"HOME";
-        }
-        else if (state.Location == PolytronLocation.Unknown)
-        {
-            bodyText_.text = $"UNKNOWN LOCATION";
-        }
-*/
-
-
-
-    
-
         // Header always shows name and role
-        // headerText_.text = state.SealName ?? $"Polytron {state.SealNumber}";
+        headerText_.text = (state.SealNumber + 1) + " - " + state.SealName;
  
         // Body shows location and recipe, and a short status
         string locText = state.Location switch
@@ -470,7 +453,6 @@ public class PolytronInfoPanel : MonoBehaviour
 
         if (isVisible)
         {
-            //             canvasComponent.transform.rotation = Quaternion.LookRotation(canvasComponent.transform.position - cameraTransform.position, Vector3.up /*+ new Vector3(30f, 30f, 30f)*/);
             canvasComponent.transform.rotation = Quaternion.LookRotation(panelTransform.position - cameraTransform.position, Vector3.up /*+ new Vector3(30f, 30f, 30f)*/);
         }
 
