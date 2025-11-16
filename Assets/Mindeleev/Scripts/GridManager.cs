@@ -170,4 +170,28 @@ public class GridManager
 
         engine.AfterTilesCreation();
     }
+
+    // Rebuild a single tile mesh if it's different from the requested recipe
+    public void RebuildTileMesh(HexCoord coord, string recipe)
+    {
+        if (!engine.gridCellsMap.TryGetValue(coord, out var cell)) return;
+        PolyhedronGenerator tile = cell.tile;
+        if (tile != null && tile.recipe != recipe)
+        {
+            tile.recipe = recipe;
+            tile.RebuildMesh();
+        }
+    }
+
+    // Update all tiles for the current level configuration
+    public void UpdateTiles()
+    {
+        foreach (var hckv in engine.gridCellsMap)
+        {
+            if (hckv.Value.ring > engine.actualLevelConfig.actualRingsCount) continue;
+
+            string tileRecipe = PolyhedronRecipeKabbalah.IntToOperatorsSequence(hckv.Value.polytronicNumber) + hckv.Value.tileBasePolyhedron;
+            RebuildTileMesh(hckv.Key, tileRecipe);
+        }
+    }
 }

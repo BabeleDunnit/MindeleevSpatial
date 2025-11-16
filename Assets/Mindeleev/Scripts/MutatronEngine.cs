@@ -145,8 +145,10 @@ public class MutatronEngine : MonoBehaviour, IPolytronStateProvider
         InitializeCellsCAParametersForCurrentLevel();
 
 
-        StartCoroutine(DrawMetatronGraphicsCoroutine());
-        StartCoroutine(BuildTilesCoroutine());
+    StartCoroutine(DrawMetatronGraphicsCoroutine());
+    // Delegate tile building to GridManager so all tile-creation logic is
+    // centralized in one place.
+    if (gridManager != null) StartCoroutine(gridManager.BuildTilesCoroutine());
 
         mustBuildFirstTime = false;
         evolveCount = 0;
@@ -179,9 +181,12 @@ public class MutatronEngine : MonoBehaviour, IPolytronStateProvider
     bindingManager = new BindingManager(this);
     selectionManager = new SelectionManager(this);
     geneticsManager = new GeneticsManager(this);
-        StartCoroutine(Create72PolytronsAndHomesCoroutine());
-        // build tiles via grid manager
-        StartCoroutine(gridManager.BuildTilesCoroutine());
+    StartCoroutine(Create72PolytronsAndHomesCoroutine());
+    // Do NOT start building tiles automatically at startup. Tiles are built
+    // when the user triggers the mutatron build (Key M -> BuildLevel).
+    // Previously we started gridManager.BuildTilesCoroutine() here which caused
+    // the center tile to appear immediately; remove that to keep tiles gated
+    // behind the build action.
     }
 
     Polytron FindPolytronToBind()
@@ -621,36 +626,8 @@ public class MutatronEngine : MonoBehaviour, IPolytronStateProvider
         Debug.Log(msg);
     }
 
-    IEnumerator BuildTilesCoroutine()
-    {
-
-        if (!mustBuildFirstTime)
-        {
-            yield return new WaitForSeconds(5.5f);
-        }
-
-        foreach (var hckv in gridCellsMap)
-        {
-            if (hckv.Value.ring <= actualLevelConfig.actualRingsCount)
-            {
-                float angleToCenter = hckv.Key.PolarAngle();
-                Quaternion tileRotation = Quaternion.Euler(0f, -angleToCenter * 360f / 6.28f, 0f);
-
-                string tileRecipe = PolyhedronRecipeKabbalah.IntToOperatorsSequence(hckv.Value.polytronicNumber) + hckv.Value.tileBasePolyhedron;
-
-                GameObject tile = PolytronsFactory.Instance.Create($"tile/{tileRecipe}", 1f);
-                tile.name += $"_mutatron_{hckv.Value.ring}_{hckv.Value.idxInRing}";
-                tile.transform.localScale = new Vector3(1f, 0.01f, 1f);
-                tile.transform.position = hckv.Value.worldCoords + new Vector3(0, 0.1f, 0);
-                tile.transform.localRotation = tileRotation;
-                hckv.Value.tile = tile.GetComponent<MutatronTile>();
-
-                yield return new WaitForSeconds(0.15f);
-            }
-        }
-
-        AfterTilesCreation();
-    }
+    // Tile creation is handled by GridManager.BuildTilesCoroutine().
+    // The engine no longer contains a duplicate implementation.
 
     void UnbindNonMatchingPolytrons()
     {
@@ -756,7 +733,7 @@ public class MutatronEngine : MonoBehaviour, IPolytronStateProvider
             cellData.nextPolytronicNumberAccumulator = 0;
         }
 
-        UpdateTiles();
+    if (gridManager != null) gridManager.UpdateTiles();
 
         UnbindNonMatchingPolytrons();
 
@@ -784,32 +761,9 @@ public class MutatronEngine : MonoBehaviour, IPolytronStateProvider
 
     }
 
-    void RebuildTileMesh(HexCoord coord, string recipe)
-    {
-        PolyhedronGenerator tile = gridCellsMap[coord].tile;
-        if (tile != null && tile.recipe != recipe)
-        {
-            tile.recipe = recipe;
-            tile.RebuildMesh();
+    // Tile mesh rebuilding now lives in GridManager.RebuildTileMesh
 
-            // PolytronsFactory.CreateLabel(tile.gameObject, tile.recipeString, Vector3.up * 10.5f);
-        }
-    }
-
-    void UpdateTiles()
-    {
-        foreach (var hckv in gridCellsMap)
-        {
-            if (hckv.Value.ring > actualLevelConfig.actualRingsCount) continue;
-
-            HexCellData cellData = hckv.Value;
-
-            string tileRecipe = PolyhedronRecipeKabbalah.IntToOperatorsSequence(hckv.Value.polytronicNumber) + hckv.Value.tileBasePolyhedron;
-
-            RebuildTileMesh(hckv.Key, tileRecipe);
-
-        }
-    }
+    // Tile update methods moved to GridManager.
 
 
     void FixedUpdate()
