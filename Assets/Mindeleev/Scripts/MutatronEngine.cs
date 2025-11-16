@@ -71,6 +71,8 @@ public class MutatronEngine : MonoBehaviour, IPolytronStateProvider
 
     // binding manager (extracted)
     private BindingManager bindingManager;
+    // selection manager (extracted)
+    internal SelectionManager selectionManager;
 
     void InitializeCellsCAParametersForCurrentLevel()
     {
@@ -165,6 +167,8 @@ public class MutatronEngine : MonoBehaviour, IPolytronStateProvider
         Create72PolytronsImmediate();
     // initialize extracted managers after core data structures exist
     bindingManager = new BindingManager(this);
+    selectionManager = new SelectionManager(this);
+    geneticsManager = new GeneticsManager(this);
         StartCoroutine(Create72PolytronsAndHomesCoroutine());
     }
 
@@ -190,13 +194,13 @@ public class MutatronEngine : MonoBehaviour, IPolytronStateProvider
         }
     }
 
-    void BindPolytronToSink(Polytron p, KeyValuePair<HexCoord, HexCellData> hckv)
+    internal void BindPolytronToSink(Polytron p, KeyValuePair<HexCoord, HexCellData> hckv)
     {
         if (bindingManager != null) bindingManager.BindPolytronToSink(p, hckv);
         else BindPolytronToSink(p, hckv.Value.sink);
     }
 
-    void BindPolytronToSink(Polytron p, PolytronSink ps)
+    internal void BindPolytronToSink(Polytron p, PolytronSink ps)
     {
         // Clear previous binding of this polytron (both sides)
         if (p == null) return;
@@ -235,7 +239,7 @@ public class MutatronEngine : MonoBehaviour, IPolytronStateProvider
     }
 
     // Safe unbind helper: clears both sides of the binding
-    void UnbindPolytron(Polytron p)
+    internal void UnbindPolytron(Polytron p)
     {
         if (bindingManager != null)
         {
@@ -932,7 +936,8 @@ public class MutatronEngine : MonoBehaviour, IPolytronStateProvider
     void FixedUpdate()
     {
         AttractPolytronsToTargets();
-        AttractGeneticFriends(); // apply attraction to genetic friends if any
+        // apply attraction to genetic friends if any (delegated to GeneticsManager)
+        if (geneticsManager != null) geneticsManager.AttractGeneticFriends();
     }
 
     int levelCount = 0;
@@ -1046,217 +1051,28 @@ public class MutatronEngine : MonoBehaviour, IPolytronStateProvider
 
     string oldArchitronRecipe;
 
-    // Selection slots
-    private Polytron paletteSelector = null;    // state 1: fix palette index + base polyhedron (yellow)
-    private Polytron operatorsSelector = null;  // state 2: fix operator sequence (green)
+    // Selection state moved to SelectionManager
+    // Genetics handled by GeneticsManager (extracted)
+    private GeneticsManager geneticsManager;
 
-    // Architron backup recipes for restore semantics
-    private string architronSavedRecipeForSelection = null;   // saved when first selection is made (for permanent restore)
-    private string architronHoverSavedRecipe = null;         // saved when hover preview starts
-    private bool architronHoverOverrideActive = false;
+    // expose genetic active state for SelectionManager and other callers
+    internal bool geneticModeActive => geneticsManager != null && geneticsManager.GeneticModeActive;
 
-    // --- Genetic / friends state ---
-    private struct PolytronStateBackup
-    {
-        public string recipe;
-        public PolytronSink boundSink;
-        public Vector3 position;
-        public Vector3 localScale;
-    }
-
-    private bool geneticModeActive = false;
-    private List<Polytron> geneticFriends = new List<Polytron>();
-    private Dictionary<Polytron, PolytronStateBackup> geneticBackups = new Dictionary<Polytron, PolytronStateBackup>();
-    private Dictionary<Polytron, Vector3> geneticRelativeOffsets = new Dictionary<Polytron, Vector3>();
-    private Dictionary<Polytron, Vector3> geneticReturnTargets = new Dictionary<Polytron, Vector3>();
-    private HashSet<Polytron> geneticReturning = new HashSet<Polytron>();
-
-    private float geneticFriendsRadius = 1.7f;
-    private float geneticFriendsHeight = 1f;
-    private float geneticAttractionStrength = 5f;
-    // dynamic crown orientation used by the spring-mass solver
-
-    // Helper to clear palette selection (reset outline on previous)
-    void ClearPaletteSelection()
-    {
-        ClearGeneticFriends();
-
-        if (paletteSelector != null)
-        {
-            var oldOutline = paletteSelector.GetComponent<PointerOutlineStateController>();
-            oldOutline?.SetState(0);
-            paletteSelector = null;
-        }
-    }
-
-    // Helper to clear operators selection (reset outline on previous)
-    void ClearOperatorsSelection()
-    {
-        ClearGeneticFriends();
-
-        if (operatorsSelector != null)
-        {
-            var oldOutline = operatorsSelector.GetComponent<PointerOutlineStateController>();
-            oldOutline?.SetState(0);
-            operatorsSelector = null;
-        }
-    }
-
-    // Deselect all polytrons: remove outlines, reset selection state and hover state,
-    // and restore the Architron to the "no selection" recipe (saved before selection) and rebuild it.
     internal void DeselectAllPolytrons()
     {
-        Debug.Log("[MutatronEngine] DeselectAllPolytrons()");
-
-        ClearGeneticFriends();
-
-        // remove outlines on every polytron to ensure no visual selection remains
-        foreach (var p in polytrons)
-        {
-            if (p == null) continue;
-            var outline = p.GetComponent<PointerOutlineStateController>();
-            outline?.SetState(0);
-        }
-
-        // reset selection slots
-        paletteSelector = null;
-        operatorsSelector = null;
-
-        // reset hover bookkeeping
-        architronHoverOverrideActive = false;
-        architronHoverSavedRecipe = null;
-        currentlyHoveredPolytronSealNumber = -1;
-
-        // restore Architron recipe: prefer the saved pre-selection recipe if present,
-        // otherwise restore the pre-hover recipe if available.
-        var arch = polytrons[architronIdx];
-        if (arch == null) return;
-
-        if (!string.IsNullOrEmpty(architronSavedRecipeForSelection))
-        {
-            ApplyRecipeToArchitron(architronSavedRecipeForSelection);
-            architronSavedRecipeForSelection = null;
-        }
-        else if (!string.IsNullOrEmpty(architronHoverSavedRecipe))
-        {
-            ApplyRecipeToArchitron(architronHoverSavedRecipe);
-            architronHoverSavedRecipe = null;
-        }
-        else
-        {
-            ApplyRecipeToArchitron(arch.recipe);
-        }
+        if (selectionManager != null) selectionManager.DeselectAllPolytrons();
     }
 
-    // Called by Polytron on click
+    // Called by Polytron on click -> delegate to SelectionManager
     internal void OnPolytronClicked(Polytron p)
     {
-        if (p == null || p.isArchitron) return;
-
-        var pOutline = p.GetComponent<PointerOutlineStateController>();
-
-        // Ensure we keep a copy of the architron recipe before we do any selection/clear logic,
-        // so SetupGeneticFriends can restore the original recipe reliably.
-        var archBefore = polytrons.Count > 0 ? polytrons[architronIdx] : null;
-        if (archBefore != null && architronSavedRecipeForSelection == null)
-        {
-            architronSavedRecipeForSelection = archBefore.recipe;
-        }
-
-        // Ensure any previous genetic friends are cleared before changing selection.
-        ClearGeneticFriends();
-
-        // New selection rules:
-        // - At most one paletteSelector and one operatorsSelector.
-        // - If only one slot is occupied and you click the same polytron, cycle 0 -> 1 -> 2 -> 0.
-        // - If both slots are occupied and you click a selected polytron, deselect that slot.
-        // - Clicking an unselected polytron assigns it to the first free slot (palette preferred).
-        // - If both occupied and you click an unselected polytron, replace the operators slot.
-
-        if (paletteSelector == p)
-        {
-            if (operatorsSelector == null)
-            {
-                // Only palette selected -> cycle it to operators.
-                ClearPaletteSelection();
-                operatorsSelector = p;
-                pOutline?.SetState(2); // operators (green)
-            }
-            else
-            {
-                // Both selected -> clicking the palette-selected polytron should deselect it.
-                ClearPaletteSelection();
-            }
-        }
-        else if (operatorsSelector == p)
-        {
-            // Clicking the operators-selected polytron toggles it off.
-            ClearOperatorsSelection();
-        }
-        else
-        {
-            // Clicked a polytron that is not currently selected
-            if (paletteSelector == null)
-            {
-                paletteSelector = p;
-                pOutline?.SetState(1);
-            }
-            else if (operatorsSelector == null)
-            {
-                operatorsSelector = p;
-                pOutline?.SetState(2);
-            }
-            else
-            {
-                // both slots occupied: replace the operators slot with the clicked polytron
-                ClearOperatorsSelection();
-                operatorsSelector = p;
-                pOutline?.SetState(2);
-            }
-        }
-
-        // Save architron original recipe once when first selection appears
-        var arch = polytrons[architronIdx];
-        if ((paletteSelector != null || operatorsSelector != null) && architronSavedRecipeForSelection == null)
-            architronSavedRecipeForSelection = arch.recipe;
-
-        // If both slots present -> set architron permanently to their union or activate genetic mode
-        if (paletteSelector != null && operatorsSelector != null)
-        {
-            if (paletteSelector.recipe == operatorsSelector.recipe)
-            {
-                string combined = CombineUsingSelectors(paletteSelector, operatorsSelector);
-                ApplyRecipeToArchitron(combined);
-            }
-            else
-            {
-                var crossovers = ComputeCrossoverRecipes(paletteSelector, operatorsSelector);
-                if (crossovers.Count == 1)
-                {
-                    ApplyRecipeToArchitron(crossovers[0]);
-                }
-                else
-                {
-                    SetupGeneticFriends(crossovers);
-                }
-            }
-        }
-        else
-        {
-            if (paletteSelector == null && operatorsSelector == null && architronSavedRecipeForSelection != null)
-            {
-                ApplyRecipeToArchitron(architronSavedRecipeForSelection);
-                architronSavedRecipeForSelection = null;
-            }
-        }
-
-        Debug.Log($"[MutatronEngine.OnPolytronClicked] palette: {(paletteSelector == null ? "null" : paletteSelector.name)}, operators: {(operatorsSelector == null ? "null" : operatorsSelector.name)}");
+        if (selectionManager != null) selectionManager.OnPolytronClicked(p);
     }
 
     // Build combined recipe string from two selected Polytrons:
     // paletteSelector provides PaletteIdx and BasePolyhedron,
     // operatorsSelector provides OperatorsSequence().
-    private string CombineUsingSelectors(Polytron paletteP, Polytron opsP)
+    internal string CombineUsingSelectors(Polytron paletteP, Polytron opsP)
     {
         string ops = opsP._recipe?.OperatorsSequence() ?? "";
         string paletteIdxStr = paletteP._recipe?.PaletteIdx.ToString("D2") ?? "00";
@@ -1265,7 +1081,7 @@ public class MutatronEngine : MonoBehaviour, IPolytronStateProvider
     }
 
     // Apply string recipe to the architron (set recipe and rebuild)
-    private void ApplyRecipeToArchitron(string recipe)
+    internal void ApplyRecipeToArchitron(string recipe)
     {
         var arch = polytrons[architronIdx];
         if (arch == null) return;
@@ -1275,100 +1091,20 @@ public class MutatronEngine : MonoBehaviour, IPolytronStateProvider
         arch.name = $"Architron_{recipe}";
     }
 
-    // Called by Polytron on pointer enter
+    // Called by Polytron on pointer enter -> delegate to SelectionManager
     internal void OnPolytronPointerEnter(Polytron hovered)
     {
-        if (hovered == null || hovered.isArchitron) return;
-
-        // When genetic friends are active, hovering must not change the Architron.
-        if (geneticModeActive) return;
-        
-        var arch = polytrons[architronIdx];
-
-        // If hovering a selected polytron -> temporarily show its radix (palette + base)
-        if (hovered == paletteSelector || hovered == operatorsSelector)
-        {
-            if (!architronHoverOverrideActive)
-            {
-                architronHoverSavedRecipe = arch.recipe;
-                architronHoverOverrideActive = true;
-            }
-
-            string radix = GetRadixRecipe(hovered);
-            ApplyRecipeToArchitron(radix);
-            return;
-        }
-
-        // If no selection slots active, do nothing (info panel / outline handled by Polytron)
-        if (paletteSelector == null && operatorsSelector == null) return;
-
-        if (!architronHoverOverrideActive)
-        {
-            architronHoverSavedRecipe = arch.recipe;
-            architronHoverOverrideActive = true;
-        }
-
-        string newRecipe = null;
-
-        if (paletteSelector != null && operatorsSelector != null)
-        {
-            newRecipe = CombineUsingSelectors(paletteSelector, operatorsSelector);
-        }
-        else if (paletteSelector != null)
-        {
-            string hoveredOps = hovered._recipe?.OperatorsSequence() ?? "";
-            string paletteIdxStr = paletteSelector._recipe?.PaletteIdx.ToString("D2") ?? "00";
-            char baseChar = paletteSelector._recipe?.BasePolyhedron ?? 'C';
-            newRecipe = hoveredOps + paletteIdxStr + baseChar;
-        }
-        else // operatorsSelector != null
-        {
-            string ops = operatorsSelector._recipe?.OperatorsSequence() ?? "";
-            string paletteIdxStr = hovered._recipe?.PaletteIdx.ToString("D2") ?? "00";
-            char baseChar = hovered._recipe?.BasePolyhedron ?? 'C';
-            newRecipe = ops + paletteIdxStr + baseChar;
-        }
-
-        if (newRecipe != null)
-            ApplyRecipeToArchitron(newRecipe);
+        if (selectionManager != null) selectionManager.OnPolytronPointerEnter(hovered);
     }
 
-    // Called by Polytron on pointer exit
+    // Called by Polytron on pointer exit -> delegate to SelectionManager
     internal void OnPolytronPointerExit(Polytron p)
     {
-        // If genetic friends active, ignore pointer-exit restore logic.
-        if (geneticModeActive) return;
-        
-        var arch = polytrons[architronIdx];
-
-        if (!architronHoverOverrideActive) return;
-
-        if (paletteSelector != null && operatorsSelector != null)
-        {
-            string combined = CombineUsingSelectors(paletteSelector, operatorsSelector);
-            ApplyRecipeToArchitron(combined);
-        }
-        else
-        {
-            if (architronSavedRecipeForSelection != null)
-            {
-                ApplyRecipeToArchitron(architronSavedRecipeForSelection);
-            }
-            else
-            {
-                if (architronHoverSavedRecipe != null)
-                {
-                    ApplyRecipeToArchitron(architronHoverSavedRecipe);
-                }
-            }
-        }
-
-        architronHoverOverrideActive = false;
-        architronHoverSavedRecipe = null;
+        if (selectionManager != null) selectionManager.OnPolytronPointerExit(p);
     }
 
     // Return a recipe string representing only the radix (palette index + base polyhedron)
-    private string GetRadixRecipe(Polytron p)
+    internal string GetRadixRecipe(Polytron p)
     {
         if (p == null || p._recipe == null) return "";
         string paletteIdxStr = p._recipe.PaletteIdx.ToString("D2");
@@ -1380,7 +1116,7 @@ public class MutatronEngine : MonoBehaviour, IPolytronStateProvider
 
     // Compute cartesian product of ops / palette / base between two polytrons.
     // Returns unique recipe strings (ops + paletteIdx D2 + baseChar).
-    private List<string> ComputeCrossoverRecipes(Polytron a, Polytron b)
+    internal List<string> ComputeCrossoverRecipes(Polytron a, Polytron b)
     {
         var result = new HashSet<string>();
 
@@ -1417,397 +1153,19 @@ public class MutatronEngine : MonoBehaviour, IPolytronStateProvider
     }
 
     // Setup genetic friends around the architron and assign them the crossover recipes.
-    private void SetupGeneticFriends(List<string> crossoverRecipes)
+    internal void SetupGeneticFriends(List<string> crossoverRecipes)
     {
-        if (crossoverRecipes == null || crossoverRecipes.Count == 0) return;
-
-        AbortPendingGeneticReturnImmediate();
-
-        int needed = crossoverRecipes.Count;
-        int totalPolytrons = polytrons.Count;
-        if (totalPolytrons == 0) return;
-
-        int[] offsets = new int[] { 1, -1, 2, -2, 3, -3, 4, -4 };
-
-    int assigned = 0;
-
-        var arch = polytrons[architronIdx];
-        if (arch == null) return;
-
-        // clear any previous lists
-        geneticFriends.Clear();
-        geneticBackups.Clear();
-        geneticRelativeOffsets.Clear();
-        geneticReturnTargets.Clear();
-        geneticReturning.Clear();
-
-        // compute horizontal circle radius (intersection of sphere radius geneticFriendsRadius
-        // and plane geneticFriendsHeight above arch: r_horiz = sqrt(R^2 - h^2))
-        float R = geneticFriendsRadius;
-        float h = geneticFriendsHeight;
-        float horizRadius = 0f;
-        if (R > Mathf.Abs(h)) horizRadius = Mathf.Sqrt(R * R - h * h);
-
-        // Build an ordered neighbor index list (1, -1, 2, -2, ...), large enough to scan whole ring if needed.
-        var neighborOffsets = new List<int>();
-        for (int d = 1; neighborOffsets.Count < totalPolytrons - 1 && d < totalPolytrons; d++)
-        {
-            neighborOffsets.Add(d);
-            if (neighborOffsets.Count >= totalPolytrons - 1) break;
-            neighborOffsets.Add(-d);
-        }
-
-        // Build an ordered candidate list (stable local neighbors first).
-        var orderedCandidates = new List<Polytron>();
-        foreach (var off in neighborOffsets)
-        {
-            int idx = (architronIdx + off) % totalPolytrons;
-            if (idx < 0) idx += totalPolytrons;
-            var candidate = polytrons[idx];
-            if (candidate == null) continue;
-            if (candidate == arch) continue;
-            if (candidate == paletteSelector || candidate == operatorsSelector) continue;
-            if (orderedCandidates.Contains(candidate)) continue;
-            orderedCandidates.Add(candidate);
-        }
-
-        // Partition candidates: prefer those already on the Mutatron (bound to a mutatron sink)
-        var onMutatron = orderedCandidates
-            .Where(c => c.boundSink != null && IsMutatronCell(c.boundSink.hexCoord))
-            .ToList();
-        var atHome = orderedCandidates
-            .Where(c => c.boundSink == null || IsHome(c.boundSink.hexCoord))
-            .ToList();
-
-    // Selection: take from onMutatron first, then from atHome, until we have 'needed'
-        List<Polytron> pickPool = new List<Polytron>();
-        pickPool.AddRange(onMutatron);
-        pickPool.AddRange(atHome);
-
-    // Debug: print the candidate pools to help diagnose selection issues
-    Debug.Log($"[SetupGeneticFriends] needed={needed} orderedCandidates={orderedCandidates.Count} onMutatron={onMutatron.Count} atHome={atHome.Count} pickPool={pickPool.Count}");
-    Debug.Log("[SetupGeneticFriends] ordered: " + string.Join(",", orderedCandidates.Select(c => c?.sealNumber.ToString() ?? "null")));
-    Debug.Log("[SetupGeneticFriends] onMutatron: " + string.Join(",", onMutatron.Select(c => c?.sealNumber.ToString() ?? "null")));
-    Debug.Log("[SetupGeneticFriends] atHome: " + string.Join(",", atHome.Select(c => c?.sealNumber.ToString() ?? "null")));
-
-        for (int i = 0; i < pickPool.Count && assigned < needed; i++)
-        {
-            var candidate = pickPool[i];
-            if (candidate == null) continue;
-            if (geneticBackups.ContainsKey(candidate)) continue;
-
-            var backup = new PolytronStateBackup
-            {
-                recipe = candidate.recipe,
-                boundSink = candidate.boundSink,
-                position = candidate.transform.position,
-                localScale = candidate.transform.localScale
-            };
-
-            geneticBackups[candidate] = backup;
-            geneticFriends.Add(candidate);
-
-            Debug.Log($"[SetupGeneticFriends] PICKED friend #{assigned}: polytron_id={candidate.sealNumber} (seal:{candidate.sealName}) boundSink={backup.boundSink?.name} position={candidate.transform.position}");
-
-            // detach from sink to suspend global attraction (atomic helper)
-            UnbindPolytron(candidate);
-            // mark reserved so binding logic won't pick it up
-            candidate.reservedForGenetics = true;
-            NotifyPolytronStateChanged(candidate);
-
-            Debug.Log($"[SetupGeneticFriends] UNBOUND and RESERVED friend #{assigned}: polytron_id={candidate.sealNumber} reservedForGenetics={candidate.reservedForGenetics}");
-
-            // assign new recipe and rebuild
-            candidate.recipe = crossoverRecipes[assigned];
-            candidate.RebuildMesh();
-
-            // pause wave animation and make non-interactive while in genetic state
-            var wa = candidate.GetComponent<WaveAnimation>();
-            if (wa != null) wa.Pause(true);
-            candidate.interactive = false;
-
-            // scale while in genetic state
-            candidate.transform.localScale = backup.localScale * 0.3f;
-
-            // compute relative offset on the horizontal circle above architron (uniformly distributed)
-            float angle = ((float)assigned / Mathf.Max(1, needed)) * Mathf.PI * 2f;
-            Vector3 rel = Vector3.up * h + new Vector3(Mathf.Cos(angle) * horizRadius, 0f, Mathf.Sin(angle) * horizRadius);
-            geneticRelativeOffsets[candidate] = rel;
-
-            // notify UI about this change
-            NotifyPolytronStateChanged(candidate);
-
-            assigned++;
-        }
- 
-         geneticModeActive = geneticFriends.Count > 0;
- 
-         // Ensure the Architron returns to its original, unmodified recipe/mesh when genetic friends are displayed.
-         if (architronSavedRecipeForSelection != null)
-         {
-             ApplyRecipeToArchitron(architronSavedRecipeForSelection);
-         }
-         else
-         {
-             ApplyRecipeToArchitron(arch.recipe);
-         }
- 
-         NotifyPolytronStateChanged(arch);
- 
-         Debug.Log($"[MutatronEngine] SetupGeneticFriends: assigned {geneticFriends.Count} friends for {needed} recipes");
+        if (geneticsManager != null) geneticsManager.SetupGeneticFriends(crossoverRecipes);
     }
 
-    private void ClearGeneticFriends()
+    internal void ClearGeneticFriends()
     {
-        if (!geneticModeActive && geneticFriends.Count == 0 && geneticBackups.Count == 0) return;
-
-        Debug.Log("[MutatronEngine] ClearGeneticFriends - begin return phase");
-
-        // We'll try to rebind immediately to the original sink if it's still free; otherwise schedule a
-        // physical return so they move back by physics and rebind when close.
-        var friendsToKeepForPhysicsReturn = new List<Polytron>();
-        foreach (var friend in geneticFriends)
-        {
-            if (friend == null) continue;
-            if (!geneticBackups.TryGetValue(friend, out var backup)) continue;
-
-            // restore recipe and rebuild so visuals reflect original state while returning
-            friend.recipe = backup.recipe;
-            friend.RebuildMesh();
-
-            // restore scale to original immediately when genetic behaviour is dismissed
-            var wa = friend.GetComponent<WaveAnimation>();
-            if (wa != null) wa.Pause(false);
-            friend.transform.localScale = backup.localScale;
-
-            // prefer an immediate, atomic rebind if the original sink is still free
-            if (backup.boundSink != null && backup.boundSink.boundPolytron == null)
-            {
-                Debug.Log($"[ClearGeneticFriends] immediate rebind available for polytron_id={friend.sealNumber} to sink={backup.boundSink.name}");
-                BindPolytronToSink(friend, backup.boundSink);
-                // clear reservation so normal flows resume
-                friend.reservedForGenetics = false;
-
-                // restore interactivity immediately
-                friend.interactive = true;
-
-                // cleanup backup entry
-                geneticBackups.Remove(friend);
-                // ensure outline reset
-                var outline = friend.GetComponent<PointerOutlineStateController>();
-                outline?.SetState(0);
-                // notify UI of final state
-                NotifyPolytronStateChanged(friend);
-            }
-            else
-            {
-                // schedule absolute return target (previous world position)
-                friend.interactive = false; // remain non-interactive while physically returning
-                geneticReturnTargets[friend] = backup.position;
-                geneticReturning.Add(friend);
-
-                // remove any orbit-relative target so orbit attraction stops immediately
-                geneticRelativeOffsets.Remove(friend);
-
-                // keep them unbound for now so AttractGeneticFriends moves them toward target
-                UnbindPolytron(friend);
-
-                // ensure outline reset
-                var outline = friend.GetComponent<PointerOutlineStateController>();
-                outline?.SetState(0);
-
-                friendsToKeepForPhysicsReturn.Add(friend);
-            }
-        }
-
-        // Replace geneticFriends with the subset that will physically return; the others were restored immediately.
-        geneticFriends = friendsToKeepForPhysicsReturn;
-
-        NotifyPolytronStateChanged(polytrons[architronIdx]);
-
-        geneticModeActive = geneticReturning.Count > 0 || geneticFriends.Count > 0;
+        if (geneticsManager != null) geneticsManager.ClearGeneticFriends();
     }
 
-    private void AbortPendingGeneticReturnImmediate()
+    internal void AbortPendingGeneticReturnImmediate()
     {
-        if (geneticReturning.Count == 0) return;
-
-        Debug.Log("[MutatronEngine] AbortPendingGeneticReturnImmediate - force restore");
-
-        foreach (var friend in geneticReturning.ToList())
-        {
-            if (friend == null) continue;
-            if (!geneticBackups.TryGetValue(friend, out var backup)) continue;
-
-            // immediate rebind to previous sink if available
-            if (backup.boundSink != null)
-            {
-                BindPolytronToSink(friend, backup.boundSink);
-                // clear reservation so normal flows resume
-                friend.reservedForGenetics = false;
-            }
-            // restore recipe has already been restored earlier when scheduled; ensure mesh OK
-            friend.RebuildMesh();
-
-            // ensure scale is restored too
-            friend.transform.localScale = backup.localScale;
-
-            // ensure wave animation resumed and interactivity restored
-            var wa = friend.GetComponent<WaveAnimation>();
-            if (wa != null) wa.Pause(false);
-            friend.interactive = true;
-
-        }
-
-        geneticRelativeOffsets.Clear();
-        geneticReturnTargets.Clear();
-        geneticReturning.Clear();
-        geneticModeActive = false;
-    }
-
-    // Apply attraction to genetic friends (called from FixedUpdate)
-    private void AttractGeneticFriends()
-    {
-        // Dynamic spring-mass crown solver:
-        // - prefer friend to lie near the horizontal circle (centered above arch)
-        // - prefer a target separation between friends (spring between friends)
-        // - prefer a soft attraction to the crown circle (keeps them near the ring)
-        if (geneticFriends.Count > 0)
-        {
-            var arch = polytrons[architronIdx];
-            if (arch != null)
-            {
-                // recompute circle geometry each frame
-                float R = geneticFriendsRadius;
-                float h = geneticFriendsHeight;
-                float horizRadius = 0f;
-                if (R > Mathf.Abs(h)) horizRadius = Mathf.Sqrt(R * R - h * h);
-                Vector3 crownCenter = arch.transform.position + Vector3.up * h;
-
-                // small slow rotation of the crown base angle so orientation is not fixed
-                // geneticCrownBaseAngle += Time.fixedDeltaTime * 0.2f;
-                // keep crown orientation fixed (no automatic rotation)
-                // geneticCrownBaseAngle is initialized in SetupGeneticFriends and must stay constant
-
-                int N = geneticFriends.Count;
-                // target separation along circle (approx arc length / chord)
-                float targetSeparation = (N > 0 && horizRadius > 0f) ? (2f * Mathf.PI * horizRadius / N) : 1.0f;
-
-                // constants (tweakable)
-                float kToCircle = geneticAttractionStrength * 0.75f; // pull toward corresponding circle point
-                float kBetween = geneticAttractionStrength * 0.5f;  // spring between friends
-                float kHeight = geneticAttractionStrength * 0.5f;   // keep near crown height
-
-                // Build an index map to provide stable angular ordering for nicer initial distribution
-                var friendsList = geneticFriends.Where(f => f != null && !geneticReturning.Contains(f)).ToList();
-                for (int i = 0; i < friendsList.Count; i++)
-                {
-                    var friend = friendsList[i];
-                    if (friend == null) continue;
-                    var rb = friend.GetComponent<Rigidbody>();
-                    if (rb == null) continue;
-
-                    // compute preferred point on the circle for this friend (stable order)
-                    float angle = ((float)i / Mathf.Max(1, friendsList.Count)) * Mathf.PI * 2f;
-                    Vector3 desiredOnCircle = crownCenter + new Vector3(Mathf.Cos(angle) * horizRadius, 0f, Mathf.Sin(angle) * horizRadius);
-                    desiredOnCircle.y = crownCenter.y;
-
-                    // 1) attraction toward the circle point (spring)
-                    Vector3 toCircle = desiredOnCircle - friend.transform.position;
-                    Vector3 fCircle = toCircle * kToCircle;
-
-                    // 2) mild height correction toward crown center.y
-                    Vector3 heightDelta = new Vector3(0f, crownCenter.y - friend.transform.position.y, 0f);
-                    Vector3 fHeight = heightDelta * kHeight;
-
-                    // 3) inter-friend spring/repulsion to keep separation ~ targetSeparation
-                    Vector3 fBetweenTotal = Vector3.zero;
-                    for (int j = 0; j < friendsList.Count; j++)
-                    {
-                        if (j == i) continue;
-                        var other = friendsList[j];
-                        if (other == null) continue;
-                        Vector3 d = friend.transform.position - other.transform.position;
-                        float dist = d.magnitude;
-                        if (dist < 0.001f) continue;
-                        Vector3 dir = d / dist;
-                        float displacement = dist - targetSeparation;
-                        // spring that repels when too close, attracts when too far
-                        Vector3 fj = -dir * (displacement * kBetween * 0.5f);
-                        fBetweenTotal += fj;
-                    }
-
-                    // sum forces and apply (clamped to avoid explosion)
-                    Vector3 totalForce = fCircle + fBetweenTotal + fHeight;
-                    float maxForce = 200f;
-                    if (totalForce.magnitude > maxForce) totalForce = totalForce.normalized * maxForce;
-                    rb.AddForce(totalForce);
-                }
-            }
-        }
-
-        // Now handle friends that are returning to their saved positions
-        if (geneticReturning.Count > 0)
-        {
-            foreach (var friend in geneticReturning.ToList())
-            {
-                if (friend == null) 
-                {
-                    geneticReturning.Remove(friend);
-                    continue;
-                }
-                if (!geneticReturnTargets.TryGetValue(friend, out var returnTarget)) continue;
-
-                var rb = friend.GetComponent<Rigidbody>();
-                if (rb == null) continue;
-
-                Vector3 toTarget = returnTarget - friend.transform.position;
-                Vector3 force = toTarget * geneticAttractionStrength;
-                rb.AddForce(force);
-
-                // when close enough, finalize and rebind to original sink (if any)
-                if (toTarget.magnitude < 0.25f)
-                {
-                    if (geneticBackups.TryGetValue(friend, out var backup))
-                    {
-                        if (backup.boundSink != null)
-                        {
-                            BindPolytronToSink(friend, backup.boundSink);
-                            // clear reservation so normal flows resume
-                            friend.reservedForGenetics = false;
-                        }
-                        // cleanup backup and lists
-                        geneticBackups.Remove(friend);
-                        // ensure final scale restore just in case
-                        friend.transform.localScale = backup.localScale;
-
-                        // restore wave animation and interactivity now that return is finished
-                        var wa2 = friend.GetComponent<WaveAnimation>();
-                        if (wa2 != null) wa2.Pause(false);
-                        friend.interactive = true;
-                    }
-
-                    geneticReturnTargets.Remove(friend);
-                    geneticReturning.Remove(friend);
-                    geneticFriends.Remove(friend);
-                    geneticRelativeOffsets.Remove(friend);
-                }
-            }
-
-            // if all returns finalized, clear global flags
-            if (geneticReturning.Count == 0)
-            {
-                geneticModeActive = geneticRelativeOffsets.Count > 0;
-                if (!geneticModeActive)
-                {
-                    // fully cleared
-                    geneticBackups.Clear();
-                    geneticFriends.Clear();
-                    geneticReturnTargets.Clear();
-                    geneticRelativeOffsets.Clear();
-                }
-            }
-        }
+        if (geneticsManager != null) geneticsManager.AbortPendingGeneticReturnImmediate();
     }
 
     // authoritative single-shot state computation
@@ -1834,11 +1192,11 @@ public class MutatronEngine : MonoBehaviour, IPolytronStateProvider
         s.Recipe = p.recipe;
         s.Interactive = p.interactive;
         s.IsBound = p.boundSink != null;
-        s.IsReturning = geneticReturning != null && geneticReturning.Contains(p);
+    s.IsReturning = geneticsManager != null && geneticsManager.IsReturning(p);
 
         // Role
-        if (p.isArchitron) s.Role = PolytronRole.Architron;
-        else if (s.IsReturning || (geneticFriends != null && geneticFriends.Contains(p))) s.Role = PolytronRole.GeneticFriend;
+    if (p.isArchitron) s.Role = PolytronRole.Architron;
+    else if (s.IsReturning || (geneticsManager != null && geneticsManager.IsGeneticFriend(p))) s.Role = PolytronRole.GeneticFriend;
         else s.Role = PolytronRole.Normal;
 
         // Location: home / mutatron center / mutatron
@@ -1902,10 +1260,10 @@ public class MutatronEngine : MonoBehaviour, IPolytronStateProvider
 
 
 
-        // Selection slots (authoritative from this engine)
-        if (paletteSelector == p) s.Selection = SelectionSlot.Palette;
-        else if (operatorsSelector == p) s.Selection = SelectionSlot.Operators;
-        else s.Selection = SelectionSlot.None;
+    // Selection slots (authoritative from this engine)
+    if (selectionManager != null && selectionManager.PaletteSelector == p) s.Selection = SelectionSlot.Palette;
+    else if (selectionManager != null && selectionManager.OperatorsSelector == p) s.Selection = SelectionSlot.Operators;
+    else s.Selection = SelectionSlot.None;
 
         return s;
     }
