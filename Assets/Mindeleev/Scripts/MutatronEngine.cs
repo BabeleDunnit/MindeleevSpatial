@@ -28,6 +28,8 @@ public class MutatronEngine : MonoBehaviour, IPolytronStateProvider
 
     // the Architron
     internal int architronIdx = 70;
+    // runtime flag indicating the Architron is currently following the avatar
+    internal bool architronFollowingAvatar = false;
 
     int evolveCount = 0;
 
@@ -292,7 +294,7 @@ public class MutatronEngine : MonoBehaviour, IPolytronStateProvider
         foreach (Polytron p in polytrons)
         {
             // special behaviour for the architron
-            if (p.isArchitron && false)
+            if (p.isArchitron)
             {
                 // the Architron has a special, dynamic behaviour. 
                 // if it is outside the Mutatron it will follow the avatar
@@ -328,6 +330,15 @@ public class MutatronEngine : MonoBehaviour, IPolytronStateProvider
                 }
 
                 Debug.Assert(architronBehaviour != -1);
+
+                // detect and publish changes to the architron-following-avatar flag so the UI can update
+                bool newFollowing = (architronBehaviour == 1);
+                if (architronFollowingAvatar != newFollowing)
+                {
+                    architronFollowingAvatar = newFollowing;
+                    // notify subscribers about the architron state change
+                    NotifyPolytronStateChanged(p);
+                }
 
                 if (architronBehaviour == 1)
                 {
@@ -775,7 +786,8 @@ public class MutatronEngine : MonoBehaviour, IPolytronStateProvider
     {
         AttractPolytronsToTargets();
         // apply attraction to genetic friends if any (delegated to GeneticsManager)
-        if (geneticsManager != null) geneticsManager.AttractGeneticFriends();
+        // if (geneticsManager != null) 
+        geneticsManager.AttractGeneticFriends();
     }
 
     int levelCount = 0;
@@ -1037,12 +1049,20 @@ public class MutatronEngine : MonoBehaviour, IPolytronStateProvider
     else if (s.IsReturning || (geneticsManager != null && geneticsManager.IsGeneticFriend(p))) s.Role = PolytronRole.GeneticFriend;
         else s.Role = PolytronRole.Normal;
 
-        // Location: home / mutatron center / mutatron
+    // Location: home / mutatron center / mutatron / following avatar
         /*
         if (p.boundSink == null) s.Location = PolytronLocation.Home;
         else if (mutatronCenter != null && p.boundSink == mutatronCenter.sink) s.Location = PolytronLocation.MutatronCenter;
         else s.Location = PolytronLocation.Mutatron;
         */
+
+        // If the architron is currently following the avatar, expose that as a distinct location
+        if (p.isArchitron && architronFollowingAvatar)
+        {
+            s.Location = PolytronLocation.FollowingAvatar;
+            // selection and other fields already set above
+            return s;
+        }
 
         s.Location = PolytronLocation.Unknown;
         if(p.boundSink != null)

@@ -42,10 +42,7 @@ public class PolyhedronGenerator : MonoBehaviour
         }
         catch (Exception ex)
         {
-            Debug.LogError($"[PolyhedronGenerator] Failed to parse recipe '{recipe}' on GameObject '{gameObject.name}': {ex.Message}\nFalling back to default recipe 'C' (Cube). Check the inspector or any code that sets '.recipe'.");
-            // Fallback to a safe default so the editor can continue running.
-            recipe = "C";
-            _recipe = PolyhedronRecipeParser.Parse(recipe);
+            throw new ArgumentException($"[PolyhedronGenerator] Failed to parse recipe '{recipe}' on GameObject '{gameObject.name}': {ex.Message}");
         }
 
         currentPaletteIndex = _recipe.PaletteIdx;

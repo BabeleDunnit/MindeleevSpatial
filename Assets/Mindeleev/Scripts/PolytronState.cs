@@ -9,6 +9,7 @@ public enum PolytronLocation
     Home,           // at home ring (external)
     MutatronCenter, // architron sink (center)
     Mutatron,       // somewhere on the mutatron (inside rings)
+    FollowingAvatar, // architron outside the mutatron following the avatar
     Returning       // currently returning after genetic behavior
 }
 

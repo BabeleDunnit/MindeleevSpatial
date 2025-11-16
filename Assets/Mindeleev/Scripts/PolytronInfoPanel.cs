@@ -301,6 +301,7 @@ public class PolytronInfoPanel : MonoBehaviour
             PolytronLocation.Home => "At Home",
             PolytronLocation.MutatronCenter => "Mutatron Center",
             PolytronLocation.Mutatron => "On Mutatron",
+            PolytronLocation.FollowingAvatar => "Following Avatar",
             PolytronLocation.Returning => "Returning",
             _ => "Unknown"
         };
