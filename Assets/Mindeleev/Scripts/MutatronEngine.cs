@@ -10,10 +10,10 @@ public class MutatronEngine : MonoBehaviour, IPolytronStateProvider
     // event panels can subscribe to (polytron, newState)
     public event Action<Polytron, PolytronState> OnPolytronStateChanged;
 
-    bool mustBuildFirstTime = true;
+    internal bool mustBuildFirstTime = true;
     bool isRebuildingLevel = false;
 
-    int maxRings = 12;
+    internal int maxRings = 12;
 
     // all the 12 rings, prebuilt
     internal Dictionary<HexCoord, HexCellData> gridCellsMap = new Dictionary<HexCoord, HexCellData>();
@@ -73,6 +73,8 @@ public class MutatronEngine : MonoBehaviour, IPolytronStateProvider
     private BindingManager bindingManager;
     // selection manager (extracted)
     internal SelectionManager selectionManager;
+    // grid manager (extracted)
+    private GridManager gridManager;
 
     void InitializeCellsCAParametersForCurrentLevel()
     {
@@ -151,7 +153,7 @@ public class MutatronEngine : MonoBehaviour, IPolytronStateProvider
         return true;
     }
 
-    void AfterTilesCreation()
+    internal void AfterTilesCreation()
     {
         UpdatePolytronsSinks();
 
@@ -163,13 +165,23 @@ public class MutatronEngine : MonoBehaviour, IPolytronStateProvider
         // hide placeholder
         GetComponent<MeshRenderer>().enabled = false;
 
-        CreateHexGridDataStructure();
+        // initialize grid and core data structures
+        gridManager = new GridManager(this);
+        gridManager.CreateHexGridDataStructure();
+    // initialize cell parameters (polytronicNumber, tileBasePolyhedron, etc.)
+    // so that tile recipes composed by GridManager include a valid base polyhedron
+    // and reasonable operator sequences. Without this the default int value 0
+    // would produce the operator sequence "d" and an empty base, causing
+    // the recipe parser to fail at startup.
+    InitializeCellsCAParametersForCurrentLevel();
         Create72PolytronsImmediate();
     // initialize extracted managers after core data structures exist
     bindingManager = new BindingManager(this);
     selectionManager = new SelectionManager(this);
     geneticsManager = new GeneticsManager(this);
         StartCoroutine(Create72PolytronsAndHomesCoroutine());
+        // build tiles via grid manager
+        StartCoroutine(gridManager.BuildTilesCoroutine());
     }
 
     Polytron FindPolytronToBind()
@@ -337,7 +349,7 @@ public class MutatronEngine : MonoBehaviour, IPolytronStateProvider
         {
             if (hckv.Value.ring == 12)
             {
-                DrawCircle(hckv.Value, 1.73f, Color.gray, 0.05f);
+                if (gridManager != null) gridManager.DrawCircle(hckv.Value, 1.73f, Color.gray, 0.05f);
 
                 int polytronId = hckv.Value.idxInRing;
 
@@ -438,131 +450,7 @@ public class MutatronEngine : MonoBehaviour, IPolytronStateProvider
         return label;
     }
 
-    void DrawCircle(HexCellData hcd, float radius, Color color, float lineWidth = 0.05f, int segments = 20)
-    {
-        GameObject go = hcd.circle;
-        LineRenderer lr = go.GetComponent<LineRenderer>();
-        lr.startWidth = lineWidth;
-        lr.endWidth = lineWidth;
-        lr.startColor = lr.endColor = color;
-        lr.positionCount = segments;
-
-        for (int i = 0; i < segments; i++)
-        {
-            float angle = (float)i / segments * Mathf.PI * 2f;
-            float x = Mathf.Cos(angle) * radius;
-            float y = Mathf.Sin(angle) * radius;
-            lr.SetPosition(i, hcd.worldCoords + new Vector3(x, 0.1f, y));
-        }
-    }
-
-    void CreateHexGridDataStructure()
-    {
-        Vector2 center2D = new Vector2(transform.position.x, transform.position.z);
-        for (int ring = 0; ring <= maxRings; ring++)
-        {
-            int hexesInRing = ring == 0 ? 1 : 6 * ring;
-            for (int idxInRing = 0; idxInRing < hexesInRing; idxInRing++)
-            {
-                HexCoord hex = ring == 0 ? new HexCoord(0, 0) : HexCoord.AtPolar(ring, idxInRing);
-
-                Vector2 hexPos2D = hex.Position() * 2f + center2D;
-                Vector3 position = new Vector3(hexPos2D.x, transform.position.y, hexPos2D.y);
-
-                var cellData = new HexCellData
-                {
-                    ring = ring,
-                    idxInRing = idxInRing,
-                    worldCoords = position,
-                    circle = CreateCircle(ring, idxInRing)
-                };
-
-                // test                
-                if (ring == 2 && idxInRing == 1)
-                {
-                    // cellData.actualState = true;
-
-                    // AddPolytronDebug(cellData);
-                }
-
-                // cellData.sink = CreateSink()
-
-                if (IsMetatronCoord(ring, idxInRing))
-                {
-                    // metatronCellsList.Add(hex);
-                    cellData.isOnMetatronPattern = true;
-                }
-
-                gridCellsMap[hex] = cellData;
-
-                if (ring == 0 && idxInRing == 0)
-                {
-                    mutatronCenter = cellData;
-                }
-
-            }
-        }
-
-        foreach (var hckv in gridCellsMap)
-        {
-            GameObject sink = CreateSink(hckv);
-            sink.name += $"_{hckv.Value.ring}_{hckv.Value.idxInRing}";
-        }
-
-    }
-
-    GameObject CreateSink(KeyValuePair<HexCoord, HexCellData> hckv)
-    {
-        string recipe = "tC";
-        GameObject sink = PolytronsFactory.Instance.Create($"sink/{recipe}", 0.3f);
-
-        // the central sink is a bit higher
-        if (IsMutatronCenter(hckv.Value))
-        {
-            sink.transform.position = new Vector3(hckv.Value.worldCoords.x, 2f, hckv.Value.worldCoords.z);
-        }
-        else
-        {
-            sink.transform.position = new Vector3(hckv.Value.worldCoords.x, 1.0f, hckv.Value.worldCoords.z);
-        }
-
-        hckv.Value.sink = sink.GetComponent<PolytronSink>();
-        hckv.Value.sink.weight = 0.2f;
-        hckv.Value.sink.hexCoord = hckv.Key;
-        hckv.Value.sink.GetComponent<MeshRenderer>().enabled = false;
-
-        return sink;
-    }
-
-    bool IsMetatronCoord(int ring, int idxInRing)
-    {
-        if (ring == 0 || ring == 1) return true;
-        for (int i = 2; i < 10; i++)
-        {
-            if (ring == i && (idxInRing % i == 0)) return true;
-        }
-        return false;
-    }
-
-    static Material sLineMat;
-    static Material GetLineMat()
-    {
-        if (sLineMat == null) sLineMat = new Material(Shader.Find("Sprites/Default"));
-        return sLineMat;
-    }
-
-    GameObject CreateCircle(int ring, int idxInRing)
-    {
-        var go = new GameObject($"circle_{ring}_{idxInRing}");
-        go.transform.SetParent(transform);
-
-        LineRenderer lr = go.AddComponent<LineRenderer>();
-        lr.loop = true;
-        lr.sharedMaterial = GetLineMat();
-        lr.positionCount = 0;
-
-        return go;
-    }
+    // grid drawing and creation moved to GridManager
 
     // helper: find a cell by ring and index
     KeyValuePair<HexCoord, HexCellData>? FindCellByRingAndIdx(int ring, int idxInRing)
@@ -579,17 +467,8 @@ public class MutatronEngine : MonoBehaviour, IPolytronStateProvider
 
     void DrawLine(Vector3 start, Vector3 end, Color color, float width = 0.05f)
     {
-        var go = new GameObject("Line");
-        go.transform.SetParent(transform);
-        var lr = go.AddComponent<LineRenderer>();
-
-        lr.positionCount = 2;
-        lr.SetPosition(0, start);
-        lr.SetPosition(1, end);
-
-        lr.startWidth = lr.endWidth = width;
-        lr.sharedMaterial = GetLineMat();
-        lr.startColor = lr.endColor = color;
+        // delegated to GridManager
+        if (gridManager != null) gridManager.DrawLine(start, end, color, width);
     }
 
     void ResetLevelGraphics()
@@ -603,7 +482,7 @@ public class MutatronEngine : MonoBehaviour, IPolytronStateProvider
                 GameObject.Destroy(hcd.circle);
             }
 
-            hcd.circle = CreateCircle(hcd.ring, hcd.idxInRing);
+            hcd.circle = gridManager.CreateCircle(hcd.ring, hcd.idxInRing);
 
             if (hcd.tile)
             {
@@ -635,12 +514,12 @@ public class MutatronEngine : MonoBehaviour, IPolytronStateProvider
             {
                 if (hcd.isOnMetatronPattern)
                 {
-                    DrawCircle(hcd, 1.73f, Color.white, 0.025f);
+                    gridManager.DrawCircle(hcd, 1.73f, Color.white, 0.025f);
                     yield return new WaitForSeconds(0.1f);
                 }
                 else
                 {
-                    DrawCircle(hcd, 1.73f, Color.gray, 0.01f);
+                    gridManager.DrawCircle(hcd, 1.73f, Color.gray, 0.01f);
                     yield return null;
                 }
             }
@@ -656,7 +535,7 @@ public class MutatronEngine : MonoBehaviour, IPolytronStateProvider
                 int idxInRing = r * i;
                 KeyValuePair<HexCoord, HexCellData>? hc1 = FindCellByRingAndIdx(r, idxInRing);
                 KeyValuePair<HexCoord, HexCellData>? hc2 = FindCellByRingAndIdx(r, (idxInRing + r) % (r * 6));
-                DrawLine(hc1.Value.Value.worldCoords, hc2.Value.Value.worldCoords, Color.gray, 0.02f);
+                gridManager.DrawLine(hc1.Value.Value.worldCoords, hc2.Value.Value.worldCoords, Color.gray, 0.02f);
                 yield return new WaitForSeconds(0.1f);
             }
         }
@@ -670,7 +549,7 @@ public class MutatronEngine : MonoBehaviour, IPolytronStateProvider
             int idxInRing2 = ((i + 3) * actualLevelConfig.actualRingsCount);
             KeyValuePair<HexCoord, HexCellData>? hc1 = FindCellByRingAndIdx(actualLevelConfig.actualRingsCount, idxInRing1);
             KeyValuePair<HexCoord, HexCellData>? hc2 = FindCellByRingAndIdx(actualLevelConfig.actualRingsCount, idxInRing2);
-            DrawLine(hc1.Value.Value.worldCoords, hc2.Value.Value.worldCoords, Color.gray, 0.02f);
+            gridManager.DrawLine(hc1.Value.Value.worldCoords, hc2.Value.Value.worldCoords, Color.gray, 0.02f);
         }
 
         yield return new WaitForSeconds(0.2f);
@@ -686,11 +565,11 @@ public class MutatronEngine : MonoBehaviour, IPolytronStateProvider
                 KeyValuePair<HexCoord, HexCellData>? hc1 = FindCellByRingAndIdx(r, idxInRing1);
                 KeyValuePair<HexCoord, HexCellData>? hc2 = FindCellByRingAndIdx(r, idxInRing2);
                 KeyValuePair<HexCoord, HexCellData>? hc3 = FindCellByRingAndIdx(r, idxInRing3);
-                DrawLine(hc1.Value.Value.worldCoords, hc2.Value.Value.worldCoords, Color.white, 0.045f);
+                gridManager.DrawLine(hc1.Value.Value.worldCoords, hc2.Value.Value.worldCoords, Color.white, 0.045f);
                 yield return new WaitForSeconds(0.05f);
-                DrawLine(hc2.Value.Value.worldCoords, hc3.Value.Value.worldCoords, Color.white, 0.045f);
+                gridManager.DrawLine(hc2.Value.Value.worldCoords, hc3.Value.Value.worldCoords, Color.white, 0.045f);
                 yield return new WaitForSeconds(0.05f);
-                DrawLine(hc3.Value.Value.worldCoords, hc1.Value.Value.worldCoords, Color.white, 0.045f);
+                gridManager.DrawLine(hc3.Value.Value.worldCoords, hc1.Value.Value.worldCoords, Color.white, 0.045f);
                 yield return new WaitForSeconds(0.05f);
             }
         }
@@ -709,9 +588,9 @@ public class MutatronEngine : MonoBehaviour, IPolytronStateProvider
                     KeyValuePair<HexCoord, HexCellData>? hc1 = FindCellByRingAndIdx(r, idxInRing1);
                     KeyValuePair<HexCoord, HexCellData>? hc2 = FindCellByRingAndIdx(q, idxInRing2);
                     KeyValuePair<HexCoord, HexCellData>? hc3 = FindCellByRingAndIdx(q, idxInRing3);
-                    DrawLine(hc1.Value.Value.worldCoords, hc2.Value.Value.worldCoords, Color.gray, 0.01f);
-                    DrawLine(hc2.Value.Value.worldCoords, hc3.Value.Value.worldCoords, Color.gray, 0.01f);
-                    DrawLine(hc3.Value.Value.worldCoords, hc1.Value.Value.worldCoords, Color.gray, 0.01f);
+                    gridManager.DrawLine(hc1.Value.Value.worldCoords, hc2.Value.Value.worldCoords, Color.gray, 0.01f);
+                    gridManager.DrawLine(hc2.Value.Value.worldCoords, hc3.Value.Value.worldCoords, Color.gray, 0.01f);
+                    gridManager.DrawLine(hc3.Value.Value.worldCoords, hc1.Value.Value.worldCoords, Color.gray, 0.01f);
                     yield return new WaitForSeconds(0.05f);
                 }
             }

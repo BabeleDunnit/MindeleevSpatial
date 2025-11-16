@@ -32,7 +32,22 @@ public class PolyhedronGenerator : MonoBehaviour
         MeshFilter filter = GetComponent<MeshFilter>();
         MeshRenderer renderer = GetComponent<MeshRenderer>();
 
-        _recipe = PolyhedronRecipeParser.Parse(recipe);
+        // Defensive parse: if the recipe is malformed (for example missing a base
+        // uppercase polyhedron character) the parser will throw. Catch that so
+        // starting the editor doesn't abort and we get a useful error with the
+        // offending GameObject name and recipe value.
+        try
+        {
+            _recipe = PolyhedronRecipeParser.Parse(recipe);
+        }
+        catch (Exception ex)
+        {
+            Debug.LogError($"[PolyhedronGenerator] Failed to parse recipe '{recipe}' on GameObject '{gameObject.name}': {ex.Message}\nFalling back to default recipe 'C' (Cube). Check the inspector or any code that sets '.recipe'.");
+            // Fallback to a safe default so the editor can continue running.
+            recipe = "C";
+            _recipe = PolyhedronRecipeParser.Parse(recipe);
+        }
+
         currentPaletteIndex = _recipe.PaletteIdx;
 
         var palette = GetCurrentPalette();
