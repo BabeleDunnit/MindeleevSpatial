@@ -16,18 +16,18 @@ public class MutatronEngine : MonoBehaviour, IPolytronStateProvider
     int maxRings = 12;
 
     // all the 12 rings, prebuilt
-    private Dictionary<HexCoord, HexCellData> gridCellsMap = new Dictionary<HexCoord, HexCellData>();
+    internal Dictionary<HexCoord, HexCellData> gridCellsMap = new Dictionary<HexCoord, HexCellData>();
 
     // the 72 polytrons
-    private List<Polytron> polytrons = new();
+    internal List<Polytron> polytrons = new();
 
     // the polytrons homes
-    private List<KeyValuePair<HexCoord, HexCellData>> polytronsHomes = new();
+    internal List<KeyValuePair<HexCoord, HexCellData>> polytronsHomes = new();
 
-    private HexCellData mutatronCenter;
+    internal HexCellData mutatronCenter;
 
     // the Architron
-    int architronIdx = 70;
+    internal int architronIdx = 70;
 
     int evolveCount = 0;
 
@@ -56,7 +56,7 @@ public class MutatronEngine : MonoBehaviour, IPolytronStateProvider
         internal string tileBasePolyhedron;
     }
 
-    struct LevelConfig
+    internal struct LevelConfig
     {
 
         // increased at every rebuild
@@ -67,7 +67,10 @@ public class MutatronEngine : MonoBehaviour, IPolytronStateProvider
         internal int energyQuantumExchanged;
     }
 
-    LevelConfig actualLevelConfig;
+    internal LevelConfig actualLevelConfig;
+
+    // binding manager (extracted)
+    private BindingManager bindingManager;
 
     void InitializeCellsCAParametersForCurrentLevel()
     {
@@ -160,26 +163,17 @@ public class MutatronEngine : MonoBehaviour, IPolytronStateProvider
 
         CreateHexGridDataStructure();
         Create72PolytronsImmediate();
+    // initialize extracted managers after core data structures exist
+    bindingManager = new BindingManager(this);
         StartCoroutine(Create72PolytronsAndHomesCoroutine());
     }
 
     Polytron FindPolytronToBind()
     {
-        // first try with polytrons at home
-        // exclude polytrons reserved for genetic friends
-        var toReturn = polytrons.Where(p => !p.reservedForGenetics && p.boundSink != null && gridCellsMap[p.boundSink.hexCoord].ring == 12);
-
-        // if no polytrons at home
-        if (toReturn.Count() == 0)
-        {
-            // try with unbound polytrons (also excluding reserved genetic friends)
-            toReturn = polytrons.Where(p => !p.reservedForGenetics && p.boundSink == null);
-        }
-
-        return toReturn.FirstOrDefault();
+        return bindingManager != null ? bindingManager.FindPolytronToBind() : null;
     }
 
-    bool IsMutatronCenter(HexCellData cd)
+    internal bool IsMutatronCenter(HexCellData cd)
     {
         // Debug.Assert(cd == mutatronCenter);
         return cd.ring == 0 && cd.idxInRing == 0;
@@ -189,99 +183,17 @@ public class MutatronEngine : MonoBehaviour, IPolytronStateProvider
     // and at the beginning of a new level
     void UpdatePolytronsSinks()
     {
-        // when we call this, we have unbind all the polytrons from their non-matching tiles.
-        // So there can be many polytrons already on the mutatron, but they are not bound to any sink.
-        // Other are bound to some tiles that did not change and were obviously left untouched.
-
-        // I must detect if any polytron can be recycled. I must do this globally, not one by one,
-        // because I could claim an unbound polytron which could be recycled to be used as new
-        // depending from the scan of the sequence of cells.
-        // so, first I must collect all the tile recipes actually present on the Mutatron
-        var tilesRecipes = gridCellsMap
-            .Where(c => c.Value.ring <= actualLevelConfig.actualRingsCount)
-            .Select(c => c.Value.tile.recipe)
-            .ToList();
-
-        // now collect all the unbound polytrons which are already set on a tile recipe which did not change 
-        // (but maybe changed place) and bind them
-    // exclude polytrons reserved for genetic friends from being rebound
-    var matchingRecipeUnboundPolytrons = polytrons.Where(p => !p.reservedForGenetics && tilesRecipes.Contains(p.recipe) && p.boundSink == null && p.isArchitron == false);
-        Debug.Log($"[UpdatePolytronsSinks] unbound polytrons with matching recipe: {matchingRecipeUnboundPolytrons.Count()} (excluding {polytrons.Count(p => p.reservedForGenetics)} reserved genetic friends)");
-        Debug.Log($"[UpdatePolytronsSinks] reserved polytrons: {string.Join(",", polytrons.Where(p => p.reservedForGenetics).Select(p => p.sealNumber))}");
-
-        int rebuiltPolytrons = 0;
-        int movedPolytrons = 0;
-        // now for each unbound polytron with a recipe matching at least one tile try to bind the polytron
-        foreach (var matchingRecipeUnboundPolytron in matchingRecipeUnboundPolytrons)
+        if (bindingManager != null)
         {
-            foreach (var hckv in gridCellsMap)
-            {
-                if (hckv.Value.ring > actualLevelConfig.actualRingsCount) continue;
-
-                // special treatment for the center of the Mutatron, reserved for the architron
-                if (/*hckv.Value.ring == 0 && hckv.Value.idxInRing == 0*/ IsMutatronCenter(hckv.Value))
-                {
-                    // BindPolytronToSink(polytrons[architronIdx], hckv);
-                    continue;
-                }
-
-                if (hckv.Value.sink.boundPolytron == null && hckv.Value.tile.recipe == matchingRecipeUnboundPolytron.recipe)
-                {
-                    BindPolytronToSink(matchingRecipeUnboundPolytron, hckv);
-                    movedPolytrons++;
-                    break;
-                }
-            }
+            bindingManager.UpdatePolytronsSinks();
+            return;
         }
-
-        // maybe not all the matchingRecipeUnboundPolytrons have been bind, because maybe there were not
-        // enough matching sinks. Let us send them home to relax at the END of the ring 12
-        // IMPORTANT: Skip reserved genetic friends, they must not be rebound
-        foreach (var pp in matchingRecipeUnboundPolytrons.Where(p => p.boundSink == null && !p.reservedForGenetics))
-        {
-            var unboundSinkOnExternalRing = gridCellsMap.Where(hckv => hckv.Value.ring == 12 && hckv.Value.sink.boundPolytron == null).Last();
-            BindPolytronToSink(pp, unboundSinkOnExternalRing);
-        }
-
-        // now I can proceed to bind and rebuild the remaining polytrons and sinks
-        foreach (var hckv in gridCellsMap)
-        {
-            if (hckv.Value.ring > actualLevelConfig.actualRingsCount) continue;
-
-            // special treatment for the center of the Mutatron, reserved for the architron.
-            // we always force bind the Architron to the (0,0) cell.
-            if (IsMutatronCenter(hckv.Value))
-            {
-                Polytron architron = polytrons[architronIdx];
-                Debug.Assert(hckv.Value.sink.boundPolytron == null);
-                BindPolytronToSink(architron, hckv);
-                Debug.Assert(hckv.Value.sink.boundPolytron == architron);
-                Debug.Assert(architron.boundSink = hckv.Value.sink);
-                Debug.Assert(architron.boundSink.boundPolytron = architron);
-                continue;
-            }
-
-            if (hckv.Value.sink.boundPolytron == null)
-            {
-                // IMPORTANT: Skip reserved genetic friends when filling empty sinks
-                Polytron p = FindPolytronToBind();
-                // there could be no more polytrons...
-                if (p && !p.reservedForGenetics)
-                {
-                    BindPolytronToSink(p, hckv);
-                    string tileRecipe = hckv.Value.tile.recipe;
-                    // RebuildPolytronFromRecipe(p, tileRecipe);
-                    rebuiltPolytrons++;
-                }
-            }
-        }
-
-        Debug.Log($"[UpdatePolytronsSinks] moved: {movedPolytrons}, rebuilt: {rebuiltPolytrons}");
     }
 
     void BindPolytronToSink(Polytron p, KeyValuePair<HexCoord, HexCellData> hckv)
     {
-        BindPolytronToSink(p, hckv.Value.sink);
+        if (bindingManager != null) bindingManager.BindPolytronToSink(p, hckv);
+        else BindPolytronToSink(p, hckv.Value.sink);
     }
 
     void BindPolytronToSink(Polytron p, PolytronSink ps)
@@ -325,6 +237,13 @@ public class MutatronEngine : MonoBehaviour, IPolytronStateProvider
     // Safe unbind helper: clears both sides of the binding
     void UnbindPolytron(Polytron p)
     {
+        if (bindingManager != null)
+        {
+            bindingManager.UnbindPolytron(p);
+            NotifyPolytronStateChanged(p);
+            return;
+        }
+
         if (p == null) return;
         var sink = p.boundSink;
         if (sink != null)
@@ -641,8 +560,7 @@ public class MutatronEngine : MonoBehaviour, IPolytronStateProvider
         return go;
     }
 
-
-    // inefficent, but only used in metatron build
+    // helper: find a cell by ring and index
     KeyValuePair<HexCoord, HexCellData>? FindCellByRingAndIdx(int ring, int idxInRing)
     {
         foreach (var kvp in gridCellsMap)
@@ -658,7 +576,6 @@ public class MutatronEngine : MonoBehaviour, IPolytronStateProvider
     void DrawLine(Vector3 start, Vector3 end, Color color, float width = 0.05f)
     {
         var go = new GameObject("Line");
-        //         go.tag = "Line";
         go.transform.SetParent(transform);
         var lr = go.AddComponent<LineRenderer>();
 
@@ -854,6 +771,12 @@ public class MutatronEngine : MonoBehaviour, IPolytronStateProvider
 
     void UnbindNonMatchingPolytrons()
     {
+        if (bindingManager != null)
+        {
+            bindingManager.UnbindNonMatchingPolytrons();
+            return;
+        }
+
         int polytronsThatWillNotMove = 0;
         foreach (var hckv in gridCellsMap)
         {
@@ -885,6 +808,12 @@ public class MutatronEngine : MonoBehaviour, IPolytronStateProvider
 
     void SendUnboundPolytronsHome()
     {
+        if (bindingManager != null)
+        {
+            bindingManager.SendUnboundPolytronsHome();
+            return;
+        }
+
         // Skip polytrons reserved for genetic friends: they must remain unbound until cleared/returned
         var unboundPolytrons = polytrons.Where(p => p.boundSink == null && !p.reservedForGenetics).ToList();
         Debug.Log($"[SendUnboundPolytronsHome] sending home {unboundPolytrons.Count} unbound polytrons (skipping {polytrons.Count(p => p.reservedForGenetics)} reserved)");
@@ -1037,22 +966,22 @@ public class MutatronEngine : MonoBehaviour, IPolytronStateProvider
         return (attractionForce, from1To2Versor, from1To2Distance);
     }
 
-    bool IsHome(HexCellData hcd)
+    internal bool IsHome(HexCellData hcd)
     {
         return hcd.ring == 12;
     }
 
-    bool IsMutatronCell(HexCellData hcd)
+    internal bool IsMutatronCell(HexCellData hcd)
     {
         return hcd.ring <= actualLevelConfig.actualRingsCount;
     }
 
-    bool IsHome(HexCoord hc)
+    internal bool IsHome(HexCoord hc)
     {
         return gridCellsMap[hc].ring == 12;
     }
 
-    bool IsMutatronCell(HexCoord hc)
+    internal bool IsMutatronCell(HexCoord hc)
     {
         HexCellData hcd = gridCellsMap[hc];
         return hcd.ring <= actualLevelConfig.actualRingsCount && !IsMutatronCenter(hcd);
