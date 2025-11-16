@@ -47,6 +47,8 @@ public class BindingManager
             else
                 Debug.Log($"[BindPolytronToSink] binding polytron_id={p.sealNumber} to sink={ps.name}");
         }
+        // Ensure the engine and any subscribed UI are notified of this state change
+        engine.NotifyPolytronStateChanged(p);
     }
 
     public void UnbindPolytron(Polytron p)
@@ -59,6 +61,8 @@ public class BindingManager
             if (sink.boundPolytron == p) sink.boundPolytron = null;
             p.boundSink = null;
         }
+        // Notify engine so UI and other listeners can update
+        engine.NotifyPolytronStateChanged(p);
     }
 
     public Polytron FindPolytronToBind()

@@ -213,7 +213,12 @@ public class MutatronEngine : MonoBehaviour, IPolytronStateProvider
 
     internal void BindPolytronToSink(Polytron p, KeyValuePair<HexCoord, HexCellData> hckv)
     {
-        if (bindingManager != null) bindingManager.BindPolytronToSink(p, hckv);
+        if (bindingManager != null)
+        {
+            bindingManager.BindPolytronToSink(p, hckv);
+            // Ensure subscribers are notified when bindings happen via the BindingManager
+            NotifyPolytronStateChanged(p);
+        }
         else BindPolytronToSink(p, hckv.Value.sink);
     }
 
