@@ -259,6 +259,20 @@ public class MutatronEngine : MonoBehaviour, IPolytronStateProvider
             }
         }
 
+        // Record the tile recipe the polytron just bound to as an emanation (if available)
+        try
+        {
+            if (ps != null && gridCellsMap != null && gridCellsMap.ContainsKey(ps.hexCoord) && gridCellsMap[ps.hexCoord].tile != null)
+            {
+                string tileRecipe = gridCellsMap[ps.hexCoord].tile.recipe;
+                p.AddEmanation(tileRecipe);
+            }
+        }
+        catch (Exception ex)
+        {
+            Debug.LogWarning($"[BindPolytronToSink] failed to record emanation for polytron_id={p?.sealNumber}: {ex}");
+        }
+
         NotifyPolytronStateChanged(p);
     }
 
@@ -434,6 +448,8 @@ public class MutatronEngine : MonoBehaviour, IPolytronStateProvider
                     + $"{(polytronId % 11):D2}" 
                     + (hckv.Value.idxInRing == 0 ? "T" : "C");
                 polytronComponent.RebuildMesh();
+                // record initial recipe in MindeleevTable
+                polytronComponent.AddEmanation(polytronComponent.recipe);
 
                 Debug.Assert(polytronId == polytronComponent.sealNumber); // sealNumber is set by the factory
 
@@ -444,10 +460,12 @@ public class MutatronEngine : MonoBehaviour, IPolytronStateProvider
         }
     }
 
-    void RebuildPolytronFromRecipe(Polytron p, string r)
+    internal void RebuildPolytronFromRecipe(Polytron p, string r)
     {
         p.recipe = r;
         p.RebuildMesh();
+        // record new recipe/emantion after explicit rebuild
+        p.AddEmanation(r);
         //p.GetComponent<PolytronInfoPanel>().bodyText = r;
         NotifyPolytronStateChanged(p);
     }

@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
@@ -47,6 +48,24 @@ public class BindingManager
             else
                 Debug.Log($"[BindPolytronToSink] binding polytron_id={p.sealNumber} to sink={ps.name}");
         }
+        // Record the tile recipe the polytron just bound to as an emanation (if available)
+        try
+        {
+            if (ps != null)
+            {
+                var map = engine.gridCellsMap;
+                if (map != null && map.ContainsKey(ps.hexCoord) && map[ps.hexCoord].tile != null)
+                {
+                    string tileRecipe = map[ps.hexCoord].tile.recipe;
+                    p.AddEmanation(tileRecipe);
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Debug.LogWarning($"[BindPolytronToSink] failed to record emanation for polytron_id={p?.sealNumber}: {ex}");
+        }
+
         // Ensure the engine and any subscribed UI are notified of this state change
         engine.NotifyPolytronStateChanged(p);
     }
