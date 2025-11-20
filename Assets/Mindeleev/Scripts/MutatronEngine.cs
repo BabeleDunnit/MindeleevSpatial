@@ -417,6 +417,30 @@ public class MutatronEngine : MonoBehaviour, IPolytronStateProvider
                 tile.transform.localRotation = rotationToCenter;
                 tile.name += $"_home_{polytronComponent.sealNumber}";
                 hckv.Value.tile = tile.GetComponent<MutatronTile>();
+                // Ensure the home tile's recipe exactly matches the polytron's recipe and rebuild its mesh
+                if (hckv.Value.tile != null)
+                {
+                    hckv.Value.tile.recipe = polytronComponent.recipe;
+                    // Try to set the tile palette explicitly to match the polytron's parsed palette index.
+                    try
+                    {
+                        var parsed = PolyhedronRecipeParser.Parse(polytronComponent.recipe);
+                        Debug.Log($"[Create72PolytronsAndHomesCoroutine] syncing home tile palette: polytron_id={polytronComponent.sealNumber}, parsedPalette={parsed.PaletteIdx}, tilePalettesCount={hckv.Value.tile.palettes?.Count ?? 0}");
+                        // If the tile doesn't have sufficient palettes configured, copy the polytron's palettes so the tile can render the same palette.
+                        if ((hckv.Value.tile.palettes == null || parsed.PaletteIdx >= hckv.Value.tile.palettes.Count) && polytronComponent.palettes != null && polytronComponent.palettes.Count > 0)
+                        {
+                            Debug.Log($"[Create72PolytronsAndHomesCoroutine] copying palettes from polytron to home tile for polytron_id={polytronComponent.sealNumber}");
+                            hckv.Value.tile.palettes = new System.Collections.Generic.List<PolyhedronPalette>(polytronComponent.palettes);
+                        }
+                        hckv.Value.tile.SetPalette(parsed.PaletteIdx);
+                    }
+                    catch (System.Exception ex)
+                    {
+                        Debug.LogWarning($"[Create72PolytronsAndHomesCoroutine] failed to parse polytron recipe for palette sync: {ex.Message}");
+                    }
+
+                    hckv.Value.tile.RebuildMesh();
+                }
 
                 GameObject label = CreateTileLabel($"{polytronId + 1}\n" + polytronComponent.sealName, tile.transform.position + new Vector3(0, 3, 0));
                 int r1 = polytronId / 12;
@@ -426,17 +450,6 @@ public class MutatronEngine : MonoBehaviour, IPolytronStateProvider
                 BindPolytronToSink(polytronGameObject.GetComponent<Polytron>(), hckv);
 
                 yield return new WaitForSeconds(0.01f);
-
-                /*
-                                PolytronInfoPanel pip = polytronGameObject.GetComponent<PolytronInfoPanel>();
-                                if (polytronComponent.isArchitron == false)
-                                {
-                                    pip.button4Text = "Make Architron";
-                                }
-                                */
-
-
-
             }
         }
     }
@@ -455,8 +468,10 @@ public class MutatronEngine : MonoBehaviour, IPolytronStateProvider
 
                 Polytron polytronComponent = polytronGameObject.GetComponent<Polytron>();
 
-                polytronComponent.recipe = PolyhedronRecipeKabbalah.IntToOperatorsSequence(polytronId) 
-                    + $"{(polytronId % 11):D2}" 
+                // Reserve palette 00 for Mutatron tiles. Cycle palettes 01..10 for polytrons.
+                int paletteIndex = (polytronId % 10) + 1; // 1..10
+                polytronComponent.recipe = PolyhedronRecipeKabbalah.IntToOperatorsSequence(polytronId)
+                    + $"{paletteIndex:D2}"
                     + (hckv.Value.idxInRing == 0 ? "T" : "C");
                 polytronComponent.RebuildMesh();
                 // record initial recipe in MindeleevTable
