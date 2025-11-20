@@ -17,6 +17,7 @@ public enum PolytronRole
 {
     Normal,
     Architron,
+    ArchitronGenetic,
     GeneticFriend
 }
 

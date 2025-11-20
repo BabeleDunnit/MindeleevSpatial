@@ -1044,10 +1044,23 @@ public class MutatronEngine : MonoBehaviour, IPolytronStateProvider
         s.IsBound = p.boundSink != null;
     s.IsReturning = geneticsManager != null && geneticsManager.IsReturning(p);
 
-        // Role
-    if (p.isArchitron) s.Role = PolytronRole.Architron;
-    else if (s.IsReturning || (geneticsManager != null && geneticsManager.IsGeneticFriend(p))) s.Role = PolytronRole.GeneticFriend;
-        else s.Role = PolytronRole.Normal;
+            // Role
+            if (p.isArchitron)
+            {
+                // If genetic mode is active and both parent selectors are filled, show special ArchitronGenetic role
+                if (geneticsManager != null && geneticsManager.GeneticModeActive && selectionManager != null && selectionManager.PaletteSelector != null && selectionManager.OperatorsSelector != null)
+                {
+                    s.Role = PolytronRole.ArchitronGenetic;
+                }
+                else
+                {
+                    s.Role = PolytronRole.Architron;
+                }
+            }
+            else if (s.IsReturning || (geneticsManager != null && geneticsManager.IsGeneticFriend(p)))
+                s.Role = PolytronRole.GeneticFriend;
+            else
+                s.Role = PolytronRole.Normal;
 
     // Location: home / mutatron center / mutatron / following avatar
         /*
