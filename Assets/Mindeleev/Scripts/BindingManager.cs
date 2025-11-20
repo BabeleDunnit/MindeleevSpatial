@@ -26,6 +26,17 @@ public class BindingManager
     {
         if (p == null) return;
 
+        // Fail-fast: if binding to the Mutatron center and the sink is already
+        // owned by another polytron, throw instead of silently reassigning.
+        if (ps != null && engine != null && engine.gridCellsMap != null && engine.gridCellsMap.ContainsKey(ps.hexCoord))
+        {
+            var hcd = engine.gridCellsMap[ps.hexCoord];
+            if (engine.IsMutatronCenter(hcd) && ps.boundPolytron != null && ps.boundPolytron != p)
+            {
+                throw new InvalidOperationException($"[BindPolytronToSink] center sink {ps.name} unexpectedly owned by polytron_id={ps.boundPolytron.sealNumber}");
+            }
+        }
+
         if (p.boundSink != null)
         {
             if (p.boundSink.boundPolytron == p) p.boundSink.boundPolytron = null;
@@ -48,22 +59,35 @@ public class BindingManager
             else
                 Debug.Log($"[BindPolytronToSink] binding polytron_id={p.sealNumber} to sink={ps.name}");
         }
-        // Record the tile recipe the polytron just bound to as an emanation (if available)
-        try
+        // If this sink is part of the Mutatron (not home), immediately apply
+        // the tile's operators (transformation) to the polytron while preserving
+        // the polytron's radix (palette index and base polyhedron). Let any
+        // parsing/validation exceptions bubble up (fail-fast).
+        if (ps != null && engine != null && engine.gridCellsMap != null && engine.gridCellsMap.ContainsKey(ps.hexCoord))
         {
-            if (ps != null)
+            var hcd = engine.gridCellsMap[ps.hexCoord];
+            // ring <= actualLevelConfig.actualRingsCount => on Mutatron
+            if (hcd.ring <= engine.actualLevelConfig.actualRingsCount && hcd.tile != null && !p.reservedForGenetics)
             {
-                var map = engine.gridCellsMap;
-                if (map != null && map.ContainsKey(ps.hexCoord) && map[ps.hexCoord].tile != null)
+                string tileRecipe = hcd.tile.recipe;
+                var parsedTile = PolyhedronRecipeParser.Parse(tileRecipe);
+                var parsedPoly = PolyhedronRecipeParser.Parse(p.recipe);
+
+                var newRecipeObj = new PolyhedronRecipe
                 {
-                    string tileRecipe = map[ps.hexCoord].tile.recipe;
-                    p.AddEmanation(tileRecipe);
+                    Tokens = parsedTile.Tokens,
+                    PaletteIdx = parsedPoly.PaletteIdx,
+                    BasePolyhedron = parsedPoly.BasePolyhedron
+                };
+
+                string newRecipe = newRecipeObj.ToString();
+
+                if (newRecipe != p.recipe)
+                {
+                    // Use engine helper to rebuild so AddEmanation and notifications are centralized
+                    engine.RebuildPolytronFromRecipe(p, newRecipe);
                 }
             }
-        }
-        catch (Exception ex)
-        {
-            Debug.LogWarning($"[BindPolytronToSink] failed to record emanation for polytron_id={p?.sealNumber}: {ex}");
         }
 
         // Ensure the engine and any subscribed UI are notified of this state change
@@ -207,33 +231,24 @@ public class BindingManager
 
                     // Instead of unbinding, update the polytron's operators sequence to match the tile
                     // while preserving the polytron's radix (palette index and base polyhedron).
-                    try
+                    var parsedTile = PolyhedronRecipeParser.Parse(tileRecipe);
+                    var parsedPoly = PolyhedronRecipeParser.Parse(polytronBoundToSink.recipe);
+
+                    var newRecipeObj = new PolyhedronRecipe
                     {
-                        var parsedTile = PolyhedronRecipeParser.Parse(tileRecipe);
-                        var parsedPoly = PolyhedronRecipeParser.Parse(polytronBoundToSink.recipe);
+                        Tokens = parsedTile.Tokens,
+                        PaletteIdx = parsedPoly.PaletteIdx,
+                        BasePolyhedron = parsedPoly.BasePolyhedron
+                    };
 
-                        var newRecipeObj = new PolyhedronRecipe
-                        {
-                            Tokens = parsedTile.Tokens,
-                            PaletteIdx = parsedPoly.PaletteIdx,
-                            BasePolyhedron = parsedPoly.BasePolyhedron
-                        };
+                    string newRecipe = newRecipeObj.ToString();
 
-                        string newRecipe = newRecipeObj.ToString();
-
-                        // Only rebuild if the resulting recipe differs
-                        if (newRecipe != polytronBoundToSink.recipe)
-                        {
-                            Debug.Log($"[UnbindNonMatchingPolytrons] Updating polytron_id={polytronBoundToSink.sealNumber} recipe -> {newRecipe} (preserving radix)");
-                            // Use engine helper to rebuild so AddEmanation and notifications are centralized
-                            engine.RebuildPolytronFromRecipe(polytronBoundToSink, newRecipe);
-                        }
-                    }
-                    catch (Exception ex)
+                    // Only rebuild if the resulting recipe differs
+                    if (newRecipe != polytronBoundToSink.recipe)
                     {
-                        Debug.LogWarning($"[UnbindNonMatchingPolytrons] failed to apply tile operators to polytron_id={polytronBoundToSink.sealNumber}: {ex}");
-                        // Fallback: unbind to avoid inconsistent state
-                        UnbindPolytron(polytronBoundToSink);
+                        Debug.Log($"[UnbindNonMatchingPolytrons] Updating polytron_id={polytronBoundToSink.sealNumber} recipe -> {newRecipe} (preserving radix)");
+                        // Use engine helper to rebuild so AddEmanation and notifications are centralized
+                        engine.RebuildPolytronFromRecipe(polytronBoundToSink, newRecipe);
                     }
                 }
                 else

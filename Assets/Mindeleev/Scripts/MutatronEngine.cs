@@ -226,6 +226,17 @@ public class MutatronEngine : MonoBehaviour, IPolytronStateProvider
 
     internal void BindPolytronToSink(Polytron p, PolytronSink ps)
     {
+        // Fail-fast: if binding to the Mutatron center and the sink is already
+        // owned by another polytron, throw instead of silently reassigning.
+        if (ps != null && gridCellsMap != null && gridCellsMap.ContainsKey(ps.hexCoord))
+        {
+            var hcd = gridCellsMap[ps.hexCoord];
+            if (IsMutatronCenter(hcd) && ps.boundPolytron != null && ps.boundPolytron != p)
+            {
+                throw new InvalidOperationException($"[BindPolytronToSink] center sink {ps.name} unexpectedly owned by polytron_id={ps.boundPolytron.sealNumber}");
+            }
+        }
+
         // Clear previous binding of this polytron (both sides)
         if (p == null) return;
 
@@ -692,31 +703,22 @@ public class MutatronEngine : MonoBehaviour, IPolytronStateProvider
                         continue;
                     }
 
-                    try
+                    var parsedTile = PolyhedronRecipeParser.Parse(tileRecipe);
+                    var parsedPoly = PolyhedronRecipeParser.Parse(polytronBoundToSink.recipe);
+
+                    var newRecipeObj = new PolyhedronRecipe
                     {
-                        var parsedTile = PolyhedronRecipeParser.Parse(tileRecipe);
-                        var parsedPoly = PolyhedronRecipeParser.Parse(polytronBoundToSink.recipe);
+                        Tokens = parsedTile.Tokens,
+                        PaletteIdx = parsedPoly.PaletteIdx,
+                        BasePolyhedron = parsedPoly.BasePolyhedron
+                    };
 
-                        var newRecipeObj = new PolyhedronRecipe
-                        {
-                            Tokens = parsedTile.Tokens,
-                            PaletteIdx = parsedPoly.PaletteIdx,
-                            BasePolyhedron = parsedPoly.BasePolyhedron
-                        };
+                    string newRecipe = newRecipeObj.ToString();
 
-                        string newRecipe = newRecipeObj.ToString();
-
-                        if (newRecipe != polytronBoundToSink.recipe)
-                        {
-                            Debug.Log($"[UnbindNonMatchingPolytrons] Updating polytron_id={polytronBoundToSink.sealNumber} recipe -> {newRecipe} (preserving radix)");
-                            RebuildPolytronFromRecipe(polytronBoundToSink, newRecipe);
-                        }
-                    }
-                    catch (Exception ex)
+                    if (newRecipe != polytronBoundToSink.recipe)
                     {
-                        Debug.LogWarning($"[UnbindNonMatchingPolytrons] failed to apply tile operators to polytron_id={polytronBoundToSink.sealNumber}: {ex}");
-                        // Fallback: unbind to avoid inconsistent state
-                        UnbindPolytron(polytronBoundToSink);
+                        Debug.Log($"[UnbindNonMatchingPolytrons] Updating polytron_id={polytronBoundToSink.sealNumber} recipe -> {newRecipe} (preserving radix)");
+                        RebuildPolytronFromRecipe(polytronBoundToSink, newRecipe);
                     }
                 }
                 else
