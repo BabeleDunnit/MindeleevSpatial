@@ -125,7 +125,7 @@ public class MutatronEngine : MonoBehaviour, IPolytronStateProvider
     bool BuildLevel(int levelNumber)
     {
 
-        if(isRebuildingLevel)
+        if (isRebuildingLevel)
         {
             return false;
         }
@@ -147,10 +147,10 @@ public class MutatronEngine : MonoBehaviour, IPolytronStateProvider
         InitializeCellsCAParametersForCurrentLevel();
 
 
-    StartCoroutine(DrawMetatronGraphicsCoroutine());
-    // Delegate tile building to GridManager so all tile-creation logic is
-    // centralized in one place.
-    if (gridManager != null) StartCoroutine(gridManager.BuildTilesCoroutine());
+        StartCoroutine(DrawMetatronGraphicsCoroutine());
+        // Delegate tile building to GridManager so all tile-creation logic is
+        // centralized in one place.
+        if (gridManager != null) StartCoroutine(gridManager.BuildTilesCoroutine());
 
         mustBuildFirstTime = false;
         evolveCount = 0;
@@ -172,23 +172,23 @@ public class MutatronEngine : MonoBehaviour, IPolytronStateProvider
         // initialize grid and core data structures
         gridManager = new GridManager(this);
         gridManager.CreateHexGridDataStructure();
-    // initialize cell parameters (polytronicNumber, tileBasePolyhedron, etc.)
-    // so that tile recipes composed by GridManager include a valid base polyhedron
-    // and reasonable operator sequences. Without this the default int value 0
-    // would produce the operator sequence "d" and an empty base, causing
-    // the recipe parser to fail at startup.
-    InitializeCellsCAParametersForCurrentLevel();
+        // initialize cell parameters (polytronicNumber, tileBasePolyhedron, etc.)
+        // so that tile recipes composed by GridManager include a valid base polyhedron
+        // and reasonable operator sequences. Without this the default int value 0
+        // would produce the operator sequence "d" and an empty base, causing
+        // the recipe parser to fail at startup.
+        InitializeCellsCAParametersForCurrentLevel();
         Create72PolytronsImmediate();
-    // initialize extracted managers after core data structures exist
-    bindingManager = new BindingManager(this);
-    selectionManager = new SelectionManager(this);
-    geneticsManager = new GeneticsManager(this);
-    StartCoroutine(Create72PolytronsAndHomesCoroutine());
-    // Do NOT start building tiles automatically at startup. Tiles are built
-    // when the user triggers the mutatron build (Key M -> BuildLevel).
-    // Previously we started gridManager.BuildTilesCoroutine() here which caused
-    // the center tile to appear immediately; remove that to keep tiles gated
-    // behind the build action.
+        // initialize extracted managers after core data structures exist
+        bindingManager = new BindingManager(this);
+        selectionManager = new SelectionManager(this);
+        geneticsManager = new GeneticsManager(this);
+        StartCoroutine(Create72PolytronsAndHomesCoroutine());
+        // Do NOT start building tiles automatically at startup. Tiles are built
+        // when the user triggers the mutatron build (Key M -> BuildLevel).
+        // Previously we started gridManager.BuildTilesCoroutine() here which caused
+        // the center tile to appear immediately; remove that to keep tiles gated
+        // behind the build action.
     }
 
     Polytron FindPolytronToBind()
@@ -682,7 +682,7 @@ public class MutatronEngine : MonoBehaviour, IPolytronStateProvider
             // msg += $"Cell (ring={kvp.Key.ring}, idxInRing={kvp.Key.idxInRing}) has polytronic number = {kvp.Value}\n";
         }
 
-        msg += $"total quantized energy: {totalQuantizedEnergy}, most energy: {(energyCellsList.Count>0?energyCellsList[0].ToString():"none")}";
+        msg += $"total quantized energy: {totalQuantizedEnergy}, most energy: {(energyCellsList.Count > 0 ? energyCellsList[0].ToString() : "none")}";
         Debug.Log(msg);
     }
 
@@ -813,7 +813,7 @@ public class MutatronEngine : MonoBehaviour, IPolytronStateProvider
             cellData.nextPolytronicNumberAccumulator = 0;
         }
 
-    if (gridManager != null) gridManager.UpdateTiles();
+        if (gridManager != null) gridManager.UpdateTiles();
 
         UnbindNonMatchingPolytrons();
 
@@ -859,9 +859,9 @@ public class MutatronEngine : MonoBehaviour, IPolytronStateProvider
     {
         if (Input.GetKeyDown(KeyCode.M))
         {
-            if(BuildLevel(levelCount))
+            if (BuildLevel(levelCount))
             {
-                levelCount++;   
+                levelCount++;
             }
         }
 
@@ -1106,27 +1106,27 @@ public class MutatronEngine : MonoBehaviour, IPolytronStateProvider
         s.Recipe = p.recipe;
         s.Interactive = p.interactive;
         s.IsBound = p.boundSink != null;
-    s.IsReturning = geneticsManager != null && geneticsManager.IsReturning(p);
+        s.IsReturning = geneticsManager != null && geneticsManager.IsReturning(p);
 
-            // Role
-            if (p.isArchitron)
+        // Role
+        if (p.isArchitron)
+        {
+            // If genetic mode is active and both parent selectors are filled, show special ArchitronGenetic role
+            if (geneticsManager != null && geneticsManager.GeneticModeActive && selectionManager != null && selectionManager.PaletteSelector != null && selectionManager.OperatorsSelector != null)
             {
-                // If genetic mode is active and both parent selectors are filled, show special ArchitronGenetic role
-                if (geneticsManager != null && geneticsManager.GeneticModeActive && selectionManager != null && selectionManager.PaletteSelector != null && selectionManager.OperatorsSelector != null)
-                {
-                    s.Role = PolytronRole.ArchitronGenetic;
-                }
-                else
-                {
-                    s.Role = PolytronRole.Architron;
-                }
+                s.Role = PolytronRole.ArchitronGenetic;
             }
-            else if (s.IsReturning || (geneticsManager != null && geneticsManager.IsGeneticFriend(p)))
-                s.Role = PolytronRole.GeneticFriend;
             else
-                s.Role = PolytronRole.Normal;
+            {
+                s.Role = PolytronRole.Architron;
+            }
+        }
+        else if (s.IsReturning || (geneticsManager != null && geneticsManager.IsGeneticFriend(p)))
+            s.Role = PolytronRole.GeneticFriend;
+        else
+            s.Role = PolytronRole.Normal;
 
-    // Location: home / mutatron center / mutatron / following avatar
+        // Location: home / mutatron center / mutatron / following avatar
         /*
         if (p.boundSink == null) s.Location = PolytronLocation.Home;
         else if (mutatronCenter != null && p.boundSink == mutatronCenter.sink) s.Location = PolytronLocation.MutatronCenter;
@@ -1142,7 +1142,7 @@ public class MutatronEngine : MonoBehaviour, IPolytronStateProvider
         }
 
         s.Location = PolytronLocation.Unknown;
-        if(p.boundSink != null)
+        if (p.boundSink != null)
         {
             PolytronSink ps = p.boundSink;
             HexCoord hc = ps.hexCoord;
@@ -1157,30 +1157,30 @@ public class MutatronEngine : MonoBehaviour, IPolytronStateProvider
             else if (mutatronCenter != null && p.boundSink == mutatronCenter.sink) s.Location = PolytronLocation.MutatronCenter;
             */
 
-            if(IsHome(hc))
+            if (IsHome(hc))
             {
-//                 HexCellData hcd = gridCellsMap[hc];
+                //                 HexCellData hcd = gridCellsMap[hc];
                 Debug.Assert(hcd.idxInRing == p.sealNumber && hcd.ring == 12);
-                s.Location = PolytronLocation.Home;                
+                s.Location = PolytronLocation.Home;
             }
-/*            else if(IsMutatronCenter(hcd))
-            {
-                s.Location = PolytronLocation.MutatronCenter;                
-            }
-            */
+            /*            else if(IsMutatronCenter(hcd))
+                        {
+                            s.Location = PolytronLocation.MutatronCenter;                
+                        }
+                        */
             /*
             else if (mutatronCenter != null && p.boundSink == mutatronCenter.sink) 
             {
                 s.Location = PolytronLocation.MutatronCenter;
             }
             */
-            else if(IsMutatronCell(hc))
+            else if (IsMutatronCell(hc))
             {
-                s.Location = PolytronLocation.Mutatron;                
+                s.Location = PolytronLocation.Mutatron;
             }
-            else if(IsMutatronCenter(hcd))
+            else if (IsMutatronCenter(hcd))
             {
-                s.Location = PolytronLocation.MutatronCenter;                
+                s.Location = PolytronLocation.MutatronCenter;
             }
             /*
             else if (mutatronCenter != null && p.boundSink == mutatronCenter.sink) 
@@ -1195,10 +1195,10 @@ public class MutatronEngine : MonoBehaviour, IPolytronStateProvider
 
 
 
-    // Selection slots (authoritative from this engine)
-    if (selectionManager != null && selectionManager.PaletteSelector == p) s.Selection = SelectionSlot.Palette;
-    else if (selectionManager != null && selectionManager.OperatorsSelector == p) s.Selection = SelectionSlot.Operators;
-    else s.Selection = SelectionSlot.None;
+        // Selection slots (authoritative from this engine)
+        if (selectionManager != null && selectionManager.PaletteSelector == p) s.Selection = SelectionSlot.Palette;
+        else if (selectionManager != null && selectionManager.OperatorsSelector == p) s.Selection = SelectionSlot.Operators;
+        else s.Selection = SelectionSlot.None;
 
         return s;
     }
