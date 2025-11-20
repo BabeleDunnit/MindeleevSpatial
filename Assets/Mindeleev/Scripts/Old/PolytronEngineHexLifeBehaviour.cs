@@ -32,7 +32,8 @@ public class PolytronEngineHexLifeBehaviour : PolytronEngineBehaviour
     private float evolveTimer = 0f;
     private const float evolveInterval = 1.5f;
 
-    private void Reset(GameObject myEngine)
+    // Renamed to avoid colliding with Unity's parameterless Reset message
+    private void ResetGrid(GameObject myEngine)
     {
         Debug.Log("Entering HexLifeBehaviour.Reset()");
 
@@ -89,7 +90,7 @@ public class PolytronEngineHexLifeBehaviour : PolytronEngineBehaviour
 
     public override void Setup(GameObject myEngine)
     {
-        Reset(myEngine);
+        ResetGrid(myEngine);
     }
 
     bool IsMetatronCoord(int ring, int i)
@@ -119,7 +120,7 @@ public class PolytronEngineHexLifeBehaviour : PolytronEngineBehaviour
 
         if (s == "reset")
         {
-            Reset(myEngine);
+            ResetGrid(myEngine);
             return 1;
         }
 
