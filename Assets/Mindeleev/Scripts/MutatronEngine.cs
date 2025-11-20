@@ -679,21 +679,50 @@ public class MutatronEngine : MonoBehaviour, IPolytronStateProvider
             PolytronSink sink = hckv.Value.sink;
             Polytron polytronBoundToSink = sink.boundPolytron;
 
-            if (polytronBoundToSink && polytronBoundToSink.recipe != hckv.Value.tile.recipe)
+            if (polytronBoundToSink)
             {
-                // IMPORTANT: Skip reserved genetic friends, they must NOT be unbound during evolution
-                if (polytronBoundToSink.reservedForGenetics)
+                string tileRecipe = hckv.Value.tile != null ? hckv.Value.tile.recipe : null;
+                if (!string.IsNullOrEmpty(tileRecipe) && polytronBoundToSink.recipe != tileRecipe)
                 {
-                    Debug.Log($"[UnbindNonMatchingPolytrons] SKIPPING reserved friend polytron_id={polytronBoundToSink.sealNumber} (recipe mismatch but reserved)");
-                    polytronsThatWillNotMove++;
-                    continue;
+                    // IMPORTANT: Skip reserved genetic friends, they must NOT be modified during evolution
+                    if (polytronBoundToSink.reservedForGenetics)
+                    {
+                        Debug.Log($"[UnbindNonMatchingPolytrons] SKIPPING reserved friend polytron_id={polytronBoundToSink.sealNumber} (recipe mismatch but reserved)");
+                        polytronsThatWillNotMove++;
+                        continue;
+                    }
+
+                    try
+                    {
+                        var parsedTile = PolyhedronRecipeParser.Parse(tileRecipe);
+                        var parsedPoly = PolyhedronRecipeParser.Parse(polytronBoundToSink.recipe);
+
+                        var newRecipeObj = new PolyhedronRecipe
+                        {
+                            Tokens = parsedTile.Tokens,
+                            PaletteIdx = parsedPoly.PaletteIdx,
+                            BasePolyhedron = parsedPoly.BasePolyhedron
+                        };
+
+                        string newRecipe = newRecipeObj.ToString();
+
+                        if (newRecipe != polytronBoundToSink.recipe)
+                        {
+                            Debug.Log($"[UnbindNonMatchingPolytrons] Updating polytron_id={polytronBoundToSink.sealNumber} recipe -> {newRecipe} (preserving radix)");
+                            RebuildPolytronFromRecipe(polytronBoundToSink, newRecipe);
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        Debug.LogWarning($"[UnbindNonMatchingPolytrons] failed to apply tile operators to polytron_id={polytronBoundToSink.sealNumber}: {ex}");
+                        // Fallback: unbind to avoid inconsistent state
+                        UnbindPolytron(polytronBoundToSink);
+                    }
                 }
-                // Use UnbindPolytron to clear both sides safely
-                UnbindPolytron(polytronBoundToSink);
-            }
-            else
-            {
-                polytronsThatWillNotMove++;
+                else
+                {
+                    polytronsThatWillNotMove++;
+                }
             }
         }
 

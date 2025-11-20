@@ -146,11 +146,16 @@ public class BindingManager
             if (engine.IsMutatronCenter(hckv.Value))
             {
                 Polytron architron = polytrons[engine.architronIdx];
-                Debug.Assert(hckv.Value.sink.boundPolytron == null);
+                // Ensure the Architron is bound to the Mutatron center.
+                // Don't assume the sink is free (it may have been bound earlier);
+                // BindPolytronToSink will safely handle unbinding previous owners.
                 BindPolytronToSink(architron, hckv);
-                Debug.Assert(hckv.Value.sink.boundPolytron == architron);
-                Debug.Assert(architron.boundSink = hckv.Value.sink);
-                Debug.Assert(architron.boundSink.boundPolytron = architron);
+
+                // Sanity check: after binding, the sink should point to the architron.
+                if (hckv.Value.sink.boundPolytron != architron || architron.boundSink != hckv.Value.sink)
+                {
+                    Debug.LogWarning($"[UpdatePolytronsSinks] Architron binding inconsistent: sink.owner={hckv.Value.sink.boundPolytron?.sealNumber.ToString() ?? "null"}, architron.boundSink={(architron.boundSink==null?"null":architron.boundSink.name)}");
+                }
                 continue;
             }
 
@@ -188,20 +193,53 @@ public class BindingManager
 
             PolytronSink sink = hckv.Value.sink;
             Polytron polytronBoundToSink = sink.boundPolytron;
-
-            if (polytronBoundToSink && polytronBoundToSink.recipe != hckv.Value.tile.recipe)
+            if (polytronBoundToSink)
             {
-                if (polytronBoundToSink.reservedForGenetics)
+                string tileRecipe = hckv.Value.tile != null ? hckv.Value.tile.recipe : null;
+                if (!string.IsNullOrEmpty(tileRecipe) && polytronBoundToSink.recipe != tileRecipe)
                 {
-                    Debug.Log($"[UnbindNonMatchingPolytrons] SKIPPING reserved friend polytron_id={polytronBoundToSink.sealNumber} (recipe mismatch but reserved)");
-                    polytronsThatWillNotMove++;
-                    continue;
+                    if (polytronBoundToSink.reservedForGenetics)
+                    {
+                        Debug.Log($"[UnbindNonMatchingPolytrons] SKIPPING reserved friend polytron_id={polytronBoundToSink.sealNumber} (recipe mismatch but reserved)");
+                        polytronsThatWillNotMove++;
+                        continue;
+                    }
+
+                    // Instead of unbinding, update the polytron's operators sequence to match the tile
+                    // while preserving the polytron's radix (palette index and base polyhedron).
+                    try
+                    {
+                        var parsedTile = PolyhedronRecipeParser.Parse(tileRecipe);
+                        var parsedPoly = PolyhedronRecipeParser.Parse(polytronBoundToSink.recipe);
+
+                        var newRecipeObj = new PolyhedronRecipe
+                        {
+                            Tokens = parsedTile.Tokens,
+                            PaletteIdx = parsedPoly.PaletteIdx,
+                            BasePolyhedron = parsedPoly.BasePolyhedron
+                        };
+
+                        string newRecipe = newRecipeObj.ToString();
+
+                        // Only rebuild if the resulting recipe differs
+                        if (newRecipe != polytronBoundToSink.recipe)
+                        {
+                            Debug.Log($"[UnbindNonMatchingPolytrons] Updating polytron_id={polytronBoundToSink.sealNumber} recipe -> {newRecipe} (preserving radix)");
+                            // Use engine helper to rebuild so AddEmanation and notifications are centralized
+                            engine.RebuildPolytronFromRecipe(polytronBoundToSink, newRecipe);
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        Debug.LogWarning($"[UnbindNonMatchingPolytrons] failed to apply tile operators to polytron_id={polytronBoundToSink.sealNumber}: {ex}");
+                        // Fallback: unbind to avoid inconsistent state
+                        UnbindPolytron(polytronBoundToSink);
+                    }
                 }
-                UnbindPolytron(polytronBoundToSink);
-            }
-            else
-            {
-                polytronsThatWillNotMove++;
+                else
+                {
+                    polytronsThatWillNotMove++;
+                }
             }
         }
 
