@@ -26,6 +26,9 @@ public class BindingManager
     {
         if (p == null) return;
 
+        // Remember previous binding to decide whether this is a "call from home" or a simple move on the Mutatron.
+        var prevBoundSink = p.boundSink;
+
         // Fail-fast: if binding to the Mutatron center and the sink is already
         // owned by another polytron, throw instead of silently reassigning.
         if (ps != null && engine != null && engine.gridCellsMap != null && engine.gridCellsMap.ContainsKey(ps.hexCoord))
@@ -59,33 +62,53 @@ public class BindingManager
             else
                 Debug.Log($"[BindPolytronToSink] binding polytron_id={p.sealNumber} to sink={ps.name}");
         }
-        // If this sink is part of the Mutatron (not home), immediately apply
-        // the tile's operators (transformation) to the polytron while preserving
-        // the polytron's radix (palette index and base polyhedron). Let any
-        // parsing/validation exceptions bubble up (fail-fast).
+        // If this sink is part of the Mutatron (not home), decide whether to
+        // alter the polytron's recipe. Only calls from home (or unbound polytrons)
+        // should change the polytron's emanation. Simple moves between Mutatron
+        // sinks must preserve the polytron's recipe.
         if (ps != null && engine != null && engine.gridCellsMap != null && engine.gridCellsMap.ContainsKey(ps.hexCoord))
         {
             var hcd = engine.gridCellsMap[ps.hexCoord];
             // ring <= actualLevelConfig.actualRingsCount => on Mutatron
             if (hcd.ring <= engine.actualLevelConfig.actualRingsCount && hcd.tile != null && !p.reservedForGenetics)
             {
-                string tileRecipe = hcd.tile.recipe;
-                var parsedTile = PolyhedronRecipeParser.Parse(tileRecipe);
-                var parsedPoly = PolyhedronRecipeParser.Parse(p.recipe);
-
-                var newRecipeObj = new PolyhedronRecipe
+                // Determine whether this binding is a "call from home" (or from unbound)
+                // vs a simple move between Mutatron sinks. Only calls from home/unbound should
+                // alter the polytron's recipe to match the tile operators; moves should preserve
+                // the polytron's current emanation.
+                bool wasAtHome = false;
+                try
                 {
-                    Tokens = parsedTile.Tokens,
-                    PaletteIdx = parsedPoly.PaletteIdx,
-                    BasePolyhedron = parsedPoly.BasePolyhedron
-                };
+                    if (prevBoundSink == null) wasAtHome = true; // unbound
+                    else if (engine.gridCellsMap.ContainsKey(prevBoundSink.hexCoord) && engine.gridCellsMap[prevBoundSink.hexCoord].ring == 12) wasAtHome = true;
+                }
+                catch (Exception) { wasAtHome = false; }
 
-                string newRecipe = newRecipeObj.ToString();
-
-                if (newRecipe != p.recipe)
+                if (wasAtHome)
                 {
-                    // Use engine helper to rebuild so AddEmanation and notifications are centralized
-                    engine.RebuildPolytronFromRecipe(p, newRecipe);
+                    string tileRecipe = hcd.tile.recipe;
+                    var parsedTile = PolyhedronRecipeParser.Parse(tileRecipe);
+                    var parsedPoly = PolyhedronRecipeParser.Parse(p.recipe);
+
+                    var newRecipeObj = new PolyhedronRecipe
+                    {
+                        Tokens = parsedTile.Tokens,
+                        PaletteIdx = parsedPoly.PaletteIdx,
+                        BasePolyhedron = parsedPoly.BasePolyhedron
+                    };
+
+                    string newRecipe = newRecipeObj.ToString();
+
+                    if (newRecipe != p.recipe)
+                    {
+                        // Use engine helper to rebuild so AddEmanation and notifications are centralized
+                        engine.RebuildPolytronFromRecipe(p, newRecipe);
+                    }
+                }
+                else
+                {
+                    // Simple move on the Mutatron: do not change the polytron's recipe.
+                    Debug.Log($"[BindPolytronToSink] moved polytron_id={p.sealNumber} on Mutatron without changing recipe");
                 }
             }
         }
@@ -232,6 +255,7 @@ public class BindingManager
 
     public void UnbindNonMatchingPolytrons()
     {
+        Debug.Log("[BindingManager.UnbindNonMatchingPolytrons] enter (manager path)");
         // Mirror engine reconciliation behavior here so the bindingManager path behaves identically.
         var opsToSinks = new Dictionary<string, List<KeyValuePair<HexCoord, MutatronEngine.HexCellData>>>();
         KeyValuePair<HexCoord, MutatronEngine.HexCellData>? centerHckv = null;
@@ -249,6 +273,8 @@ public class BindingManager
             }
             catch (Exception) { }
         }
+
+    Debug.Log($"[BindingManager.UnbindNonMatchingPolytrons] ops groups discovered: {opsToSinks.Count}");
 
         var opsToPolytronsOnMut = new Dictionary<string, List<Polytron>>();
         var polytronsOnMutList = new List<Polytron>();
@@ -271,6 +297,8 @@ public class BindingManager
             }
             catch (Exception) { }
         }
+
+    Debug.Log($"[BindingManager.UnbindNonMatchingPolytrons] polytrons on mutatron counted: {polytronsOnMutList.Count}");
 
         // center handling
         if (centerHckv.HasValue && engine.polytrons != null && engine.architronIdx >= 0 && engine.architronIdx < engine.polytrons.Count)
@@ -416,6 +444,10 @@ public class BindingManager
             catch (Exception) { }
         }
 
-        Debug.Log("[UnbindNonMatchingPolytrons] reconciliation complete (manager path)");
+        int totalPolytrons = engine.polytrons.Count;
+        int boundOnMut = engine.polytrons.Count(p => p != null && p.boundSink != null && engine.gridCellsMap.ContainsKey(p.boundSink.hexCoord) && engine.gridCellsMap[p.boundSink.hexCoord].ring <= engine.actualLevelConfig.actualRingsCount);
+        int boundOnHome = engine.polytrons.Count(p => p != null && p.boundSink != null && engine.gridCellsMap.ContainsKey(p.boundSink.hexCoord) && engine.gridCellsMap[p.boundSink.hexCoord].ring == 12);
+        int unbound = engine.polytrons.Count(p => p != null && p.boundSink == null);
+        Debug.Log($"[BindingManager.UnbindNonMatchingPolytrons] reconciliation complete: opsGroups={opsToSinks.Count}, onMut={polytronsOnMutList.Count}, boundOnMut={boundOnMut}, boundHome={boundOnHome}, unbound={unbound}, totalPolytrons={totalPolytrons}");
     }
 }

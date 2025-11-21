@@ -262,12 +262,45 @@ public class MutatronEngine : MonoBehaviour, IPolytronStateProvider
 
     internal void RebuildPolytronFromRecipe(Polytron p, string r)
     {
-        p.recipe = r;
-        p.RebuildMesh();
-        // record new recipe/emantion after explicit rebuild
-        p.AddEmanation(r);
-        //p.GetComponent<PolytronInfoPanel>().bodyText = r;
-        NotifyPolytronStateChanged(p);
+        try
+        {
+            string oldRecipe = p?.recipe ?? "<null>";
+            // Determine binding location for diagnostics
+            string location = "unbound";
+            try
+            {
+                if (p?.boundSink != null && gridCellsMap != null && gridCellsMap.ContainsKey(p.boundSink.hexCoord))
+                {
+                    var h = gridCellsMap[p.boundSink.hexCoord];
+                    location = (h.ring == 12) ? $"home(ring=12, idx={h.idxInRing})" : $"mutatron(ring={h.ring}, idx={h.idxInRing})";
+                }
+            }
+            catch (Exception) { }
+
+            Debug.Log($"[RebuildPolytronFromRecipe] polytron_id={p?.sealNumber.ToString() ?? "?"} oldRecipe={oldRecipe} newRecipe={r} location={location}");
+
+            // Defensive guard: detect recipe change for a polytron that is currently bound on the Mutatron
+            // (i.e. bound to a sink whose ring != 12). Exceptions: allow the Architron to be rebuilt when needed.
+            if (p?.boundSink != null && gridCellsMap != null && gridCellsMap.ContainsKey(p.boundSink.hexCoord))
+            {
+                var boundCell = gridCellsMap[p.boundSink.hexCoord];
+                if (boundCell.ring != 12 && !p.isArchitron)
+                {
+                    Debug.LogWarning($"[RebuildPolytronFromRecipe] detected recipe change for polytron_id={p.sealNumber} because it is currently bound on Mutatron ring={boundCell.ring}");
+                }
+            }
+
+            p.recipe = r;
+            p.RebuildMesh();
+            // record new recipe/emantion after explicit rebuild
+            p.AddEmanation(r);
+            //p.GetComponent<PolytronInfoPanel>().bodyText = r;
+            NotifyPolytronStateChanged(p);
+        }
+        catch (Exception ex)
+        {
+            Debug.LogWarning($"[RebuildPolytronFromRecipe] failed for polytron_id={p?.sealNumber.ToString() ?? "?"}: {ex}");
+        }
     }
 
     // Build level helper - sets up level config and starts grid/tile/polytron creation
@@ -511,6 +544,7 @@ public class MutatronEngine : MonoBehaviour, IPolytronStateProvider
             bindingManager.UnbindNonMatchingPolytrons();
             return;
         }
+        Debug.Log("[UnbindNonMatchingPolytrons] enter (engine path)");
         // Implement movement semantics:
         // - center tile is always bound to Architron and its operators are combined with Architron radix
         // - for other tiles, match transformations (operators) between tiles and polytrons
@@ -540,6 +574,8 @@ public class MutatronEngine : MonoBehaviour, IPolytronStateProvider
             }
         }
 
+    Debug.Log($"[UnbindNonMatchingPolytrons] ops groups discovered: {opsToSinks.Count}");
+
         // map polytrons currently on the mutatron (excluding architron) by their operators
         var opsToPolytronsOnMut = new Dictionary<string, List<Polytron>>();
         var polytronsOnMutList = new List<Polytron>();
@@ -565,6 +601,8 @@ public class MutatronEngine : MonoBehaviour, IPolytronStateProvider
                 // skip malformed polytron recipes
             }
         }
+
+    Debug.Log($"[UnbindNonMatchingPolytrons] polytrons on mutatron counted: {polytronsOnMutList.Count}");
 
         // 1) center tile -> architron
         if (centerHckv.HasValue && polytrons != null && architronIdx >= 0 && architronIdx < polytrons.Count)
@@ -726,7 +764,11 @@ public class MutatronEngine : MonoBehaviour, IPolytronStateProvider
             catch (Exception) { }
         }
 
-        Debug.Log($"[UnbindNonMatchingPolytrons] reconciliation complete");
+        int totalPolytrons = polytrons.Count;
+        int boundOnMut = polytrons.Count(p => p != null && p.boundSink != null && gridCellsMap.ContainsKey(p.boundSink.hexCoord) && gridCellsMap[p.boundSink.hexCoord].ring <= actualLevelConfig.actualRingsCount);
+        int boundOnHome = polytrons.Count(p => p != null && p.boundSink != null && gridCellsMap.ContainsKey(p.boundSink.hexCoord) && gridCellsMap[p.boundSink.hexCoord].ring == 12);
+        int unbound = polytrons.Count(p => p != null && p.boundSink == null);
+        Debug.Log($"[UnbindNonMatchingPolytrons] reconciliation complete: opsGroups={opsToSinks.Count}, onMut={polytronsOnMutList.Count}, boundOnMut={boundOnMut}, boundHome={boundOnHome}, unbound={unbound}, totalPolytrons={totalPolytrons}");
     }
 
     void UpdatePolytronsSinks()
