@@ -210,54 +210,186 @@ public class BindingManager
 
     public void UnbindNonMatchingPolytrons()
     {
-        int polytronsThatWillNotMove = 0;
+        // Mirror engine reconciliation behavior here so the bindingManager path behaves identically.
+        var opsToSinks = new Dictionary<string, List<KeyValuePair<HexCoord, MutatronEngine.HexCellData>>>();
+        KeyValuePair<HexCoord, MutatronEngine.HexCellData>? centerHckv = null;
         foreach (var hckv in engine.gridCellsMap)
         {
             if (hckv.Value.ring > engine.actualLevelConfig.actualRingsCount) continue;
-
-            PolytronSink sink = hckv.Value.sink;
-            Polytron polytronBoundToSink = sink.boundPolytron;
-            if (polytronBoundToSink)
+            if (engine.IsMutatronCenter(hckv.Value)) { centerHckv = hckv; continue; }
+            if (hckv.Value.tile == null) continue;
+            try
             {
-                string tileRecipe = hckv.Value.tile != null ? hckv.Value.tile.recipe : null;
-                if (!string.IsNullOrEmpty(tileRecipe) && polytronBoundToSink.recipe != tileRecipe)
+                var parsed = PolyhedronRecipeParser.Parse(hckv.Value.tile.recipe);
+                string ops = parsed.OperatorsSequence();
+                if (!opsToSinks.ContainsKey(ops)) opsToSinks[ops] = new List<KeyValuePair<HexCoord, MutatronEngine.HexCellData>>();
+                opsToSinks[ops].Add(hckv);
+            }
+            catch (Exception) { }
+        }
+
+        var opsToPolytronsOnMut = new Dictionary<string, List<Polytron>>();
+        var polytronsOnMutList = new List<Polytron>();
+        foreach (var p in engine.polytrons)
+        {
+            if (p == null) continue;
+            if (p.isArchitron) continue;
+            if (p.boundSink == null) continue;
+            if (!engine.gridCellsMap.ContainsKey(p.boundSink.hexCoord)) continue;
+            var hcd = engine.gridCellsMap[p.boundSink.hexCoord];
+            if (!engine.IsMutatronCell(hcd) && !engine.IsMutatronCenter(hcd)) continue;
+            if (p.reservedForGenetics) continue;
+            try
+            {
+                var parsed = PolyhedronRecipeParser.Parse(p.recipe);
+                string ops = parsed.OperatorsSequence();
+                if (!opsToPolytronsOnMut.ContainsKey(ops)) opsToPolytronsOnMut[ops] = new List<Polytron>();
+                opsToPolytronsOnMut[ops].Add(p);
+                polytronsOnMutList.Add(p);
+            }
+            catch (Exception) { }
+        }
+
+        // center handling
+        if (centerHckv.HasValue && engine.polytrons != null && engine.architronIdx >= 0 && engine.architronIdx < engine.polytrons.Count)
+        {
+            var ch = centerHckv.Value;
+            var arch = engine.polytrons[engine.architronIdx];
+            if (ch.Value.tile != null && arch != null)
+            {
+                if (arch.boundSink != ch.Value.sink)
                 {
-                    if (polytronBoundToSink.reservedForGenetics)
-                    {
-                        Debug.Log($"[UnbindNonMatchingPolytrons] SKIPPING reserved friend polytron_id={polytronBoundToSink.sealNumber} (recipe mismatch but reserved)");
-                        polytronsThatWillNotMove++;
-                        continue;
-                    }
-
-                    // Instead of unbinding, update the polytron's operators sequence to match the tile
-                    // while preserving the polytron's radix (palette index and base polyhedron).
-                    var parsedTile = PolyhedronRecipeParser.Parse(tileRecipe);
-                    var parsedPoly = PolyhedronRecipeParser.Parse(polytronBoundToSink.recipe);
-
+                    BindPolytronToSink(arch, ch);
+                }
+                try
+                {
+                    var parsedTile = PolyhedronRecipeParser.Parse(ch.Value.tile.recipe);
+                    var parsedArch = PolyhedronRecipeParser.Parse(arch.recipe);
                     var newRecipeObj = new PolyhedronRecipe
                     {
                         Tokens = parsedTile.Tokens,
-                        PaletteIdx = parsedPoly.PaletteIdx,
-                        BasePolyhedron = parsedPoly.BasePolyhedron
+                        PaletteIdx = parsedArch.PaletteIdx,
+                        BasePolyhedron = parsedArch.BasePolyhedron
                     };
-
                     string newRecipe = newRecipeObj.ToString();
-
-                    // Only rebuild if the resulting recipe differs
-                    if (newRecipe != polytronBoundToSink.recipe)
+                    if (newRecipe != arch.recipe)
                     {
-                        Debug.Log($"[UnbindNonMatchingPolytrons] Updating polytron_id={polytronBoundToSink.sealNumber} recipe -> {newRecipe} (preserving radix)");
-                        // Use engine helper to rebuild so AddEmanation and notifications are centralized
-                        engine.RebuildPolytronFromRecipe(polytronBoundToSink, newRecipe);
+                        engine.RebuildPolytronFromRecipe(arch, newRecipe);
                     }
                 }
-                else
+                catch (Exception) { }
+            }
+        }
+
+        // reconcile per-operator groups
+        foreach (var kv in opsToSinks)
+        {
+            string ops = kv.Key;
+            var sinks = new List<KeyValuePair<HexCoord, MutatronEngine.HexCellData>>(kv.Value);
+
+            opsToPolytronsOnMut.TryGetValue(ops, out var polysWithOps);
+            polysWithOps = polysWithOps ?? new List<Polytron>();
+
+            var assignedPolys = new HashSet<Polytron>();
+            var remainingSinks = new List<KeyValuePair<HexCoord, MutatronEngine.HexCellData>>();
+
+            foreach (var sinkH in sinks)
+            {
+                var bound = sinkH.Value.sink.boundPolytron;
+                if (bound != null && !bound.reservedForGenetics)
                 {
-                    polytronsThatWillNotMove++;
+                    try
+                    {
+                        var parsed = PolyhedronRecipeParser.Parse(bound.recipe);
+                        if (parsed.OperatorsSequence() == ops)
+                        {
+                            assignedPolys.Add(bound);
+                            continue;
+                        }
+                    }
+                    catch (Exception) { }
+                }
+                remainingSinks.Add(sinkH);
+            }
+
+            var movablePolys = polysWithOps.Where(p => !assignedPolys.Contains(p)).ToList();
+
+            int moveCount = Math.Min(movablePolys.Count, remainingSinks.Count);
+            for (int i = 0; i < moveCount; i++)
+            {
+                var poly = movablePolys[i];
+                var targetH = remainingSinks[i];
+                var prevSink = poly.boundSink;
+                if (prevSink != null) UnbindPolytron(poly);
+                    Debug.Log($"[BindingManager] moving polytron_id={poly.sealNumber} from {prevSink?.name ?? "null"} to {targetH.Value.sink.name}");
+                    BindPolytronToSink(poly, targetH);
+                    Debug.Log($"[BindingManager] moved polytron_id={poly.sealNumber} now bound to {poly.boundSink?.name ?? "null"}");
+                assignedPolys.Add(poly);
+            }
+
+            remainingSinks = remainingSinks.Skip(moveCount).ToList();
+
+                if (remainingSinks.Count > 0)
+            {
+                var availableHomePolys = engine.polytrons.Where(p => p != null && p.boundSink == null && !p.reservedForGenetics && engine.polytronHomeCooldown.TryGetValue(p.sealNumber, out var cd) && cd <= 0).ToList();
+                int callCount = Math.Min(availableHomePolys.Count, remainingSinks.Count);
+                for (int i = 0; i < callCount; i++)
+                {
+                    var poly = availableHomePolys[i];
+                    var targetH = remainingSinks[i];
+                        Debug.Log($"[BindingManager] calling home polytron_id={poly.sealNumber} to sink={targetH.Value.sink.name}");
+                    try
+                    {
+                        var parsedPoly = PolyhedronRecipeParser.Parse(poly.recipe);
+                        var parsedTile = PolyhedronRecipeParser.Parse(targetH.Value.tile.recipe);
+                        var newRecipeObj = new PolyhedronRecipe
+                        {
+                            Tokens = parsedTile.Tokens,
+                            PaletteIdx = parsedPoly.PaletteIdx,
+                            BasePolyhedron = parsedPoly.BasePolyhedron
+                        };
+                        string newRecipe = newRecipeObj.ToString();
+                        engine.RebuildPolytronFromRecipe(poly, newRecipe);
+                    }
+                    catch (Exception) { }
+                        BindPolytronToSink(poly, targetH);
+                        Debug.Log($"[BindingManager] called polytron_id={poly.sealNumber} now bound to {poly.boundSink?.name ?? "null"}");
+                }
+            }
+
+            int sinksCount = sinks.Count;
+                if (polysWithOps.Count > sinksCount)
+            {
+                var surplus = polysWithOps.Where(p => !assignedPolys.Contains(p)).ToList();
+                foreach (var sPoly in surplus)
+                {
+                        Debug.Log($"[BindingManager] sending surplus polytron_id={sPoly.sealNumber} home from sink={sPoly.boundSink?.name ?? "null"}");
+                        UnbindPolytron(sPoly);
+                        BindPolytronToSink(sPoly, engine.polytronsHomes[sPoly.sealNumber]);
+                        engine.polytronHomeCooldown[sPoly.sealNumber] = 1;
+                        Debug.Log($"[BindingManager] polytron_id={sPoly.sealNumber} sent home and cooldown set");
                 }
             }
         }
 
-        Debug.Log($"[UnbindNonMatchingPolytrons] polytronsThatWillNotMove: {polytronsThatWillNotMove}");
+        var opsPresent = new HashSet<string>(opsToSinks.Keys);
+        foreach (var p in polytronsOnMutList)
+        {
+            try
+            {
+                var parsed = PolyhedronRecipeParser.Parse(p.recipe);
+                if (!opsPresent.Contains(parsed.OperatorsSequence()))
+                {
+                    Debug.Log($"[BindingManager] polytron_id={p.sealNumber} operators died on mutatron; sending home");
+                    UnbindPolytron(p);
+                    BindPolytronToSink(p, engine.polytronsHomes[p.sealNumber]);
+                    engine.polytronHomeCooldown[p.sealNumber] = 1;
+                    Debug.Log($"[BindingManager] polytron_id={p.sealNumber} sent home due to dead operators");
+                }
+            }
+            catch (Exception) { }
+        }
+
+        Debug.Log("[UnbindNonMatchingPolytrons] reconciliation complete (manager path)");
     }
 }
