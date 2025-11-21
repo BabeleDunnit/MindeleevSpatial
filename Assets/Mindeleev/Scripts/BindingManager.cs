@@ -353,7 +353,11 @@ public class BindingManager
 
                 if (remainingSinks.Count > 0)
             {
-                var availableHomePolys = engine.polytrons.Where(p => p != null && p.boundSink == null && !p.reservedForGenetics && engine.polytronHomeCooldown.TryGetValue(p.sealNumber, out var cd) && cd <= 0).ToList();
+                // Allow calling polytrons that are currently unbound OR currently at their home (ring 12).
+                var availableHomePolys = engine.polytrons.Where(p => p != null && !p.reservedForGenetics
+                    && engine.polytronHomeCooldown.TryGetValue(p.sealNumber, out var cd) && cd <= 0
+                    && (p.boundSink == null || (engine.gridCellsMap.ContainsKey(p.boundSink.hexCoord) && engine.gridCellsMap[p.boundSink.hexCoord].ring == 12)))
+                    .ToList();
                 int callCount = Math.Min(availableHomePolys.Count, remainingSinks.Count);
                 for (int i = 0; i < callCount; i++)
                 {

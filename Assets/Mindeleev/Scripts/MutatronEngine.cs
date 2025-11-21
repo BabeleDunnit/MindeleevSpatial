@@ -660,7 +660,11 @@ public class MutatronEngine : MonoBehaviour, IPolytronStateProvider
             // 2d: for sinks still unfilled, call polytrons from home (respecting cooldowns)
             if (remainingSinks.Count > 0)
             {
-                var availableHomePolys = polytrons.Where(p => p != null && p.boundSink == null && !p.reservedForGenetics && polytronHomeCooldown.TryGetValue(p.sealNumber, out var cd) && cd <= 0).ToList();
+                    // Allow calling polytrons that are currently unbound OR currently at their home (ring 12).
+                    var availableHomePolys = polytrons.Where(p => p != null && !p.reservedForGenetics
+                        && polytronHomeCooldown.TryGetValue(p.sealNumber, out var cd) && cd <= 0
+                        && (p.boundSink == null || (gridCellsMap.ContainsKey(p.boundSink.hexCoord) && gridCellsMap[p.boundSink.hexCoord].ring == 12)))
+                        .ToList();
                 int callCount = Math.Min(availableHomePolys.Count, remainingSinks.Count);
                 for (int i = 0; i < callCount; i++)
                 {
