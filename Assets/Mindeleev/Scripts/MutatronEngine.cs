@@ -273,20 +273,32 @@ public class MutatronEngine : MonoBehaviour, IPolytronStateProvider
     // Build level helper - sets up level config and starts grid/tile/polytron creation
     bool BuildLevel(int levelNumber)
     {
-        // Using actualLevelConfig already initialized in Awake; further level-specific
-        // configuration can be applied here based on levelNumber.
-
-        if (gridManager != null)
+        if(isRebuildingLevel)
         {
-            gridManager.CreateHexGridDataStructure();
-            StartCoroutine(gridManager.BuildTilesCoroutine());
+            return false;
         }
 
-        // initialize polytrons and homes
-        Create72PolytronsImmediate();
-        StartCoroutine(Create72PolytronsAndHomesCoroutine());
+        Debug.Log($"Building level {levelNumber}");
+
+        isRebuildingLevel = true;
+
+        DeselectAllPolytrons();
+
+        // the level number will determine the Metatron complexity
+        // and set actualRingsCount, etc.
+        actualLevelConfig.actualRingsCount = 4 - levelNumber; // keep original mapping
+        actualLevelConfig.energyQuantumExchanged = 1;
+
+        ResetLevelGraphics();
+        SendAllPolytronsHome();
+        InitializeCellsCAParametersForCurrentLevel();
+
+        StartCoroutine(DrawMetatronGraphicsCoroutine());
+        // Delegate tile building to GridManager so all tile-creation logic is centralized
+        if (gridManager != null) StartCoroutine(gridManager.BuildTilesCoroutine());
 
         mustBuildFirstTime = false;
+        evolveCount = 0;
         return true;
     }
 
@@ -294,8 +306,9 @@ public class MutatronEngine : MonoBehaviour, IPolytronStateProvider
     // Kept as a small extension point for debug or additional initialization.
     public void AfterTilesCreation()
     {
-        // Intentionally minimal: a place to add debug helpers (e.g., AddPolytronDebug)
-        Debug.Log("[AfterTilesCreation] tiles created");
+        UpdatePolytronsSinks();
+
+        isRebuildingLevel = false;
     }
 
     public static GameObject CreateTileLabel(string s, Vector3 position)
@@ -744,6 +757,41 @@ public class MutatronEngine : MonoBehaviour, IPolytronStateProvider
         }
     }
 
+    void SendAllPolytronsHome()
+    {
+        // Delegate to bindingManager if available
+        if (bindingManager != null)
+        {
+            // BindingManager provides a SendUnboundPolytronsHome; to ensure parity we call a manager method
+            // If BindingManager implements a SendAllPolytronsHome it will be used; otherwise fall back to sending all here.
+            try
+            {
+                bindingManager.SendAllPolytronsHome();
+                return;
+            }
+            catch (MissingMethodException) { }
+            catch (Exception) { }
+        }
+
+        Debug.Log($"[SendAllPolytronsHome] sending all polytrons home (count={polytrons.Count})");
+        for (int i = 0; i < polytrons.Count; i++)
+        {
+            var p = polytrons[i];
+            if (p == null) continue;
+            try
+            {
+                UnbindPolytron(p);
+                BindPolytronToSink(p, polytronsHomes[p.sealNumber]);
+                // when resetting level we allow immediate calls, so set cooldown to 0
+                polytronHomeCooldown[p.sealNumber] = 0;
+            }
+            catch (Exception ex)
+            {
+                Debug.LogWarning($"[SendAllPolytronsHome] failed to send polytron_id={p?.sealNumber.ToString() ?? "?"} home: {ex.Message}");
+            }
+        }
+    }
+
     void Evolve()
     {
 
@@ -890,6 +938,44 @@ public class MutatronEngine : MonoBehaviour, IPolytronStateProvider
         };
     }
 
+    void InitializeCellsCAParametersForCurrentLevel()
+    {
+        foreach (var hckv in gridCellsMap)
+        {
+            if (hckv.Value.ring <= actualLevelConfig.actualRingsCount)
+            {
+                hckv.Value.polytronicNumber = hckv.Value.ring;
+                hckv.Value.nextPolytronicNumberAccumulator = 0;
+                hckv.Value.fusionRange = new Range<int>(0, 6);
+                hckv.Value.tileBasePolyhedron = actualLevelConfig.tileBasePoly.ToString();
+            }
+        }
+
+        PrintDebugStats("End of InitializeCellsForCurrentLevel");
+    }
+
+    void Start()
+    {
+        // hide placeholder
+        var mr = GetComponent<MeshRenderer>();
+        if (mr != null) mr.enabled = false;
+
+        // initialize grid and core data structures
+        gridManager = new GridManager(this);
+        gridManager.CreateHexGridDataStructure();
+
+        // initialize cell parameters so tile recipes include a valid base polyhedron
+        InitializeCellsCAParametersForCurrentLevel();
+        Create72PolytronsImmediate();
+
+        // initialize extracted managers after core data structures exist
+        bindingManager = new BindingManager(this);
+        selectionManager = new SelectionManager(this);
+        try { geneticsManager = new GeneticsManager(this); } catch { geneticsManager = null; }
+
+        StartCoroutine(Create72PolytronsAndHomesCoroutine());
+    }
+
     int levelCount = 0;
     void Update()
     {
@@ -1011,6 +1097,8 @@ public class MutatronEngine : MonoBehaviour, IPolytronStateProvider
         public char tileBasePoly;
         public int fusionThreshold;
         public int fissionThreshold;
+        // number of quantums exchanged during a fusion/fission event (used by evolve rules)
+        public int energyQuantumExchanged;
     }
 
     internal LevelConfig actualLevelConfig;

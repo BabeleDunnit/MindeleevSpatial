@@ -208,6 +208,27 @@ public class BindingManager
         }
     }
 
+    public void SendAllPolytronsHome()
+    {
+        Debug.Log($"[BindingManager.SendAllPolytronsHome] sending all polytrons home (count={engine.polytrons.Count})");
+        for (int i = 0; i < engine.polytrons.Count; i++)
+        {
+            var p = engine.polytrons[i];
+            if (p == null) continue;
+            try
+            {
+                UnbindPolytron(p);
+                BindPolytronToSink(p, engine.polytronsHomes[p.sealNumber]);
+                // reset cooldown so they can be called immediately after level build
+                engine.polytronHomeCooldown[p.sealNumber] = 0;
+            }
+            catch (Exception ex)
+            {
+                Debug.LogWarning($"[BindingManager.SendAllPolytronsHome] failed to send polytron_id={p?.sealNumber.ToString() ?? "?"} home: {ex.Message}");
+            }
+        }
+    }
+
     public void UnbindNonMatchingPolytrons()
     {
         // Mirror engine reconciliation behavior here so the bindingManager path behaves identically.
