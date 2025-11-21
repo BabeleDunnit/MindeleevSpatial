@@ -277,8 +277,6 @@ public class MutatronEngine : MonoBehaviour, IPolytronStateProvider
             }
             catch (Exception) { }
 
-            Debug.Log($"[RebuildPolytronFromRecipe] polytron_id={p?.sealNumber.ToString() ?? "?"} oldRecipe={oldRecipe} newRecipe={r} location={location}");
-
             // Defensive guard: detect recipe change for a polytron that is currently bound on the Mutatron
             // (i.e. bound to a sink whose ring != 12). Exceptions: allow the Architron to be rebuilt when needed.
             if (p?.boundSink != null && gridCellsMap != null && gridCellsMap.ContainsKey(p.boundSink.hexCoord))
@@ -287,8 +285,11 @@ public class MutatronEngine : MonoBehaviour, IPolytronStateProvider
                 if (boundCell.ring != 12 && !p.isArchitron)
                 {
                     Debug.LogWarning($"[RebuildPolytronFromRecipe] detected recipe change for polytron_id={p.sealNumber} because it is currently bound on Mutatron ring={boundCell.ring}");
+                    return; // refuse to change recipe while bound on Mutatron
                 }
             }
+
+            Debug.Log($"[RebuildPolytronFromRecipe] polytron_id={p?.sealNumber.ToString() ?? "?"} oldRecipe={oldRecipe} newRecipe={r} location={location}");
 
             p.recipe = r;
             p.RebuildMesh();
@@ -698,10 +699,11 @@ public class MutatronEngine : MonoBehaviour, IPolytronStateProvider
             // 2d: for sinks still unfilled, call polytrons from home (respecting cooldowns)
             if (remainingSinks.Count > 0)
             {
-                    // Allow calling polytrons that are currently unbound OR currently at their home (ring 12).
+                    // Only call polytrons that are actually at their home (ring 12) and have finished their cooldown.
+                    // Exclude currently unbound polytrons: unbound polytrons should first be sent home and rest for one evolve.
                     var availableHomePolys = polytrons.Where(p => p != null && !p.reservedForGenetics
                         && polytronHomeCooldown.TryGetValue(p.sealNumber, out var cd) && cd <= 0
-                        && (p.boundSink == null || (gridCellsMap.ContainsKey(p.boundSink.hexCoord) && gridCellsMap[p.boundSink.hexCoord].ring == 12)))
+                        && (p.boundSink != null && gridCellsMap.ContainsKey(p.boundSink.hexCoord) && gridCellsMap[p.boundSink.hexCoord].ring == 12))
                         .ToList();
                 int callCount = Math.Min(availableHomePolys.Count, remainingSinks.Count);
                 for (int i = 0; i < callCount; i++)

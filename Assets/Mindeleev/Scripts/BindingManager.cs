@@ -24,10 +24,8 @@ public class BindingManager
 
     public void BindPolytronToSink(Polytron p, PolytronSink ps)
     {
-        if (p == null) return;
-
         // Remember previous binding to decide whether this is a "call from home" or a simple move on the Mutatron.
-        var prevBoundSink = p.boundSink;
+        var prevBoundSink = p?.boundSink;
 
         // Fail-fast: if binding to the Mutatron center and the sink is already
         // owned by another polytron, throw instead of silently reassigning.
@@ -40,12 +38,14 @@ public class BindingManager
             }
         }
 
+        // Clear previous binding on this polytron (keep prevBoundSink to detect home-call)
         if (p.boundSink != null)
         {
             if (p.boundSink.boundPolytron == p) p.boundSink.boundPolytron = null;
             p.boundSink = null;
         }
 
+        // If the target sink is already owned, clear it (we'll reassign below)
         if (ps != null && ps.boundPolytron != null && ps.boundPolytron != p)
         {
             var prev = ps.boundPolytron;
@@ -53,6 +53,61 @@ public class BindingManager
             ps.boundPolytron = null;
         }
 
+        // If this sink is part of the Mutatron (not home), decide whether to
+        // alter the polytron's recipe. Only calls from home should change the polytron's emanation.
+        // IMPORTANT: perform recipe rebuild BEFORE assigning the new binding so the polytron is
+        // still recognized as "at home" by the rebuild helper.
+        if (ps != null && engine != null && engine.gridCellsMap != null && engine.gridCellsMap.ContainsKey(ps.hexCoord))
+        {
+            var hcd = engine.gridCellsMap[ps.hexCoord];
+            // ring <= actualLevelConfig.actualRingsCount => on Mutatron
+            if (hcd.ring <= engine.actualLevelConfig.actualRingsCount && hcd.tile != null && !p.reservedForGenetics)
+            {
+                // Only consider this a "call from home" if the polytron was actually
+                // bound at its home sink (ring 12). An unbound polytron is NOT treated
+                // as a home-call; it must be sent home and rest before being eligible.
+                bool wasAtHome = false;
+                try
+                {
+                    if (prevBoundSink != null && engine.gridCellsMap.ContainsKey(prevBoundSink.hexCoord) && engine.gridCellsMap[prevBoundSink.hexCoord].ring == 12)
+                        wasAtHome = true;
+                }
+                catch (Exception) { wasAtHome = false; }
+
+                if (wasAtHome)
+                {
+                    try
+                    {
+                        string tileRecipe = hcd.tile.recipe;
+                        var parsedTile = PolyhedronRecipeParser.Parse(tileRecipe);
+                        var parsedPoly = PolyhedronRecipeParser.Parse(p.recipe);
+
+                        var newRecipeObj = new PolyhedronRecipe
+                        {
+                            Tokens = parsedTile.Tokens,
+                            PaletteIdx = parsedPoly.PaletteIdx,
+                            BasePolyhedron = parsedPoly.BasePolyhedron
+                        };
+
+                        string newRecipe = newRecipeObj.ToString();
+
+                        if (newRecipe != p.recipe)
+                        {
+                            // Rebuild while the polytron is still considered at-home (prevBoundSink)
+                            engine.RebuildPolytronFromRecipe(p, newRecipe);
+                        }
+                    }
+                    catch (Exception) { }
+                }
+                else
+                {
+                    // Simple move on the Mutatron: do not change the polytron's recipe.
+                    Debug.Log($"[BindPolytronToSink] moved polytron_id={p.sealNumber} on Mutatron without changing recipe");
+                }
+            }
+        }
+
+        // Now assign the binding (after any pre-bind rebuild)
         p.boundSink = ps;
         if (ps != null)
         {
@@ -61,56 +116,6 @@ public class BindingManager
                 Debug.LogWarning($"[BindPolytronToSink] WARNING: REBINDING reserved polytron_id={p.sealNumber} (reservedForGenetics={p.reservedForGenetics}) to sink={ps.name}");
             else
                 Debug.Log($"[BindPolytronToSink] binding polytron_id={p.sealNumber} to sink={ps.name}");
-        }
-        // If this sink is part of the Mutatron (not home), decide whether to
-        // alter the polytron's recipe. Only calls from home (or unbound polytrons)
-        // should change the polytron's emanation. Simple moves between Mutatron
-        // sinks must preserve the polytron's recipe.
-        if (ps != null && engine != null && engine.gridCellsMap != null && engine.gridCellsMap.ContainsKey(ps.hexCoord))
-        {
-            var hcd = engine.gridCellsMap[ps.hexCoord];
-            // ring <= actualLevelConfig.actualRingsCount => on Mutatron
-            if (hcd.ring <= engine.actualLevelConfig.actualRingsCount && hcd.tile != null && !p.reservedForGenetics)
-            {
-                // Determine whether this binding is a "call from home" (or from unbound)
-                // vs a simple move between Mutatron sinks. Only calls from home/unbound should
-                // alter the polytron's recipe to match the tile operators; moves should preserve
-                // the polytron's current emanation.
-                bool wasAtHome = false;
-                try
-                {
-                    if (prevBoundSink == null) wasAtHome = true; // unbound
-                    else if (engine.gridCellsMap.ContainsKey(prevBoundSink.hexCoord) && engine.gridCellsMap[prevBoundSink.hexCoord].ring == 12) wasAtHome = true;
-                }
-                catch (Exception) { wasAtHome = false; }
-
-                if (wasAtHome)
-                {
-                    string tileRecipe = hcd.tile.recipe;
-                    var parsedTile = PolyhedronRecipeParser.Parse(tileRecipe);
-                    var parsedPoly = PolyhedronRecipeParser.Parse(p.recipe);
-
-                    var newRecipeObj = new PolyhedronRecipe
-                    {
-                        Tokens = parsedTile.Tokens,
-                        PaletteIdx = parsedPoly.PaletteIdx,
-                        BasePolyhedron = parsedPoly.BasePolyhedron
-                    };
-
-                    string newRecipe = newRecipeObj.ToString();
-
-                    if (newRecipe != p.recipe)
-                    {
-                        // Use engine helper to rebuild so AddEmanation and notifications are centralized
-                        engine.RebuildPolytronFromRecipe(p, newRecipe);
-                    }
-                }
-                else
-                {
-                    // Simple move on the Mutatron: do not change the polytron's recipe.
-                    Debug.Log($"[BindPolytronToSink] moved polytron_id={p.sealNumber} on Mutatron without changing recipe");
-                }
-            }
         }
 
         // Ensure the engine and any subscribed UI are notified of this state change
@@ -227,7 +232,10 @@ public class BindingManager
         Debug.Log($"[SendUnboundPolytronsHome] sending home {unboundPolytrons.Count} unbound polytrons (skipping {engine.polytrons.Count(p => p.reservedForGenetics)} reserved)");
         for (int i = 0; i < unboundPolytrons.Count; i++)
         {
-            BindPolytronToSink(unboundPolytrons[i], engine.polytronsHomes[unboundPolytrons[i].sealNumber]);
+            var p = unboundPolytrons[i];
+            BindPolytronToSink(p, engine.polytronsHomes[p.sealNumber]);
+            // enforce a 1-evolve rest cooldown after being sent home so they won't be immediately eligible to be called
+            engine.polytronHomeCooldown[p.sealNumber] = 1;
         }
     }
 
@@ -381,10 +389,11 @@ public class BindingManager
 
                 if (remainingSinks.Count > 0)
             {
-                // Allow calling polytrons that are currently unbound OR currently at their home (ring 12).
+                // Only call polytrons that are actually at their home (ring 12) and have finished their cooldown.
+                // Exclude currently unbound polytrons: unbound polytrons should first be sent home and rest for one evolve.
                 var availableHomePolys = engine.polytrons.Where(p => p != null && !p.reservedForGenetics
                     && engine.polytronHomeCooldown.TryGetValue(p.sealNumber, out var cd) && cd <= 0
-                    && (p.boundSink == null || (engine.gridCellsMap.ContainsKey(p.boundSink.hexCoord) && engine.gridCellsMap[p.boundSink.hexCoord].ring == 12)))
+                    && (p.boundSink != null && engine.gridCellsMap.ContainsKey(p.boundSink.hexCoord) && engine.gridCellsMap[p.boundSink.hexCoord].ring == 12))
                     .ToList();
                 int callCount = Math.Min(availableHomePolys.Count, remainingSinks.Count);
                 for (int i = 0; i < callCount; i++)
