@@ -225,6 +225,7 @@ public class BindingManager
             catch (Exception ex)
             {
                 Debug.LogWarning($"[BindingManager.SendAllPolytronsHome] failed to send polytron_id={p?.sealNumber.ToString() ?? "?"} home: {ex.Message}");
+                throw ex;
             }
         }
     }

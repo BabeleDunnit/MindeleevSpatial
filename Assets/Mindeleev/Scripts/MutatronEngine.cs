@@ -742,35 +742,20 @@ public class MutatronEngine : MonoBehaviour, IPolytronStateProvider
 
     void SendUnboundPolytronsHome()
     {
-        if (bindingManager != null)
-        {
-            bindingManager.SendUnboundPolytronsHome();
-            return;
-        }
-
-        // Skip polytrons reserved for genetic friends: they must remain unbound until cleared/returned
-        var unboundPolytrons = polytrons.Where(p => p.boundSink == null && !p.reservedForGenetics).ToList();
-        Debug.Log($"[SendUnboundPolytronsHome] sending home {unboundPolytrons.Count} unbound polytrons (skipping {polytrons.Count(p => p.reservedForGenetics)} reserved)");
-        for (int i = 0; i < unboundPolytrons.Count; i++)
-        {
-            BindPolytronToSink(unboundPolytrons[i], polytronsHomes[unboundPolytrons[i].sealNumber]);
-        }
+        Debug.Assert(bindingManager != null);
+        bindingManager.SendUnboundPolytronsHome();
     }
 
     void SendAllPolytronsHome()
     {
         // Delegate to bindingManager if available
+        Debug.Assert(bindingManager != null);
         if (bindingManager != null)
         {
             // BindingManager provides a SendUnboundPolytronsHome; to ensure parity we call a manager method
             // If BindingManager implements a SendAllPolytronsHome it will be used; otherwise fall back to sending all here.
-            try
-            {
-                bindingManager.SendAllPolytronsHome();
-                return;
-            }
-            catch (MissingMethodException) { }
-            catch (Exception) { }
+            bindingManager.SendAllPolytronsHome();
+            return;
         }
 
         Debug.Log($"[SendAllPolytronsHome] sending all polytrons home (count={polytrons.Count})");
@@ -788,6 +773,7 @@ public class MutatronEngine : MonoBehaviour, IPolytronStateProvider
             catch (Exception ex)
             {
                 Debug.LogWarning($"[SendAllPolytronsHome] failed to send polytron_id={p?.sealNumber.ToString() ?? "?"} home: {ex.Message}");
+                throw ex;
             }
         }
     }
