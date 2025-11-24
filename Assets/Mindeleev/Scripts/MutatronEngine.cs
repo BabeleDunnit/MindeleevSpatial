@@ -307,7 +307,7 @@ public class MutatronEngine : MonoBehaviour, IPolytronStateProvider
     // Build level helper - sets up level config and starts grid/tile/polytron creation
     bool BuildLevel(int levelNumber)
     {
-        if(isRebuildingLevel)
+        if (isRebuildingLevel)
         {
             return false;
         }
@@ -540,290 +540,22 @@ public class MutatronEngine : MonoBehaviour, IPolytronStateProvider
 
     void UnbindNonMatchingPolytrons()
     {
-        if (bindingManager != null)
-        {
-            bindingManager.UnbindNonMatchingPolytrons();
-            return;
-        }
-        Debug.Log("[UnbindNonMatchingPolytrons] enter (engine path)");
-        // Implement movement semantics:
-        // - center tile is always bound to Architron and its operators are combined with Architron radix
-        // - for other tiles, match transformations (operators) between tiles and polytrons
-        //   * if polytron already on the same tile with same operators => do nothing
-        //   * if polytron on other tile with matching operators => move/rebind it to the new tile
-        //   * if no polytron on mutatron has a tile's operators => call polytrons from home (respecting cooldown)
-        //   * polytrons whose operators are not present on any tile are sent home (and must rest 1 turn)
-
-        // gather tile operator groups (excluding center - handled separately)
-        var opsToSinks = new Dictionary<string, List<KeyValuePair<HexCoord, HexCellData>>>();
-        KeyValuePair<HexCoord, HexCellData>? centerHckv = null;
-        foreach (var hckv in gridCellsMap)
-        {
-            if (hckv.Value.ring > actualLevelConfig.actualRingsCount) continue;
-            if (IsMutatronCenter(hckv.Value)) { centerHckv = hckv; continue; }
-            if (hckv.Value.tile == null) continue;
-            try
-            {
-                var parsed = PolyhedronRecipeParser.Parse(hckv.Value.tile.recipe);
-                string ops = parsed.OperatorsSequence();
-                if (!opsToSinks.ContainsKey(ops)) opsToSinks[ops] = new List<KeyValuePair<HexCoord, HexCellData>>();
-                opsToSinks[ops].Add(hckv);
-            }
-            catch (Exception)
-            {
-                // skip malformed tiles
-            }
-        }
-
-    Debug.Log($"[UnbindNonMatchingPolytrons] ops groups discovered: {opsToSinks.Count}");
-
-        // map polytrons currently on the mutatron (excluding architron) by their operators
-        var opsToPolytronsOnMut = new Dictionary<string, List<Polytron>>();
-        var polytronsOnMutList = new List<Polytron>();
-        foreach (var p in polytrons)
-        {
-            if (p == null) continue;
-            if (p.isArchitron) continue; // arch handled separately
-            if (p.boundSink == null) continue;
-            if (!gridCellsMap.ContainsKey(p.boundSink.hexCoord)) continue;
-            var hcd = gridCellsMap[p.boundSink.hexCoord];
-            if (!IsMutatronCell(hcd) && !IsMutatronCenter(hcd)) continue;
-            if (p.reservedForGenetics) continue; // do not move reserved polytrons
-            try
-            {
-                var parsed = PolyhedronRecipeParser.Parse(p.recipe);
-                string ops = parsed.OperatorsSequence();
-                if (!opsToPolytronsOnMut.ContainsKey(ops)) opsToPolytronsOnMut[ops] = new List<Polytron>();
-                opsToPolytronsOnMut[ops].Add(p);
-                polytronsOnMutList.Add(p);
-            }
-            catch (Exception)
-            {
-                // skip malformed polytron recipes
-            }
-        }
-
-    Debug.Log($"[UnbindNonMatchingPolytrons] polytrons on mutatron counted: {polytronsOnMutList.Count}");
-
-        // 1) center tile -> architron
-        if (centerHckv.HasValue && polytrons != null && architronIdx >= 0 && architronIdx < polytrons.Count)
-        {
-            var ch = centerHckv.Value;
-            var arch = polytrons[architronIdx];
-            if (ch.Value.tile != null && arch != null)
-            {
-                // ensure arch is bound to center
-                if (arch.boundSink != ch.Value.sink)
-                {
-                    BindPolytronToSink(arch, ch);
-                }
-                try
-                {
-                    var parsedTile = PolyhedronRecipeParser.Parse(ch.Value.tile.recipe);
-                    var parsedArch = PolyhedronRecipeParser.Parse(arch.recipe);
-                    var newRecipeObj = new PolyhedronRecipe
-                    {
-                        Tokens = parsedTile.Tokens,
-                        PaletteIdx = parsedArch.PaletteIdx,
-                        BasePolyhedron = parsedArch.BasePolyhedron
-                    };
-                    string newRecipe = newRecipeObj.ToString();
-                    if (newRecipe != arch.recipe)
-                    {
-                        RebuildPolytronFromRecipe(arch, newRecipe);
-                    }
-                }
-                catch (Exception)
-                {
-                    // ignore parse errors for center
-                }
-            }
-        }
-
-        // 2) For each operator group, reconcile sinks vs polytrons
-        // We'll iterate ops keys to assign existing polytrons, move them if necessary, call homes or send surplus home.
-        foreach (var kv in opsToSinks)
-        {
-            string ops = kv.Key;
-            var sinks = new List<KeyValuePair<HexCoord, HexCellData>>(kv.Value);
-
-            // polytrons already on mut with this ops
-            opsToPolytronsOnMut.TryGetValue(ops, out var polysWithOps);
-            polysWithOps = polysWithOps ?? new List<Polytron>();
-
-            // 2a: keep polytrons that are already on the correct sink (do not move)
-            var assignedPolys = new HashSet<Polytron>();
-            var remainingSinks = new List<KeyValuePair<HexCoord, HexCellData>>();
-
-            foreach (var sinkH in sinks)
-            {
-                var bound = sinkH.Value.sink.boundPolytron;
-                if (bound != null && !bound.reservedForGenetics)
-                {
-                    try
-                    {
-                        var parsed = PolyhedronRecipeParser.Parse(bound.recipe);
-                        if (parsed.OperatorsSequence() == ops)
-                        {
-                            assignedPolys.Add(bound);
-                            continue; // this sink is satisfied
-                        }
-                    }
-                    catch (Exception) { }
-                }
-                remainingSinks.Add(sinkH);
-            }
-
-            // pool of movable polytrons (on mutatron with this ops but not already assigned)
-            var movablePolys = polysWithOps.Where(p => !assignedPolys.Contains(p)).ToList();
-
-            // 2b: move existing polytrons to remaining sinks
-            int moveCount = Math.Min(movablePolys.Count, remainingSinks.Count);
-            for (int i = 0; i < moveCount; i++)
-            {
-                var poly = movablePolys[i];
-                var targetH = remainingSinks[i];
-                // move polytron from its current sink to target
-                var prevSink = poly.boundSink;
-                if (prevSink != null)
-                {
-                    UnbindPolytron(poly);
-                }
-                BindPolytronToSink(poly, targetH);
-                assignedPolys.Add(poly);
-            }
-
-            // update remaining sinks after assigning existing polys
-            remainingSinks = remainingSinks.Skip(moveCount).ToList();
-
-            // 2d: for sinks still unfilled, call polytrons from home (respecting cooldowns)
-            if (remainingSinks.Count > 0)
-            {
-                    // Only call polytrons that are actually at their home (ring 12) and have finished their cooldown.
-                    // Exclude currently unbound polytrons: unbound polytrons should first be sent home and rest for one evolve.
-                    var availableHomePolys = polytrons.Where(p => p != null && !p.reservedForGenetics
-                        && polytronHomeCooldown.TryGetValue(p.sealNumber, out var cd) && cd <= 0
-                        && (p.boundSink != null && gridCellsMap.ContainsKey(p.boundSink.hexCoord) && gridCellsMap[p.boundSink.hexCoord].ring == 12))
-                        .ToList();
-                int callCount = Math.Min(availableHomePolys.Count, remainingSinks.Count);
-                for (int i = 0; i < callCount; i++)
-                {
-                    var poly = availableHomePolys[i];
-                    var targetH = remainingSinks[i];
-                    // compose new recipe combining tile ops with polytron radix
-                    try
-                    {
-                        var parsedPoly = PolyhedronRecipeParser.Parse(poly.recipe);
-                        var parsedTile = PolyhedronRecipeParser.Parse(targetH.Value.tile.recipe);
-                        var newRecipeObj = new PolyhedronRecipe
-                        {
-                            Tokens = parsedTile.Tokens,
-                            PaletteIdx = parsedPoly.PaletteIdx,
-                            BasePolyhedron = parsedPoly.BasePolyhedron
-                        };
-                        string newRecipe = newRecipeObj.ToString();
-                        RebuildPolytronFromRecipe(poly, newRecipe); // records emanation for home-called polytrons
-                    }
-                    catch (Exception)
-                    {
-                        // fall back to binding without recipe change
-                    }
-                    BindPolytronToSink(poly, targetH);
-                }
-
-                // any remaining sinks after calling homes will remain empty
-            }
-
-            // 2c: surplus polytrons (on mutatron with this ops but no matching sinks) must go home
-            int sinksCount = sinks.Count;
-            if (polysWithOps.Count > sinksCount)
-            {
-                var surplus = polysWithOps.Where(p => !assignedPolys.Contains(p)).ToList();
-                foreach (var sPoly in surplus)
-                {
-                    // send home and enforce rest cooldown
-                    UnbindPolytron(sPoly);
-                    BindPolytronToSink(sPoly, polytronsHomes[sPoly.sealNumber]);
-                    polytronHomeCooldown[sPoly.sealNumber] = 1; // must rest one turn
-                }
-            }
-        }
-
-        // Finally, any polytrons on mutatron whose operators are not present in opsToSinks should go home
-        var opsPresent = new HashSet<string>(opsToSinks.Keys);
-        foreach (var p in polytronsOnMutList)
-        {
-            try
-            {
-                var parsed = PolyhedronRecipeParser.Parse(p.recipe);
-                if (!opsPresent.Contains(parsed.OperatorsSequence()))
-                {
-                    UnbindPolytron(p);
-                    BindPolytronToSink(p, polytronsHomes[p.sealNumber]);
-                    polytronHomeCooldown[p.sealNumber] = 1;
-                }
-            }
-            catch (Exception) { }
-        }
-
-        int totalPolytrons = polytrons.Count;
-        int boundOnMut = polytrons.Count(p => p != null && p.boundSink != null && gridCellsMap.ContainsKey(p.boundSink.hexCoord) && gridCellsMap[p.boundSink.hexCoord].ring <= actualLevelConfig.actualRingsCount);
-        int boundOnHome = polytrons.Count(p => p != null && p.boundSink != null && gridCellsMap.ContainsKey(p.boundSink.hexCoord) && gridCellsMap[p.boundSink.hexCoord].ring == 12);
-        int unbound = polytrons.Count(p => p != null && p.boundSink == null);
-        Debug.Log($"[UnbindNonMatchingPolytrons] reconciliation complete: opsGroups={opsToSinks.Count}, onMut={polytronsOnMutList.Count}, boundOnMut={boundOnMut}, boundHome={boundOnHome}, unbound={unbound}, totalPolytrons={totalPolytrons}");
+        bindingManager.UnbindNonMatchingPolytrons();
     }
 
     void UpdatePolytronsSinks()
     {
-        if (bindingManager != null)
-        {
-            bindingManager.UpdatePolytronsSinks();
-            return;
-        }
-        // fallback basic behavior: ensure architron bound to center
-        if (mutatronCenter != null && polytrons != null && architronIdx >= 0 && architronIdx < polytrons.Count)
-        {
-            var arch = polytrons[architronIdx];
-            if (arch != null && arch.boundSink != mutatronCenter.sink) BindPolytronToSink(arch, mutatronCenter.sink);
-        }
+        bindingManager.UpdatePolytronsSinks();
     }
 
     void SendUnboundPolytronsHome()
     {
-        Debug.Assert(bindingManager != null);
         bindingManager.SendUnboundPolytronsHome();
     }
 
     void SendAllPolytronsHome()
     {
-        // Delegate to bindingManager if available
-        Debug.Assert(bindingManager != null);
-        if (bindingManager != null)
-        {
-            // BindingManager provides a SendUnboundPolytronsHome; to ensure parity we call a manager method
-            // If BindingManager implements a SendAllPolytronsHome it will be used; otherwise fall back to sending all here.
-            bindingManager.SendAllPolytronsHome();
-            return;
-        }
-
-        Debug.Log($"[SendAllPolytronsHome] sending all polytrons home (count={polytrons.Count})");
-        for (int i = 0; i < polytrons.Count; i++)
-        {
-            var p = polytrons[i];
-            if (p == null) continue;
-            try
-            {
-                UnbindPolytron(p);
-                BindPolytronToSink(p, polytronsHomes[p.sealNumber]);
-                // when resetting level we allow immediate calls, so set cooldown to 0
-                polytronHomeCooldown[p.sealNumber] = 0;
-            }
-            catch (Exception ex)
-            {
-                Debug.LogWarning($"[SendAllPolytronsHome] failed to send polytron_id={p?.sealNumber.ToString() ?? "?"} home: {ex.Message}");
-                throw ex;
-            }
-        }
+        bindingManager.SendAllPolytronsHome();
     }
 
     void Evolve()
@@ -880,9 +612,11 @@ public class MutatronEngine : MonoBehaviour, IPolytronStateProvider
 
         UnbindNonMatchingPolytrons();
 
-    UpdatePolytronsSinks();
-
+        // Immediately send any unbound polytrons home and set their cooldowns
+        // so they are not eligible to be recalled in the same Evolve() pass.
         SendUnboundPolytronsHome();
+
+        UpdatePolytronsSinks();
 
         // decrement home cooldowns (polytrons must rest at least one evolve turn after being sent home)
         try

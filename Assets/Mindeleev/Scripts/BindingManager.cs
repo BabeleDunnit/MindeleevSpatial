@@ -24,42 +24,27 @@ public class BindingManager
 
     public void BindPolytronToSink(Polytron p, PolytronSink ps)
     {
+
+        Debug.Assert(p != null);
+        Debug.Assert(ps != null);
+
         // Remember previous binding to decide whether this is a "call from home" or a simple move on the Mutatron.
-        var prevBoundSink = p?.boundSink;
+        var prevBoundSink = p.boundSink;
 
-        // Fail-fast: if binding to the Mutatron center and the sink is already
-        // owned by another polytron, throw instead of silently reassigning.
-        if (ps != null && engine != null && engine.gridCellsMap != null && engine.gridCellsMap.ContainsKey(ps.hexCoord))
+        var hcd = engine.gridCellsMap[ps.hexCoord];
+        if (engine.IsMutatronCenter(hcd) && ps.boundPolytron != null && ps.boundPolytron != p)
         {
-            var hcd = engine.gridCellsMap[ps.hexCoord];
-            if (engine.IsMutatronCenter(hcd) && ps.boundPolytron != null && ps.boundPolytron != p)
-            {
-                throw new InvalidOperationException($"[BindPolytronToSink] center sink {ps.name} unexpectedly owned by polytron_id={ps.boundPolytron.sealNumber}");
-            }
+            // trying to reassign the mutatron center
+            throw new InvalidOperationException($"[BindPolytronToSink] center sink {ps.name} unexpectedly owned by polytron_id={ps.boundPolytron.sealNumber}");
         }
 
-        // Clear previous binding on this polytron (keep prevBoundSink to detect home-call)
-        if (p.boundSink != null)
-        {
-            if (p.boundSink.boundPolytron == p) p.boundSink.boundPolytron = null;
-            p.boundSink = null;
-        }
-
-        // If the target sink is already owned, clear it (we'll reassign below)
-        if (ps != null && ps.boundPolytron != null && ps.boundPolytron != p)
-        {
-            var prev = ps.boundPolytron;
-            if (prev.boundSink == ps) prev.boundSink = null;
-            ps.boundPolytron = null;
-        }
+        // We'll defer clearing previous binding until after any pre-bind rebuild
+        // so that the rebuild helper can see the polytron's prior location (home).
 
         // If this sink is part of the Mutatron (not home), decide whether to
         // alter the polytron's recipe. Only calls from home should change the polytron's emanation.
         // IMPORTANT: perform recipe rebuild BEFORE assigning the new binding so the polytron is
         // still recognized as "at home" by the rebuild helper.
-        if (ps != null && engine != null && engine.gridCellsMap != null && engine.gridCellsMap.ContainsKey(ps.hexCoord))
-        {
-            var hcd = engine.gridCellsMap[ps.hexCoord];
             // ring <= actualLevelConfig.actualRingsCount => on Mutatron
             if (hcd.ring <= engine.actualLevelConfig.actualRingsCount && hcd.tile != null && !p.reservedForGenetics)
             {
@@ -67,12 +52,9 @@ public class BindingManager
                 // bound at its home sink (ring 12). An unbound polytron is NOT treated
                 // as a home-call; it must be sent home and rest before being eligible.
                 bool wasAtHome = false;
-                try
-                {
-                    if (prevBoundSink != null && engine.gridCellsMap.ContainsKey(prevBoundSink.hexCoord) && engine.gridCellsMap[prevBoundSink.hexCoord].ring == 12)
-                        wasAtHome = true;
-                }
-                catch (Exception) { wasAtHome = false; }
+                if (prevBoundSink != null
+                && engine.gridCellsMap[prevBoundSink.hexCoord].ring == 12)
+                    wasAtHome = true;
 
                 if (wasAtHome)
                 {
@@ -105,9 +87,23 @@ public class BindingManager
                     Debug.Log($"[BindPolytronToSink] moved polytron_id={p.sealNumber} on Mutatron without changing recipe");
                 }
             }
+
+        // Now that any pre-bind rebuild has run (and used prevBoundSink to decide),
+        // clear previous bindings and assign the new binding.
+        if (p.boundSink != null)
+        {
+            if (p.boundSink.boundPolytron == p) p.boundSink.boundPolytron = null;
+            p.boundSink = null;
         }
 
-        // Now assign the binding (after any pre-bind rebuild)
+        // If the target sink is already owned, clear it (we'll reassign below)
+        if (ps != null && ps.boundPolytron != null && ps.boundPolytron != p)
+        {
+            var prev = ps.boundPolytron;
+            if (prev.boundSink == ps) prev.boundSink = null;
+            ps.boundPolytron = null;
+        }
+
         p.boundSink = ps;
         if (ps != null)
         {
@@ -234,8 +230,8 @@ public class BindingManager
         {
             var p = unboundPolytrons[i];
             BindPolytronToSink(p, engine.polytronsHomes[p.sealNumber]);
-            // enforce a 1-evolve rest cooldown after being sent home so they won't be immediately eligible to be called
-            engine.polytronHomeCooldown[p.sealNumber] = 1;
+            // enforce a 3-evolve rest cooldown after being sent home so they won't be immediately eligible to be called
+            engine.polytronHomeCooldown[p.sealNumber] = 3;
         }
     }
 
@@ -345,9 +341,11 @@ public class BindingManager
             string ops = kv.Key;
             var sinks = new List<KeyValuePair<HexCoord, MutatronEngine.HexCellData>>(kv.Value);
 
+            // polytrons already on mut with this ops
             opsToPolytronsOnMut.TryGetValue(ops, out var polysWithOps);
             polysWithOps = polysWithOps ?? new List<Polytron>();
 
+            // 2a: keep polytrons that are already on the correct sink (do not move)
             var assignedPolys = new HashSet<Polytron>();
             var remainingSinks = new List<KeyValuePair<HexCoord, MutatronEngine.HexCellData>>();
 
@@ -370,6 +368,7 @@ public class BindingManager
                 remainingSinks.Add(sinkH);
             }
 
+            // pool of movable polytrons (on mutatron with this ops but not already assigned)
             var movablePolys = polysWithOps.Where(p => !assignedPolys.Contains(p)).ToList();
 
             int moveCount = Math.Min(movablePolys.Count, remainingSinks.Count);
@@ -385,9 +384,11 @@ public class BindingManager
                 assignedPolys.Add(poly);
             }
 
+            // update remaining sinks after assigning existing polys
             remainingSinks = remainingSinks.Skip(moveCount).ToList();
 
-                if (remainingSinks.Count > 0)
+            // 2d: for sinks still unfilled, call polytrons from home (respecting cooldowns)
+            if (remainingSinks.Count > 0)
             {
                 // Only call polytrons that are actually at their home (ring 12) and have finished their cooldown.
                 // Exclude currently unbound polytrons: unbound polytrons should first be sent home and rest for one evolve.
@@ -418,8 +419,11 @@ public class BindingManager
                         BindPolytronToSink(poly, targetH);
                         Debug.Log($"[BindingManager] called polytron_id={poly.sealNumber} now bound to {poly.boundSink?.name ?? "null"}");
                 }
+
+                // any remaining sinks after calling homes will remain empty
             }
 
+            // 2c: surplus polytrons (on mutatron with this ops but no matching sinks) must go home
             int sinksCount = sinks.Count;
                 if (polysWithOps.Count > sinksCount)
             {
@@ -429,12 +433,13 @@ public class BindingManager
                         Debug.Log($"[BindingManager] sending surplus polytron_id={sPoly.sealNumber} home from sink={sPoly.boundSink?.name ?? "null"}");
                         UnbindPolytron(sPoly);
                         BindPolytronToSink(sPoly, engine.polytronsHomes[sPoly.sealNumber]);
-                        engine.polytronHomeCooldown[sPoly.sealNumber] = 1;
+                        engine.polytronHomeCooldown[sPoly.sealNumber] = 3;
                         Debug.Log($"[BindingManager] polytron_id={sPoly.sealNumber} sent home and cooldown set");
                 }
             }
         }
 
+        // Finally, any polytrons on mutatron whose operators are not present in opsToSinks should go home
         var opsPresent = new HashSet<string>(opsToSinks.Keys);
         foreach (var p in polytronsOnMutList)
         {
@@ -446,7 +451,7 @@ public class BindingManager
                     Debug.Log($"[BindingManager] polytron_id={p.sealNumber} operators died on mutatron; sending home");
                     UnbindPolytron(p);
                     BindPolytronToSink(p, engine.polytronsHomes[p.sealNumber]);
-                    engine.polytronHomeCooldown[p.sealNumber] = 1;
+                    engine.polytronHomeCooldown[p.sealNumber] = 3;
                     Debug.Log($"[BindingManager] polytron_id={p.sealNumber} sent home due to dead operators");
                 }
             }
