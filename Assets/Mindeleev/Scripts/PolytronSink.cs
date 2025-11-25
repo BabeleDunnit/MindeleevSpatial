@@ -8,12 +8,12 @@ using UnityEngine;
 /// </summary>
 public class PolytronSink : MonoBehaviour
 {
-    public string attractedRecipe; // The recipe this sink will attract
-    public Polytron boundPolytron;
+    // public string attractedRecipe; // The recipe this sink will attract
+    internal Polytron boundPolytron;
 
-    public float weight = 1f;
+    internal float weight = 1f;
 
-    public HexCoord hexCoord;
+    internal HexCoord hexCoord;
 
     // public bool updated = false;
 

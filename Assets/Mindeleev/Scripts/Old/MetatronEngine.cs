@@ -171,7 +171,7 @@ public class MetatronEngine : MonoBehaviour
                 Polytron polytronComponent = polytron.GetComponent<Polytron>();
 
                 if (boundPolytrons.Contains(polytron)) continue;
-                if (polytronComponent.recipe != sinkComponent.attractedRecipe) continue;
+                // if (polytronComponent.recipe != sinkComponent.attractedRecipe) continue;
 
                 sinkComponent.boundPolytron = polytronComponent;
                 sink.GetComponent<MeshRenderer>().material.color = Color.red;

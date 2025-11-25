@@ -112,7 +112,7 @@ public class GeneticsManager
 
             Debug.Log($"[SetupGeneticFriends] PICKED friend #{assigned}: polytron_id={candidate.sealNumber} (seal:{candidate.sealName}) boundSink={backup.boundSink?.name} position={candidate.transform.position}");
 
-            engine.UnbindPolytron(candidate);
+            // engine.UnbindPolytron(candidate);
             candidate.reservedForGenetics = true;
             engine.NotifyPolytronStateChanged(candidate);
 
@@ -188,7 +188,7 @@ public class GeneticsManager
                 geneticReturnTargets[friend] = backup.position;
                 geneticReturning.Add(friend);
                 geneticRelativeOffsets.Remove(friend);
-                engine.UnbindPolytron(friend);
+                // engine.UnbindPolytron(friend);
                 var outline = friend.GetComponent<PointerOutlineStateController>();
                 outline?.SetState(0);
                 friendsToKeepForPhysicsReturn.Add(friend);
