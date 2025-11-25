@@ -328,8 +328,9 @@ public class MutatronEngine : MonoBehaviour, IPolytronStateProvider
         InitializeCellsCAParametersForCurrentLevel();
 
         StartCoroutine(DrawMetatronGraphicsCoroutine());
+
         // Delegate tile building to GridManager so all tile-creation logic is centralized
-        if (gridManager != null) StartCoroutine(gridManager.BuildTilesCoroutine());
+        StartCoroutine(gridManager.BuildTilesCoroutine());
 
         mustBuildFirstTime = false;
         evolveCount = 0;
