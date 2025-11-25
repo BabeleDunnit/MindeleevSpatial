@@ -108,6 +108,9 @@ public class GridManager
                     idxInRing = idxInRing,
                     worldCoords = position,
                     circle = CreateCircle(ring, idxInRing)
+                    ,
+                    // ensure each cell has a base polyhedron character for tile recipe construction
+                    tileBasePolyhedron = engine.actualLevelConfig.tileBasePoly.ToString()
                 };
 
                 if (IsMetatronCoord(ring, idxInRing))

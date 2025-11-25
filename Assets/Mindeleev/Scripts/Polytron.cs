@@ -41,6 +41,37 @@ public class Polytron : PolyhedronGenerator,
 
     internal bool isArchitron = false;
 
+    // MindeleevTable: a dedicated object holding the unique set of emanations
+    // collected for this polytron. We keep a simple AddEmanation wrapper here
+    // for backward compatibility with earlier code paths that call
+    // polytron.AddEmanation(...).
+    private MindeleevTable mindeleevTable = new MindeleevTable();
+
+    public MindeleevTable MindeleevTable => mindeleevTable;
+
+    public void AddEmanation(string recipe)
+    {
+        if (mindeleevTable == null) mindeleevTable = new MindeleevTable();
+        if (mindeleevTable.AddEmanation(recipe))
+        {
+            Debug.Log($"[Polytron] polytron_id={sealNumber} added emanation='{recipe}'");
+        }
+    }
+
+    // Cursor used by the UI to track which emanation is currently selected for
+    // this Polytron. Stored on the Polytron so the selection persists per-object.
+    internal int mindeleevCursor = 0;
+
+    public int MindeleevCursor
+    {
+        get => mindeleevCursor;
+        set
+        {
+            if (value < 0) mindeleevCursor = 0;
+            else mindeleevCursor = value;
+        }
+    }
+
     MutatronEngine mutatron;
 
     public void OnPointerDown(PointerEventData eventData)

@@ -1,4 +1,5 @@
 using UnityEngine;
+using System;
 using UnityEngine.UI;
 using System.Collections;
 using TMPro;
@@ -325,6 +326,28 @@ public class PolytronInfoPanel : MonoBehaviour
 
         bodyText_.text = $"Role: {roleText}\nLocation: {locText}\nRecipe: {state.Recipe}";
 
+        // Show emanations count and current selection index (if any)
+        int emanationCount = 0;
+        int currentIndex = 0;
+        if (myPolytron != null && myPolytron.MindeleevTable != null)
+        {
+            emanationCount = myPolytron.MindeleevTable.Count;
+            currentIndex = Mathf.Clamp(myPolytron.MindeleevCursor, 0, Math.Max(0, emanationCount - 1));
+        }
+
+        if (emanationCount > 0)
+        {
+            bodyText_.text += $"\nEmanations: {emanationCount} (showing {currentIndex + 1}/{emanationCount})";
+            // enable Prev/Next buttons via text (UpdatePanelGUI will toggle visibility)
+            if (button1 != null) button1Text = "Prev";
+            if (button2 != null) button2Text = "Next";
+        }
+        else
+        {
+            if (button1 != null) button1Text = "";
+            if (button2 != null) button2Text = "";
+        }
+
         /*
                // Center button: available when on Mutatron to "focus" / center camera (example)
                if (centerButton != null)
@@ -507,11 +530,41 @@ public class PolytronInfoPanel : MonoBehaviour
     {
         Debug.Log($"[PolytronInfoPanel] Button{index} pressed on {name}");
         // SendMessage("OnInfoPanelButtonPressed", index, SendMessageOptions.DontRequireReceiver);
+        // Prev / Next emanation (buttons 1 and 2)
+        if (index == 1)
+        {
+            CycleEmanation(-1);
+            return;
+        }
+
+        if (index == 2)
+        {
+            CycleEmanation(1);
+            return;
+        }
+
         if (index == 4 && button4Text_.text == "Make Architron")
         {
             Debug.Log("Changing Architron");
             mutatron.SetNewArchitron(GetComponent<Polytron>().sealNumber);
         }
+    }
+
+    void CycleEmanation(int delta)
+    {
+        if (myPolytron == null || myPolytron.MindeleevTable == null || providerEngine == null) return;
+        var list = myPolytron.MindeleevTable.GetEmanationsList();
+        if (list == null || list.Count == 0) return;
+
+        int count = list.Count;
+        int idx = myPolytron.MindeleevCursor;
+        idx = ((idx + delta) % count + count) % count; // wrap
+        myPolytron.MindeleevCursor = idx;
+
+        string recipe = list[idx];
+        Debug.Log($"[PolytronInfoPanel] Cycling emanation for polytron_id={myPolytron.sealNumber} to index={idx} recipe={recipe}");
+        // Ask engine to rebuild polytron from selected recipe (this will notify and refresh panel)
+        providerEngine.RebuildPolytronFromRecipe(myPolytron, recipe);
     }
 
     public void Activate(bool show)
