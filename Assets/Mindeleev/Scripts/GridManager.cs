@@ -1,6 +1,7 @@
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
+using UnityEditor.XR;
 using UnityEngine;
 
 public class GridManager
@@ -187,14 +188,29 @@ public class GridManager
     }
 
     // Update all tiles for the current level configuration
-    public void UpdateTiles()
+    public bool UpdateTiles()
     {
+        bool changed = false;
         foreach (var hckv in engine.gridCellsMap)
         {
             if (hckv.Value.ring > engine.actualLevelConfig.actualRingsCount) continue;
 
+            PolyhedronGenerator tile = hckv.Value.tile;
+            PolyhedronRecipe oldRecipe = PolyhedronRecipeParser.Parse(tile.recipe);
+            string oldOperatorsSequence = oldRecipe.OperatorsSequence();
+
             string tileRecipe = PolyhedronRecipeKabbalah.IntToOperatorsSequence(hckv.Value.polytronicNumber) + hckv.Value.tileBasePolyhedron;
             RebuildTileMesh(hckv.Key, tileRecipe);
+
+            PolyhedronRecipe newRecipe = PolyhedronRecipeParser.Parse(tile.recipe);
+            string newOperatorsSequence = newRecipe.OperatorsSequence();
+
+            if(oldOperatorsSequence != newOperatorsSequence)
+            {
+                changed = true;
+            }
         }
+
+        return changed;
     }
 }

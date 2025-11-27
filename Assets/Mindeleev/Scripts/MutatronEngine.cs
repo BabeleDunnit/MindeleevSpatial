@@ -54,7 +54,7 @@ public class MutatronEngine : MonoBehaviour, IPolytronStateProvider
 
         // the cellular automata accumulator for the next state of this cell
         internal int nextPolytronicNumberAccumulator;
-        internal Range<int> fusionRange;
+        // internal Range<int> fusionRange;
         // should this stay here? to be decided...
         internal string tileBasePolyhedron;
     }
@@ -328,8 +328,9 @@ public class MutatronEngine : MonoBehaviour, IPolytronStateProvider
         actualLevelConfig.energyQuantumExchanged = 1;
 
         ResetLevelGraphics();
-        // SendAllPolytronsHome();
+
         bindingManager.SendAllPolytronsHome();
+
         InitializeCellsCAParametersForCurrentLevel();
 
         StartCoroutine(DrawMetatronGraphicsCoroutine());
@@ -578,6 +579,10 @@ public class MutatronEngine : MonoBehaviour, IPolytronStateProvider
 
         DeselectAllPolytrons();
 
+        // this is the actual CA evolution algorithm. 
+        // For each cell, we count how many neighbour cells have a higher polytronic number (which is biunivocal to a transformation)
+        // and then we use a modulo 2 rule like Pattern Breeder CA to transfer a "quantum of energy", so part of the polytronic number value,
+        // to the center cell, or to lose one quantum of energy until the CA does not change any more
         foreach (var hckv in gridCellsMap)
         {
             if (hckv.Value.ring > actualLevelConfig.actualRingsCount) continue;
@@ -601,7 +606,10 @@ public class MutatronEngine : MonoBehaviour, IPolytronStateProvider
             {
                 // we have a fusion. The neighbors release one quantum of energy
                 cellData.nextPolytronicNumberAccumulator += (neighborsWithHigherPolytronicNumber.Count * 2);
-                foreach (var neighborCellData in neighborsWithHigherPolytronicNumber) { neighborCellData.nextPolytronicNumberAccumulator -= 1; }
+                foreach (var neighborCellData in neighborsWithHigherPolytronicNumber) 
+                { 
+                    neighborCellData.nextPolytronicNumberAccumulator -= 1; 
+                }
             }
             else
             {
@@ -609,6 +617,7 @@ public class MutatronEngine : MonoBehaviour, IPolytronStateProvider
             }
         }
 
+        // Apply the accumulator changes to actual polytronic numbers
         foreach (var hckv in gridCellsMap)
         {
             if (hckv.Value.ring > actualLevelConfig.actualRingsCount) continue;
@@ -618,7 +627,16 @@ public class MutatronEngine : MonoBehaviour, IPolytronStateProvider
             cellData.nextPolytronicNumberAccumulator = 0;
         }
 
-        if (gridManager != null) gridManager.UpdateTiles();
+        bool changed = gridManager.UpdateTiles();
+
+        if (!changed)
+        {
+            Debug.Log($"[Evolve] CA reached stasis: all polytronic numbers unchanged after evolution step");
+        }
+        else
+        {
+            Debug.Log($"[Evolve] CA state changed: polytronic numbers updated");
+        }
 
         // UnbindNonMatchingPolytrons();
 
@@ -720,7 +738,7 @@ public class MutatronEngine : MonoBehaviour, IPolytronStateProvider
             {
                 hckv.Value.polytronicNumber = hckv.Value.ring;
                 hckv.Value.nextPolytronicNumberAccumulator = 0;
-                hckv.Value.fusionRange = new Range<int>(0, 6);
+                // hckv.Value.fusionRange = new Range<int>(0, 6);
                 hckv.Value.tileBasePolyhedron = actualLevelConfig.tileBasePoly.ToString();
             }
         }
