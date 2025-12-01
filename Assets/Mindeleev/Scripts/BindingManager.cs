@@ -11,6 +11,9 @@ using UnityEngine;
 public class BindingManager
 {
     private MutatronEngine engine;
+    
+    // Track polytron positions BEFORE Evolve() to detect which ones need to move
+    private Dictionary<int, (HexCoord coord, string ops)> prevolatronPositions = new();
 
     public BindingManager(MutatronEngine engine)
     {
@@ -498,6 +501,8 @@ public class BindingManager
         Debug.Assert(p.boundSink == null);
         Debug.Assert(ps.boundPolytron == null);
 
+        Debug.Log($"[UnbindPolytron] BINDING polytron_id={p.sealNumber} to sink={ps.name}");
+
         p.boundSink = ps;
         ps.boundPolytron = p;
 
@@ -515,16 +520,330 @@ public class BindingManager
             Debug.Assert(sink.boundPolytron == p, "If a polytron is bound to a sink, it is supposed that the sink backlinks the polytron");
 
             Debug.Log($"[UnbindPolytron] UNBINDING polytron_id={p.sealNumber} from sink={sink.name}");
-            
+
             sink.boundPolytron = null;
             p.boundSink = null;
         }
-        
+
         // Notify engine so UI and other listeners can update
         engine.NotifyPolytronStateChanged(p);
     }
 
+    /// <summary>
+    /// Capture polytron positions BEFORE evolution so we can detect which ones moved after.
+    /// Called at the START of Evolve(), before CA algorithm runs.
+    /// </summary>
+    internal void CapturePreEvolutionState()
+    {
+        prevolatronPositions.Clear();
+        
+        foreach (var p in engine.polytrons)
+        {
+            if (p == null || p.boundSink == null || !engine.gridCellsMap.ContainsKey(p.boundSink.hexCoord))
+                continue;
+            
+            var hcd = engine.gridCellsMap[p.boundSink.hexCoord];
+            if (hcd.tile == null) continue;
+            
+            try
+            {
+                var parsed = PolyhedronRecipeParser.Parse(hcd.tile.recipe);
+                string ops = parsed.OperatorsSequence();
+                prevolatronPositions[p.sealNumber] = (p.boundSink.hexCoord, ops);
+            }
+            catch (Exception) { }
+        }
+        
+        Debug.Log($"[PolytronsDance] captured pre-evolution state for {prevolatronPositions.Count} polytrons");
+    }
 
 
+    internal void PolytronsDance()
+    {
+        Debug.Log("[PolytronsDance] starting dance orchestration");
 
+        // Step 1: Build a map of current transformations on the Mutatron (tiles)
+        //         and collect polytrons currently bound to the Mutatron
+        var mutatronTilesByOps = new Dictionary<string, List<KeyValuePair<HexCoord, MutatronEngine.HexCellData>>>();
+        var polytronsByOps = new Dictionary<string, List<Polytron>>();
+        var polytronsOnMut = new List<Polytron>();
+
+        // Scan all tiles on the mutatron
+        foreach (var hckv in engine.gridCellsMap)
+        {
+            if (hckv.Value.ring > engine.actualLevelConfig.actualRingsCount) continue;
+            if (engine.IsMutatronCenter(hckv.Value)) continue; // Architron handles center separately
+            if (hckv.Value.tile == null) continue;
+
+            try
+            {
+                var parsedTile = PolyhedronRecipeParser.Parse(hckv.Value.tile.recipe);
+                string ops = parsedTile.OperatorsSequence();
+
+                if (!mutatronTilesByOps.ContainsKey(ops))
+                    mutatronTilesByOps[ops] = new List<KeyValuePair<HexCoord, MutatronEngine.HexCellData>>();
+                mutatronTilesByOps[ops].Add(hckv);
+            }
+            catch (Exception) { }
+        }
+
+        // Scan polytrons currently bound to mutatron
+        foreach (var p in engine.polytrons)
+        {
+            if (p == null || p.isArchitron || p.reservedForGenetics) continue;
+            if (p.boundSink == null || !engine.gridCellsMap.ContainsKey(p.boundSink.hexCoord)) continue;
+
+            var hcd = engine.gridCellsMap[p.boundSink.hexCoord];
+            if (!engine.IsMutatronCell(hcd)) continue; // only mutatron cells (not home)
+
+            polytronsOnMut.Add(p);
+            try
+            {
+                var parsedPoly = PolyhedronRecipeParser.Parse(p.recipe);
+                string ops = parsedPoly.OperatorsSequence();
+
+                if (!polytronsByOps.ContainsKey(ops))
+                    polytronsByOps[ops] = new List<Polytron>();
+                polytronsByOps[ops].Add(p);
+            }
+            catch (Exception) { }
+        }
+
+        Debug.Log($"[PolytronsDance] tile transformations: {mutatronTilesByOps.Count}, polytrons on mut: {polytronsOnMut.Count}");
+        
+        // Log polytrons by ops for debugging
+        foreach (var kvp in polytronsByOps)
+        {
+            var polyIds = string.Join(",", kvp.Value.Select(p => p.sealNumber.ToString()));
+            Debug.Log($"[PolytronsDance] polytrons by ops: {kvp.Key} -> polytrons=[{polyIds}]");
+        }
+        
+        // Log tiles by ops for debugging
+        foreach (var kvp in mutatronTilesByOps)
+        {
+            var coords = string.Join(",", kvp.Value.Select(h => $"({h.Key.q},{h.Key.r})"));
+            Debug.Log($"[PolytronsDance] tiles by ops: {kvp.Key} -> coords=[{coords}]");
+        }
+
+        // Step 2: Identify BORN, DIED, STAY, and MOVE transformations
+        var bornOps = new HashSet<string>(mutatronTilesByOps.Keys);
+        var diedOps = new HashSet<string>(polytronsByOps.Keys);
+        diedOps.ExceptWith(mutatronTilesByOps.Keys); // died = ops in polytrons but not in tiles
+
+        var stayOps = new HashSet<string>(polytronsByOps.Keys);
+        stayOps.IntersectWith(mutatronTilesByOps.Keys); // stay = ops in both
+
+        bornOps.ExceptWith(polytronsByOps.Keys); // born = ops in tiles but not in polytrons
+
+        Debug.Log($"[PolytronsDance] born: {bornOps.Count}, died: {diedOps.Count}, stay: {stayOps.Count}");
+
+        // Step 3: Handle DIED transformations
+        //         Polytrons with died ops go home and get cooldown of 2
+        foreach (var deadOps in diedOps)
+        {
+            if (polytronsByOps.TryGetValue(deadOps, out var dyingPolytrons))
+            {
+                foreach (var p in dyingPolytrons)
+                {
+                    Debug.Log($"[PolytronsDance] DIED: sending polytron_id={p.sealNumber} home (ops={deadOps})");
+                    UnbindPolytron(p);
+                    BindPolytronToSink(p, engine.polytronsHomes[p.sealNumber]);
+                    engine.polytronHomeCooldown[p.sealNumber] = 2;
+                }
+            }
+        }
+
+        // Step 4: Handle MOVE transformations
+        //         Polytrons stay bound to the same transformation but the tiles may have moved
+        //         Use pre-evolution positions to detect which polytrons need to move
+        foreach (var stayingOps in stayOps)
+        {
+            if (polytronsByOps.TryGetValue(stayingOps, out var movedPolytrons) &&
+                mutatronTilesByOps.TryGetValue(stayingOps, out var tileSinks))
+            {
+                Debug.Log($"[PolytronsDance] MOVE ops={stayingOps}: {movedPolytrons.Count} polytrons, {tileSinks.Count} tiles");
+
+                // Determine which polytrons need to move by comparing pre-evolution positions
+                var needsMove = new List<Polytron>();
+                var alreadyPlaced = new HashSet<PolytronSink>();
+
+                foreach (var p in movedPolytrons)
+                {
+                    // Check if this polytron was at this ops before evolution
+                    if (prevolatronPositions.TryGetValue(p.sealNumber, out var preState))
+                    {
+                        var preCoord = preState.coord;
+                        var preOps = preState.ops;
+                        
+                        // If ops haven't changed, check if it's on the same tile
+                        if (preOps == stayingOps)
+                        {
+                            // Was on a tile with these ops. Find if that tile still has the polytron
+                            bool foundOnSameTile = false;
+                            foreach (var tile in tileSinks)
+                            {
+                                if (tile.Key == preCoord && tile.Value.sink == p.boundSink)
+                                {
+                                    // Still on the same tile, no move needed
+                                    alreadyPlaced.Add(p.boundSink);
+                                    Debug.Log($"[PolytronsDance] MOVE polytron_id={p.sealNumber} stayed at same tile {p.boundSink.name}");
+                                    foundOnSameTile = true;
+                                    break;
+                                }
+                            }
+                            
+                            if (foundOnSameTile)
+                                continue;
+                        }
+                    }
+                    
+                    // Polytron needs to move
+                    needsMove.Add(p);
+                }
+
+                // Try to place polytrons that need to move
+                foreach (var p in needsMove)
+                {
+                    // Find an available tile that hasn't been used and is unbound
+                    PolytronSink availableSink = null;
+                    KeyValuePair<HexCoord, MutatronEngine.HexCellData>? availableTile = null;
+                    
+                    foreach (var tile in tileSinks)
+                    {
+                        if (!alreadyPlaced.Contains(tile.Value.sink) && tile.Value.sink.boundPolytron == null)
+                        {
+                            availableTile = tile;
+                            availableSink = tile.Value.sink;
+                            break;
+                        }
+                    }
+                    
+                    if (availableSink != null && availableTile.HasValue)
+                    {
+                        alreadyPlaced.Add(availableSink);
+                        Debug.Log($"[PolytronsDance] MOVE: polytron_id={p.sealNumber} from {p.boundSink?.name ?? "null"} to {availableSink.name}");
+                        UnbindPolytron(p);
+                        BindPolytronToSink(p, availableSink);
+                    }
+                    else
+                    {
+                        Debug.LogWarning($"[PolytronsDance] MOVE: polytron_id={p.sealNumber} could not find available tile for ops={stayingOps}");
+                    }
+                }
+
+                // Report unfilled tiles
+                if (alreadyPlaced.Count < tileSinks.Count)
+                {
+                    Debug.Log($"[PolytronsDance] MOVE ops={stayingOps}: {tileSinks.Count - alreadyPlaced.Count} tiles remain empty");
+                }
+            }
+        }
+
+        // Step 5: Handle BORN transformations
+        //         Recall polytrons from home and bind them to born tiles
+        foreach (var ops in bornOps)
+        {
+            if (mutatronTilesByOps.TryGetValue(ops, out var bornTiles))
+            {
+                // Find eligible home-bound polytrons (not reserved, cooldown expired, at home)
+                var eligiblePolytrons = engine.polytrons
+                    .Where(p => p != null && !p.isArchitron && !p.reservedForGenetics &&
+                                p.boundSink != null && engine.gridCellsMap.ContainsKey(p.boundSink.hexCoord) &&
+                                engine.gridCellsMap[p.boundSink.hexCoord].ring == 12 && // at home
+                                engine.polytronHomeCooldown.TryGetValue(p.sealNumber, out var cd) && cd <= 0)
+                    .ToList();
+
+                // Filter born tiles to only those with unbound sinks
+                var availableBornTiles = new List<KeyValuePair<HexCoord, MutatronEngine.HexCellData>>();
+                foreach (var bornTileHckv in bornTiles)
+                {
+                    if (bornTileHckv.Value.sink != null && bornTileHckv.Value.sink.boundPolytron == null)
+                    {
+                        availableBornTiles.Add(bornTileHckv);
+                    }
+                }
+
+                int recallCount = Math.Min(eligiblePolytrons.Count, availableBornTiles.Count);
+                for (int i = 0; i < recallCount; i++)
+                {
+                    var p = eligiblePolytrons[i];
+                    var bornTileHckv = availableBornTiles[i];
+                    var bornTile = bornTileHckv.Value.tile;
+
+                    try
+                    {
+                        // Compose new recipe: tile's ops + polytron's palette+base
+                        var parsedTile = PolyhedronRecipeParser.Parse(bornTile.recipe);
+                        var parsedPoly = PolyhedronRecipeParser.Parse(p.recipe);
+
+                        var newRecipeObj = new PolyhedronRecipe
+                        {
+                            Tokens = parsedTile.Tokens, // new ops from tile
+                            PaletteIdx = parsedPoly.PaletteIdx, // keep polytron's palette
+                            BasePolyhedron = parsedPoly.BasePolyhedron // keep polytron's base
+                        };
+
+                        string newRecipe = newRecipeObj.ToString();
+
+                        Debug.Log($"[PolytronsDance] BORN: calling polytron_id={p.sealNumber} with new ops={ops} to sink={bornTileHckv.Value.sink.name}");
+
+                        // Rebuild while polytron is still at home
+                        engine.RebuildPolytronFromRecipe(p, newRecipe);
+
+                        // Bind to the born tile
+                        UnbindPolytron(p);
+                        BindPolytronToSink(p, bornTileHckv.Value.sink);
+
+                        // No cooldown set for BORN: polytron is immediately available if called again
+                    }
+                    catch (Exception ex)
+                    {
+                        Debug.LogWarning($"[PolytronsDance] BORN failed for polytron_id={p.sealNumber}: {ex.Message}");
+                    }
+                }
+
+                if (recallCount < availableBornTiles.Count)
+                {
+                    Debug.Log($"[PolytronsDance] BORN transformations={ops}: {availableBornTiles.Count - recallCount} tiles remain unfilled (no eligible polytrons)");
+                }
+            }
+        }
+
+        // Step 6: Handle center tile (Architron special case)
+        //         The Architron is always bound to the center and always updates its transformation
+        try
+        {
+            var centerHckv = engine.gridCellsMap.FirstOrDefault(h => engine.IsMutatronCenter(h.Value));
+            if (centerHckv.Key != null && centerHckv.Value.tile != null)
+            {
+                var arch = engine.polytrons[engine.architronIdx];
+                if (arch != null)
+                {
+                    var parsedTile = PolyhedronRecipeParser.Parse(centerHckv.Value.tile.recipe);
+                    var parsedArch = PolyhedronRecipeParser.Parse(arch.recipe);
+
+                    var newRecipeObj = new PolyhedronRecipe
+                    {
+                        Tokens = parsedTile.Tokens,
+                        PaletteIdx = parsedArch.PaletteIdx,
+                        BasePolyhedron = parsedArch.BasePolyhedron
+                    };
+
+                    string newRecipe = newRecipeObj.ToString();
+
+                    if (newRecipe != arch.recipe)
+                    {
+                        Debug.Log($"[PolytronsDance] Architron at center updates transformation");
+                        engine.RebuildPolytronFromRecipe(arch, newRecipe);
+                    }
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Debug.LogWarning($"[PolytronsDance] Architron update failed: {ex.Message}");
+        }
+
+        Debug.Log("[PolytronsDance] dance complete");
+    }
 }

@@ -351,6 +351,8 @@ public class MutatronEngine : MonoBehaviour, IPolytronStateProvider
         bindingManager.UnbindPolytron(polytrons[architronIdx]);
         bindingManager.BindPolytronToSink(polytrons[architronIdx], mutatronCenter.sink);
 
+        // bindingManager.PolytronsDance();
+
         isRebuildingLevel = false;
     }
 
@@ -579,6 +581,9 @@ public class MutatronEngine : MonoBehaviour, IPolytronStateProvider
 
         DeselectAllPolytrons();
 
+        // Capture polytron positions BEFORE evolution to detect which ones need to move
+        bindingManager.CapturePreEvolutionState();
+
         // this is the actual CA evolution algorithm. 
         // For each cell, we count how many neighbour cells have a higher polytronic number (which is biunivocal to a transformation)
         // and then we use a modulo 2 rule like Pattern Breeder CA to transfer a "quantum of energy", so part of the polytronic number value,
@@ -625,17 +630,22 @@ public class MutatronEngine : MonoBehaviour, IPolytronStateProvider
             HexCellData cellData = hckv.Value;
             cellData.polytronicNumber += cellData.nextPolytronicNumberAccumulator;
             cellData.nextPolytronicNumberAccumulator = 0;
+
+            // this is enough to introduce variations
+            // 0 will arrive to a stable configuration
+            // if (cellData.polytronicNumber <= 0) cellData.polytronicNumber = 0;
+            // if (cellData.polytronicNumber <= 0) cellData.polytronicNumber = 10;
         }
 
         bool changed = gridManager.UpdateTiles();
 
         if (!changed)
         {
-            Debug.Log($"[Evolve] CA reached stasis: all polytronic numbers unchanged after evolution step");
+            Debug.Log($"[Evolve] CA reached stasis: tiles unchanged after evolution step");
         }
         else
         {
-            Debug.Log($"[Evolve] CA state changed: polytronic numbers updated");
+            Debug.Log($"[Evolve] CA state changed: tiles updated");
         }
 
         // UnbindNonMatchingPolytrons();
@@ -645,6 +655,7 @@ public class MutatronEngine : MonoBehaviour, IPolytronStateProvider
         // SendUnboundPolytronsHome();
 
         // UpdatePolytronsSinks();
+        bindingManager.PolytronsDance();
 
         // decrement home cooldowns (polytrons must rest at least one evolve turn after being sent home)
         var keys = polytronHomeCooldown.Keys.ToList();
