@@ -628,6 +628,8 @@ public class MutatronEngine : MonoBehaviour, IPolytronStateProvider
 
         // UpdatePolytronsSinks();
 
+        bindingManager.PolytronsDance();
+
         // decrement home cooldowns (polytrons must rest at least one evolve turn after being sent home)
         var keys = polytronHomeCooldown.Keys.ToList();
         foreach (var k in keys)
