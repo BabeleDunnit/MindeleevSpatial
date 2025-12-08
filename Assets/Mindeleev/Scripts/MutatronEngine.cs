@@ -578,6 +578,10 @@ public class MutatronEngine : MonoBehaviour, IPolytronStateProvider
 
         DeselectAllPolytrons();
 
+        // Step 1: Capture tile states BEFORE CA evolution
+        bindingManager.CaptureBeforeCAEvolution();
+
+        // Step 2: Run CA algorithm on polytronic numbers
         foreach (var hckv in gridCellsMap)
         {
             if (hckv.Value.ring > actualLevelConfig.actualRingsCount) continue;
@@ -618,19 +622,19 @@ public class MutatronEngine : MonoBehaviour, IPolytronStateProvider
             cellData.nextPolytronicNumberAccumulator = 0;
         }
 
+        // Step 3: Update tile meshes to reflect new polytronic numbers
         if (gridManager != null) gridManager.UpdateTiles();
 
-        // UnbindNonMatchingPolytrons();
+        // Step 4: Capture tile states AFTER CA evolution
+        bindingManager.CaptureAfterCAEvolution();
 
-        // Immediately send any unbound polytrons home and set their cooldowns
-        // so they are not eligible to be recalled in the same Evolve() pass.
-        // SendUnboundPolytronsHome();
+        // Step 5: Compute BORN/DIED/STAY/MOVE deltas from tile state changes
+        bindingManager.ComputeTileStateDeltas();
 
-        // UpdatePolytronsSinks();
-
+        // Step 6: Execute polytron movements based on tile deltas
         bindingManager.PolytronsDance();
 
-        // decrement home cooldowns (polytrons must rest at least one evolve turn after being sent home)
+        // Step 7: Decrement home cooldowns (polytrons must rest at least one evolve turn after being sent home)
         var keys = polytronHomeCooldown.Keys.ToList();
         foreach (var k in keys)
         {

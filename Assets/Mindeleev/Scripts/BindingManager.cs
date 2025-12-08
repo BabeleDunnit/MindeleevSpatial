@@ -12,6 +12,22 @@ public class BindingManager
 {
     private MutatronEngine engine;
 
+    /// <summary>
+    /// Snapshot of a tile's state (ops string and coordinate).
+    /// Used to detect BORN/DIED/STAY/MOVE transformations between CA evolution cycles.
+    /// </summary>
+    public struct TileState
+    {
+        public string ops;          // Operators sequence (e.g., "a(1)d(1)")
+        public HexCoord coord;      // Grid coordinate (q, r)
+        public int ring;            // Ring number for intuitive coordinate display
+        public int idxInRing;       // Index within ring for intuitive coordinate display
+    }
+
+    // Tile state snapshots for delta computation
+    private List<TileState> beforeCAEvolution = new();
+    private List<TileState> afterCAEvolution = new();
+
     public BindingManager(MutatronEngine engine)
     {
         this.engine = engine;
@@ -529,6 +545,243 @@ public class BindingManager
     {
         
     }
+
+    /// <summary>
+    /// Captures the tile states BEFORE the CA evolution algorithm runs.
+    /// Call this at the START of Evolve(), before the polytronic number CA algorithm.
+    /// </summary>
+    internal void CaptureBeforeCAEvolution()
+    {
+        beforeCAEvolution.Clear();
+        
+        foreach (var hckv in engine.gridCellsMap)
+        {
+            // Only capture tiles on the mutatron (not homes ring 12)
+            if (hckv.Value.ring > engine.actualLevelConfig.actualRingsCount) continue;
+            if (hckv.Value.tile == null) continue;
+
+                var parsed = PolyhedronRecipeParser.Parse(hckv.Value.tile.recipe);
+                string ops = parsed.OperatorsSequence();
+                
+                beforeCAEvolution.Add(new TileState
+                {
+                    ops = ops,
+                    coord = hckv.Key,
+                    ring = hckv.Value.ring,
+                    idxInRing = hckv.Value.idxInRing
+                });
+        }
+        
+        Debug.Log($"[CaptureBeforeCAEvolution] captured {beforeCAEvolution.Count} tiles before CA evolution");
+    }
+
+    /// <summary>
+    /// Captures the tile states AFTER the CA evolution and tile update.
+    /// Call this at the beginning of PolytronsDance(), after gridManager.UpdateTiles() has run.
+    /// </summary>
+    internal void CaptureAfterCAEvolution()
+    {
+        afterCAEvolution.Clear();
+        
+        foreach (var hckv in engine.gridCellsMap)
+        {
+            // Only capture tiles on the mutatron (not homes ring 12)
+            if (hckv.Value.ring > engine.actualLevelConfig.actualRingsCount) continue;
+            if (hckv.Value.tile == null) continue;
+
+                var parsed = PolyhedronRecipeParser.Parse(hckv.Value.tile.recipe);
+                string ops = parsed.OperatorsSequence();
+                
+                afterCAEvolution.Add(new TileState
+                {
+                    ops = ops,
+                    coord = hckv.Key,
+                    ring = hckv.Value.ring,
+                    idxInRing = hckv.Value.idxInRing
+                });
+        }
+        
+        Debug.Log($"[CaptureAfterCAEvolution] captured {afterCAEvolution.Count} tiles after CA evolution");
+    }
+
+    /// <summary>
+    /// Analyzes beforeCAEvolution and afterCAEvolution to identify transformation operations.
+    /// Computes BORN (new transformations), DIED (removed transformations), STAY (same transformation at same coord),
+    /// and MOVE (same transformation at different coords) using bipartite matching.
+    /// 
+    /// Key insights:
+    /// - Transformations (not tiles) move. A transformation is uniquely identified by its ops string and position.
+    /// - Each position can supply ONE transformation (before) and receive ONE transformation (after).
+    /// - BORN: transformation appears at a position (no source position)
+    /// - DIED: transformation disappears from a position (no target position)
+    /// - STAY: transformation remains at the same position
+    /// - MOVE: transformation changes position (source→target). After a MOVE, the source position becomes available.
+    /// 
+    /// All operations happen in parallel: positions and transformations are atomic, simultaneous updates.
+    /// </summary>
+    internal void ComputeTileStateDeltas()
+    {
+        // Group transformation snapshots by ops string
+        var beforeByOps = new Dictionary<string, List<TileState>>();
+        var afterByOps = new Dictionary<string, List<TileState>>();
+        
+        foreach (var tile in beforeCAEvolution)
+        {
+            if (!beforeByOps.ContainsKey(tile.ops))
+                beforeByOps[tile.ops] = new List<TileState>();
+            beforeByOps[tile.ops].Add(tile);
+        }
+        
+        foreach (var tile in afterCAEvolution)
+        {
+            if (!afterByOps.ContainsKey(tile.ops))
+                afterByOps[tile.ops] = new List<TileState>();
+            afterByOps[tile.ops].Add(tile);
+        }
+        
+        // Track transformation operation counts
+        int totalBorn = 0;
+        int totalDied = 0;
+        int totalStay = 0;
+        int totalMove = 0;
+        
+        // BORN: transformations that exist in after but not in before (complete ops disappearance)
+        foreach (var opsKey in afterByOps.Keys)
+        {
+            if (!beforeByOps.ContainsKey(opsKey))
+            {
+                int count = afterByOps[opsKey].Count;
+                totalBorn += count;
+                var coords = afterByOps[opsKey].Select(t => $"(ring={t.ring}, idx={t.idxInRing})");
+                Debug.Log($"[ComputeTileStateDeltas] BORN: {count}x ops=<{opsKey}> at {string.Join(", ", coords)}");
+            }
+        }
+        
+        // DIED: transformations that exist in before but not in after (complete ops disappearance)
+        foreach (var opsKey in beforeByOps.Keys)
+        {
+            if (!afterByOps.ContainsKey(opsKey))
+            {
+                int count = beforeByOps[opsKey].Count;
+                totalDied += count;
+                var coords = beforeByOps[opsKey].Select(t => $"(ring={t.ring}, idx={t.idxInRing})");
+                Debug.Log($"[ComputeTileStateDeltas] DIED: {count}x ops=<{opsKey}> (was at {string.Join(", ", coords)})");
+            }
+        }
+        
+        // STAY vs MOVE: same ops exist before and after - use bipartite matching to pair positions
+        foreach (var opsKey in beforeByOps.Keys)
+        {
+            if (!afterByOps.ContainsKey(opsKey)) continue; // Already handled as DIED
+            
+            var beforeTiles = beforeByOps[opsKey];
+            var afterTiles = afterByOps[opsKey];
+            
+            // First pass: identify STAY (same position before and after)
+            var usedBefore = new HashSet<TileState>();
+            var usedAfter = new HashSet<TileState>();
+            var stayTiles = new List<(TileState before, TileState after)>();
+            
+            foreach (var bt in beforeTiles)
+            {
+                var at = afterTiles.FirstOrDefault(t => t.coord.q == bt.coord.q && t.coord.r == bt.coord.r);
+                if (at.coord.q != 0 || at.coord.r != 0 || (bt.coord.q == 0 && bt.coord.r == 0)) // Valid match (HexCoord default is 0,0)
+                {
+                    if (at.ops == bt.ops && !usedAfter.Contains(at))
+                    {
+                        stayTiles.Add((bt, at));
+                        usedBefore.Add(bt);
+                        usedAfter.Add(at);
+                    }
+                }
+            }
+            
+            if (stayTiles.Count > 0)
+            {
+                totalStay += stayTiles.Count;
+                var coords = stayTiles.Select(p => $"(ring={p.before.ring}, idx={p.before.idxInRing})");
+                Debug.Log($"[ComputeTileStateDeltas] STAY: {stayTiles.Count}x ops=<{opsKey}> at {string.Join(", ", coords)}");
+            }
+            
+            // Second pass: match remaining before→after for MOVE using greedy nearest-neighbor
+            // After a MOVE source at position A, that position becomes available (could be BORN, DIED, or target of another MOVE)
+            var unmatchedBefore = beforeTiles.Where(b => !usedBefore.Contains(b)).ToList();
+            var unmatchedAfter = afterTiles.Where(a => !usedAfter.Contains(a)).ToList();
+            var moveTiles = new List<(TileState before, TileState after)>();
+            
+            // Greedy matching: repeatedly find the closest pair (source position, target position)
+            while (unmatchedBefore.Count > 0 && unmatchedAfter.Count > 0)
+            {
+                TileState? bestBefore = null;
+                TileState? bestAfter = null;
+                float bestDistance = float.MaxValue;
+                
+                foreach (var bt in unmatchedBefore)
+                {
+                    foreach (var at in unmatchedAfter)
+                    {
+                        // Manhattan distance in grid coordinates (heuristic for matching)
+                        float dist = Mathf.Abs(bt.ring - at.ring) + Mathf.Abs(bt.idxInRing - at.idxInRing);
+                        if (dist < bestDistance)
+                        {
+                            bestDistance = dist;
+                            bestBefore = bt;
+                            bestAfter = at;
+                        }
+                    }
+                }
+                
+                if (bestBefore.HasValue && bestAfter.HasValue)
+                {
+                    moveTiles.Add((bestBefore.Value, bestAfter.Value));
+                    unmatchedBefore.Remove(bestBefore.Value);
+                    unmatchedAfter.Remove(bestAfter.Value);
+                }
+                else
+                {
+                    break;
+                }
+            }
+            
+            if (moveTiles.Count > 0)
+            {
+                totalMove += moveTiles.Count;
+                var moves = moveTiles.Select(p => $"(ring={p.before.ring}, idx={p.before.idxInRing}) -> (ring={p.after.ring}, idx={p.after.idxInRing})");
+                Debug.Log($"[ComputeTileStateDeltas] MOVE: {moveTiles.Count}x ops=<{opsKey}> {string.Join("; ", moves)}");
+            }
+            
+            // Remaining unmatched transformations: 
+            // - Unmatched before with no after = DIED (transformation disappears)
+            // - Unmatched after with no before = BORN (transformation appears)
+            if (unmatchedBefore.Count > 0)
+            {
+                totalDied += unmatchedBefore.Count;
+                var coords = unmatchedBefore.Select(t => $"(ring={t.ring}, idx={t.idxInRing})");
+                Debug.Log($"[ComputeTileStateDeltas] DIED (within ops group): {unmatchedBefore.Count}x ops=<{opsKey}> (was at {string.Join(", ", coords)})");
+            }
+            
+            if (unmatchedAfter.Count > 0)
+            {
+                totalBorn += unmatchedAfter.Count;
+                var coords = unmatchedAfter.Select(t => $"(ring={t.ring}, idx={t.idxInRing})");
+                Debug.Log($"[ComputeTileStateDeltas] BORN (within ops group): {unmatchedAfter.Count}x ops=<{opsKey}> at {string.Join(", ", coords)}");
+            }
+        }
+        
+        // Summary: verify that transformation count is balanced (before+born = after+died)
+        int beforeTotal = beforeCAEvolution.Count;
+        int afterTotal = afterCAEvolution.Count;
+        int accounted = totalBorn + totalDied + totalStay + totalMove;
+        
+        Debug.Log($"[ComputeTileStateDeltas] === Summary: {totalBorn} BORN, {totalDied} DIED, {totalStay} STAY, {totalMove} MOVE ===");
+        Debug.Log($"[ComputeTileStateDeltas] Transformation count check: before={beforeTotal}, after={afterTotal}, accounted={accounted}, born-died={totalBorn - totalDied}");
+        
+        if (beforeTotal + totalBorn != afterTotal + totalDied)
+        {
+            Debug.LogWarning($"[ComputeTileStateDeltas] MISMATCH: before({beforeTotal}) + born({totalBorn}) != after({afterTotal}) + died({totalDied})");
+        }
+    }
+
 
 
 
