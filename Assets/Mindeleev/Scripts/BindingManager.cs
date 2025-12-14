@@ -540,6 +540,113 @@ public class BindingManager
         engine.NotifyPolytronStateChanged(p);
     }
 
+    /// <summary>
+    /// Recalls polytrons from their homes to the Mutatron in the initial configuration.
+    /// This is called once when the level is ready (after tiles are created).
+    /// 
+    /// This mimics a BORN operation for each tile on the Mutatron:
+    /// For each tile (excluding the center):
+    /// 1. Parse the tile's ops (transformation)
+    /// 2. Find ANY eligible polytron at home with cooldown = 0
+    /// 3. Bind the polytron to the tile
+    /// 4. Retrain the polytron's recipe: tile ops + polytron's radix (palette + base polyhedron)
+    /// 5. Add the new recipe to the polytron's MindeleevTable
+    /// 6. Rebuild the polytron mesh
+    /// 7. Reset cooldown to 0 (now on active duty)
+    /// 
+    /// The Architron and center tile are handled separately and excluded from this process.
+    /// </summary>
+    internal void RecallPolytronsToInitialConfiguration()
+    {
+        Debug.Log("[RecallPolytronsToInitialConfiguration] Starting initial polytron recall for level start");
+        
+        int recalledCount = 0;
+        int missedCount = 0;
+        
+        // Iterate over all tiles on the Mutatron (excluding ring 12 which is homes, and excluding center)
+        foreach (var hckv in engine.gridCellsMap)
+        {
+            var hcd = hckv.Value;
+            
+            // Skip homes (ring 12) and tiles beyond the mutatron
+            if (hcd.ring > engine.actualLevelConfig.actualRingsCount) continue;
+            
+            // Skip the center tile (Architron is already bound there)
+            if (engine.IsMutatronCenter(hcd)) continue;
+            
+            // Skip if no tile exists
+            if (hcd.tile == null) continue;
+            
+            // Parse the tile's transformation (ops only - we'll combine with polytron's radix)
+            var tileRecipeParsed = PolyhedronRecipeParser.Parse(hcd.tile.recipe);
+            string tileOps = tileRecipeParsed.OperatorsSequence();
+            
+            // Find ANY eligible polytron at home with cooldown = 0
+            // Eligible = not reserved, not Architron, at home (ring 12), cooldown = 0
+            Polytron eligiblePolytron = null;
+            for (int i = 0; i < engine.polytrons.Count; i++)
+            {
+                var p = engine.polytrons[i];
+                if (p == null || p.reservedForGenetics || p.isArchitron) continue;
+                
+                // Check if polytron is at home
+                if (p.boundSink == null) continue;
+                var pSinkCoord = p.boundSink.hexCoord;
+                if (!engine.gridCellsMap.ContainsKey(pSinkCoord)) continue;
+                var pCell = engine.gridCellsMap[pSinkCoord];
+                if (pCell.ring != 12) continue;
+                
+                // Check cooldown
+                if (!engine.polytronHomeCooldown.ContainsKey(p.sealNumber)) continue;
+                if (engine.polytronHomeCooldown[p.sealNumber] != 0) continue;
+                
+                // Found an eligible polytron (any one will do - we'll retrain it)
+                eligiblePolytron = p;
+                break;
+            }
+            
+            if (eligiblePolytron != null)
+            {
+                // Bind the polytron to this tile/sink
+                UnbindPolytron(eligiblePolytron);
+                BindPolytronToSink(eligiblePolytron, hcd.sink);
+                
+                // Retrain the polytron's recipe: use tile's ops combined with polytron's radix
+                // Extract the polytron's current radix (palette index and base polyhedron)
+                var polytronRecipeParsed = PolyhedronRecipeParser.Parse(eligiblePolytron.recipe);
+                int polytronPaletteIdx = polytronRecipeParsed.PaletteIdx;
+                char polytronBasePolyhedron = polytronRecipeParsed.BasePolyhedron;
+                
+                // Create new recipe: tile's ops + polytron's radix
+                var retrainedRecipe = new PolyhedronRecipe
+                {
+                    Tokens = tileRecipeParsed.Tokens,
+                    PaletteIdx = polytronPaletteIdx,
+                    BasePolyhedron = polytronBasePolyhedron
+                };
+                string retrainedRecipeStr = retrainedRecipe.ToString();
+                
+                // Rebuild the polytron with the new recipe
+                engine.RebuildPolytronFromRecipe(eligiblePolytron, retrainedRecipeStr);
+                
+                // Add the new recipe to the polytron's MindeleevTable
+                eligiblePolytron.AddEmanation(retrainedRecipeStr);
+                
+                // Polytron is now on active duty on the Mutatron, reset cooldown
+                engine.polytronHomeCooldown[eligiblePolytron.sealNumber] = 0;
+                
+                Debug.Log($"[RecallPolytronsToInitialConfiguration] BORN: Recalled polytron_id={eligiblePolytron.sealNumber} to tile at (ring={hcd.ring}, idx={hcd.idxInRing}) with ops=<{tileOps}> and new recipe={retrainedRecipeStr}");
+                recalledCount++;
+            }
+            else
+            {
+                Debug.Log($"[RecallPolytronsToInitialConfiguration] No eligible polytron found for BORN at tile (ring={hcd.ring}, idx={hcd.idxInRing}) with ops=<{tileOps}>");
+                missedCount++;
+            }
+        }
+        
+        Debug.Log($"[RecallPolytronsToInitialConfiguration] Initial recall complete: {recalledCount} BORN, {missedCount} tiles without available polytron");
+    }
 
     internal void PolytronsDance()
     {

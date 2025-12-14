@@ -346,9 +346,12 @@ public class MutatronEngine : MonoBehaviour, IPolytronStateProvider
     // Kept as a small extension point for debug or additional initialization.
     public void AfterTilesCreation()
     {
-        // UpdatePolytronsSinks();
+        // Bind the Architron to the center tile
         bindingManager.UnbindPolytron(polytrons[architronIdx]);
         bindingManager.BindPolytronToSink(polytrons[architronIdx], mutatronCenter.sink);
+
+        // Recall polytrons from homes to initial Mutatron configuration
+        bindingManager.RecallPolytronsToInitialConfiguration();
 
         isRebuildingLevel = false;
     }
