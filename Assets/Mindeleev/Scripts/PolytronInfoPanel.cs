@@ -563,8 +563,37 @@ public class PolytronInfoPanel : MonoBehaviour
 
         string recipe = list[idx];
         Debug.Log($"[PolytronInfoPanel] Cycling emanation for polytron_id={myPolytron.sealNumber} to index={idx} recipe={recipe}");
-        // Ask engine to rebuild polytron from selected recipe (this will notify and refresh panel)
-        providerEngine.RebuildPolytronFromRecipe(myPolytron, recipe);
+        // Apply selected recipe directly on the Polytron and rebuild immediately.
+        // We avoid calling the engine helper since it refuses recipe changes
+        // for polytrons currently bound on the Mutatron. The UI intent is to
+        // preview/search emanations so apply the recipe and notify the engine.
+        try
+        {
+            // Capture previous mesh id to detect no-op rebuilds
+            var mf = myPolytron.GetComponent<MeshFilter>();
+            int? prevMeshId = null;
+            try { prevMeshId = mf?.mesh != null ? (int?)mf.mesh.GetInstanceID() : null; } catch { prevMeshId = null; }
+
+            myPolytron.recipe = recipe;
+            myPolytron.RebuildMesh();
+
+            int? newMeshId = null;
+            try { newMeshId = mf?.mesh != null ? (int?)mf.mesh.GetInstanceID() : null; } catch { newMeshId = null; }
+
+            if (prevMeshId.HasValue && newMeshId.HasValue && prevMeshId.Value == newMeshId.Value)
+            {
+                Debug.LogWarning($"[PolytronInfoPanel] Rebuild resulted in same mesh id={newMeshId} for polytron_id={myPolytron.sealNumber}; visible recipe may be unchanged");
+            }
+
+            myPolytron.AddEmanation(recipe);
+            // Ensure cursor points to selected index (defensive)
+            myPolytron.MindeleevCursor = idx;
+            providerEngine.NotifyPolytronStateChanged(myPolytron);
+        }
+        catch (Exception ex)
+        {
+            Debug.LogWarning($"[PolytronInfoPanel] Failed to apply emanation recipe: {ex}");
+        }
     }
 
     public void Activate(bool show)

@@ -299,6 +299,14 @@ public class MutatronEngine : MonoBehaviour, IPolytronStateProvider
             p.RebuildMesh();
             // record new recipe/emantion after explicit rebuild
             p.AddEmanation(r);
+            // Ensure the MindeleevCursor points to the now-active emanation.
+            try
+            {
+                var list = p.MindeleevTable.GetEmanationsList();
+                int idx = list.IndexOf(r);
+                if (idx >= 0) p.MindeleevCursor = idx;
+            }
+            catch (Exception) { }
             //p.GetComponent<PolytronInfoPanel>().bodyText = r;
             NotifyPolytronStateChanged(p);
         }

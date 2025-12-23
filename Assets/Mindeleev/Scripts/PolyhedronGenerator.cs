@@ -32,6 +32,11 @@ public class PolyhedronGenerator : MonoBehaviour
         MeshFilter filter = GetComponent<MeshFilter>();
         MeshRenderer renderer = GetComponent<MeshRenderer>();
 
+        // Diagnostic log to trace rebuild calls and identify missed rebuilds.
+        var polytronComp = GetComponent<Polytron>();
+        string idInfo = polytronComp != null ? $"polytron_id={polytronComp.sealNumber}" : "no-polytron";
+        Debug.Log($"[RebuildMesh] {idInfo} GameObject='{gameObject.name}' recipe='{recipe}'");
+
         // Defensive parse: if the recipe is malformed (for example missing a base
         // uppercase polyhedron character) the parser will throw. Catch that so
         // starting the editor doesn't abort and we get a useful error with the
@@ -51,8 +56,41 @@ public class PolyhedronGenerator : MonoBehaviour
         // Debug.Log($"[RebuildMesh] palette: {palette}, currentPaletteIndex: {currentPaletteIndex}");
         var polyData = PolyhedronRecipeBuilder.Build(_recipe, palette.colors.Count);
         var polyFinalData = Polyhedronisme.ApplyFlatShade(polyData);
-        filter.mesh = Polyhedronisme.BuildMesh(polyFinalData, palette);
+
+        // Diagnostics: record previous mesh instance id
+        int? prevMeshId = null;
+        try { prevMeshId = filter.mesh != null ? (int?)filter.mesh.GetInstanceID() : null; } catch { prevMeshId = null; }
+
+        var newMesh = Polyhedronisme.BuildMesh(polyFinalData, palette);
+        filter.mesh = newMesh;
         ApplyPolyhedronMaterial(renderer);
+
+        int? newMeshId = null;
+        try { newMeshId = newMesh != null ? (int?)newMesh.GetInstanceID() : null; } catch { newMeshId = null; }
+
+        Debug.Log($"[RebuildMesh] mesh ids prev={prevMeshId?.ToString() ?? "null"} new={newMeshId?.ToString() ?? "null"}");
+
+        // Ensure renderer enabled so changes are visible immediately. Also toggle to force GPU update
+        if (renderer != null)
+        {
+            if (!renderer.enabled)
+            {
+                renderer.enabled = true;
+                Debug.Log($"[RebuildMesh] enabled renderer for {gameObject.name}");
+            }
+            // Force a renderer refresh by toggling enabled briefly. This helps cases
+            // where the mesh change doesn't immediately appear in the Scene/Game view
+            // on some platforms or when occlusion/visibility caches are stale.
+            try
+            {
+                renderer.enabled = false;
+                renderer.enabled = true;
+            }
+            catch (Exception ex)
+            {
+                Debug.LogWarning($"[RebuildMesh] renderer toggle failed: {ex}");
+            }
+        }
 
         if (showVertexIndices)
         {
