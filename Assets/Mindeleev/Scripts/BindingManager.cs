@@ -13,6 +13,13 @@ public class BindingManager
     private MutatronEngine engine;
 
     /// <summary>
+    /// Minimum cooldown duration (in Evolve turns) for polytrons sent home via DIED operations.
+    /// Polytrons must rest at home for at least this many turns before becoming available for recall.
+    /// Adjust this value to experiment with different polytron availability rhythms.
+    /// </summary>
+    public const int POLYTRON_HOME_COOLDOWN_TURNS = 1;
+
+    /// <summary>
     /// Snapshot of a tile's state (ops string and coordinate).
     /// Used to detect BORN/DIED/STAY/MOVE transformations between CA evolution cycles.
     /// </summary>
@@ -27,6 +34,23 @@ public class BindingManager
     // Tile state snapshots for delta computation
     private List<TileState> beforeCAEvolution = new();
     private List<TileState> afterCAEvolution = new();
+
+    /// <summary>
+    /// Delta operation records: BORN/DIED/STAY/MOVE computed from tile state changes.
+    /// Cleared at start of each Evolve cycle and populated by ComputeTileStateDeltas().
+    /// Used by PolytronsDance() to execute binding changes.
+    /// </summary>
+    private struct DeltaOperation
+    {
+        public enum OpType { BORN, DIED, STAY, MOVE }
+        public OpType type;
+        public string ops;              // Transformation ops for this operation
+        public TileState? sourceTile;   // For DIED/MOVE: the before-tile
+        public TileState? targetTile;   // For BORN/MOVE: the after-tile
+        public Polytron sourcePolytron; // For DIED/MOVE: the polytron being affected
+    }
+
+    private List<DeltaOperation> deltaOperations = new();
 
     public BindingManager(MutatronEngine engine)
     {
@@ -649,7 +673,133 @@ public class BindingManager
 
     internal void PolytronsDance()
     {
+        Debug.Log("[PolytronsDance] Executing polytron movements based on tile delta operations");
         
+        // Group operations by type and ops so we can execute them in a coordinated way
+        var opsByType = deltaOperations.GroupBy(d => d.type).ToDictionary(g => g.Key, g => g.ToList());
+        
+        int bornCount = 0, diedCount = 0, stayCount = 0, moveCount = 0;
+        
+        // Step 1: Handle DIED operations (send polytrons home with cooldown=2)
+        if (opsByType.TryGetValue(DeltaOperation.OpType.DIED, out var diedOps))
+        {
+            foreach (var op in diedOps)
+            {
+                if (op.sourcePolytron != null && op.sourcePolytron.boundSink != null)
+                {
+                    Debug.Log($"[PolytronsDance] DIED: Sending polytron_id={op.sourcePolytron.sealNumber} home (ops=<{op.ops}> died)");
+                    UnbindPolytron(op.sourcePolytron);
+                    BindPolytronToSink(op.sourcePolytron, engine.polytronsHomes[op.sourcePolytron.sealNumber].Value.sink);
+                    engine.polytronHomeCooldown[op.sourcePolytron.sealNumber] = POLYTRON_HOME_COOLDOWN_TURNS;
+                    diedCount++;
+                }
+            }
+        }
+        
+        // Step 2: Handle MOVE operations (rebind from source to target sink)
+        if (opsByType.TryGetValue(DeltaOperation.OpType.MOVE, out var moveOps))
+        {
+            foreach (var op in moveOps)
+            {
+                if (op.sourcePolytron != null && op.sourceTile.HasValue && op.targetTile.HasValue)
+                {
+                    var targetHcd = engine.gridCellsMap[op.targetTile.Value.coord];
+                    Debug.Log($"[PolytronsDance] MOVE: Polytron_id={op.sourcePolytron.sealNumber} from (ring={op.sourceTile.Value.ring}, idx={op.sourceTile.Value.idxInRing}) to (ring={op.targetTile.Value.ring}, idx={op.targetTile.Value.idxInRing}) (ops=<{op.ops}>)");
+                    
+                    // Ensure target sink is unbound (unbind any polytron currently there)
+                    if (targetHcd.sink.boundPolytron != null && targetHcd.sink.boundPolytron != op.sourcePolytron)
+                    {
+                        UnbindPolytron(targetHcd.sink.boundPolytron);
+                    }
+                    
+                    UnbindPolytron(op.sourcePolytron);
+                    BindPolytronToSink(op.sourcePolytron, targetHcd.sink);
+                    moveCount++;
+                }
+            }
+        }
+        
+        // Step 3: Handle BORN operations (call eligible polytrons from home)
+        if (opsByType.TryGetValue(DeltaOperation.OpType.BORN, out var bornOps))
+        {
+            foreach (var op in bornOps)
+            {
+                if (op.targetTile.HasValue)
+                {
+                    var targetHcd = engine.gridCellsMap[op.targetTile.Value.coord];
+                    
+                    // Find an eligible polytron at home (not reserved, not Architron, cooldown=0)
+                    Polytron eligiblePolytron = null;
+                    for (int i = 0; i < engine.polytrons.Count; i++)
+                    {
+                        var p = engine.polytrons[i];
+                        if (p == null || p.reservedForGenetics || p.isArchitron) continue;
+                        
+                        // Check if at home
+                        if (p.boundSink == null) continue;
+                        var pSinkCoord = p.boundSink.hexCoord;
+                        if (!engine.gridCellsMap.ContainsKey(pSinkCoord)) continue;
+                        var pCell = engine.gridCellsMap[pSinkCoord];
+                        if (pCell.ring != 12) continue;
+                        
+                        // Check cooldown
+                        if (!engine.polytronHomeCooldown.ContainsKey(p.sealNumber)) continue;
+                        if (engine.polytronHomeCooldown[p.sealNumber] != 0) continue;
+                        
+                        eligiblePolytron = p;
+                        break;
+                    }
+                    
+                    if (eligiblePolytron != null)
+                    {
+                        // Rebuild the polytron with the tile's recipe while still at home
+                        try
+                        {
+                            var parsedTile = PolyhedronRecipeParser.Parse(targetHcd.tile.recipe);
+                            var parsedPoly = PolyhedronRecipeParser.Parse(eligiblePolytron.recipe);
+                            
+                            var retrainedRecipe = new PolyhedronRecipe
+                            {
+                                Tokens = parsedTile.Tokens,
+                                PaletteIdx = parsedPoly.PaletteIdx,
+                                BasePolyhedron = parsedPoly.BasePolyhedron
+                            };
+                            string retrainedRecipeStr = retrainedRecipe.ToString();
+                            
+                            // Rebuild while still at home
+                            engine.RebuildPolytronFromRecipe(eligiblePolytron, retrainedRecipeStr);
+                            
+                            // Ensure target sink is unbound (unbind any polytron currently there)
+                            if (targetHcd.sink.boundPolytron != null && targetHcd.sink.boundPolytron != eligiblePolytron)
+                            {
+                                UnbindPolytron(targetHcd.sink.boundPolytron);
+                            }
+                            
+                            // Now move to mutatron
+                            UnbindPolytron(eligiblePolytron);
+                            BindPolytronToSink(eligiblePolytron, targetHcd.sink);
+                            engine.polytronHomeCooldown[eligiblePolytron.sealNumber] = 0;
+                            
+                            Debug.Log($"[PolytronsDance] BORN: Called polytron_id={eligiblePolytron.sealNumber} to (ring={op.targetTile.Value.ring}, idx={op.targetTile.Value.idxInRing}) with ops=<{op.ops}>");
+                            bornCount++;
+                        }
+                        catch (Exception ex)
+                        {
+                            Debug.LogWarning($"[PolytronsDance] BORN failed: {ex}");
+                        }
+                    }
+                    else
+                    {
+                        Debug.Log($"[PolytronsDance] BORN: No eligible polytron available for (ring={op.targetTile.Value.ring}, idx={op.targetTile.Value.idxInRing}) (ops=<{op.ops}>)");
+                    }
+                }
+            }
+        }
+        
+        // Step 4: STAY operations require no action (polytrons already correctly bound)
+        stayCount = opsByType.TryGetValue(DeltaOperation.OpType.STAY, out var stayOps) ? stayOps.Count : 0;
+        
+        Debug.Log($"[PolytronsDance] Complete: {bornCount} BORN, {diedCount} DIED, {stayCount} STAY, {moveCount} MOVE");
     }
 
     /// <summary>
@@ -664,6 +814,8 @@ public class BindingManager
         {
             // Only capture tiles on the mutatron (not homes ring 12)
             if (hckv.Value.ring > engine.actualLevelConfig.actualRingsCount) continue;
+            // Skip the mutatron center (ring 0) — it's always bound to the Architron and excluded from dance
+            if (hckv.Value.ring == 0) continue;
             if (hckv.Value.tile == null) continue;
 
                 var parsed = PolyhedronRecipeParser.Parse(hckv.Value.tile.recipe);
@@ -693,6 +845,8 @@ public class BindingManager
         {
             // Only capture tiles on the mutatron (not homes ring 12)
             if (hckv.Value.ring > engine.actualLevelConfig.actualRingsCount) continue;
+            // Skip the mutatron center (ring 0) — it's always bound to the Architron and excluded from dance
+            if (hckv.Value.ring == 0) continue;
             if (hckv.Value.tile == null) continue;
 
                 var parsed = PolyhedronRecipeParser.Parse(hckv.Value.tile.recipe);
@@ -727,6 +881,9 @@ public class BindingManager
     /// </summary>
     internal void ComputeTileStateDeltas()
     {
+        // Clear previous delta operations
+        deltaOperations.Clear();
+        
         // Group transformation snapshots by ops string
         var beforeByOps = new Dictionary<string, List<TileState>>();
         var afterByOps = new Dictionary<string, List<TileState>>();
@@ -760,6 +917,18 @@ public class BindingManager
                 totalBorn += count;
                 var coords = afterByOps[opsKey].Select(t => $"(ring={t.ring}, idx={t.idxInRing})");
                 Debug.Log($"[ComputeTileStateDeltas] BORN: {count}x ops=<{opsKey}> at {string.Join(", ", coords)}");
+                
+                // Record BORN operations in delta list
+                foreach (var afterTile in afterByOps[opsKey])
+                {
+                    deltaOperations.Add(new DeltaOperation
+                    {
+                        type = DeltaOperation.OpType.BORN,
+                        ops = opsKey,
+                        targetTile = afterTile,
+                        sourcePolytron = null
+                    });
+                }
             }
         }
         
@@ -772,6 +941,22 @@ public class BindingManager
                 totalDied += count;
                 var coords = beforeByOps[opsKey].Select(t => $"(ring={t.ring}, idx={t.idxInRing})");
                 Debug.Log($"[ComputeTileStateDeltas] DIED: {count}x ops=<{opsKey}> (was at {string.Join(", ", coords)})");
+                
+                // Record DIED operations in delta list
+                foreach (var beforeTile in beforeByOps[opsKey])
+                {
+                    // Find the polytron currently bound to this tile
+                    var hcd = engine.gridCellsMap[beforeTile.coord];
+                    var polytron = hcd.sink.boundPolytron;
+                    
+                    deltaOperations.Add(new DeltaOperation
+                    {
+                        type = DeltaOperation.OpType.DIED,
+                        ops = opsKey,
+                        sourceTile = beforeTile,
+                        sourcePolytron = polytron
+                    });
+                }
             }
         }
         
@@ -807,10 +992,21 @@ public class BindingManager
                 totalStay += stayTiles.Count;
                 var coords = stayTiles.Select(p => $"(ring={p.before.ring}, idx={p.before.idxInRing})");
                 Debug.Log($"[ComputeTileStateDeltas] STAY: {stayTiles.Count}x ops=<{opsKey}> at {string.Join(", ", coords)}");
+                
+                // Record STAY operations (no action needed, but track them)
+                foreach (var (beforeTile, afterTile) in stayTiles)
+                {
+                    deltaOperations.Add(new DeltaOperation
+                    {
+                        type = DeltaOperation.OpType.STAY,
+                        ops = opsKey,
+                        sourceTile = beforeTile,
+                        targetTile = afterTile
+                    });
+                }
             }
             
             // Second pass: match remaining before→after for MOVE using greedy nearest-neighbor
-            // After a MOVE source at position A, that position becomes available (could be BORN, DIED, or target of another MOVE)
             var unmatchedBefore = beforeTiles.Where(b => !usedBefore.Contains(b)).ToList();
             var unmatchedAfter = afterTiles.Where(a => !usedAfter.Contains(a)).ToList();
             var moveTiles = new List<(TileState before, TileState after)>();
@@ -854,6 +1050,22 @@ public class BindingManager
                 totalMove += moveTiles.Count;
                 var moves = moveTiles.Select(p => $"(ring={p.before.ring}, idx={p.before.idxInRing}) -> (ring={p.after.ring}, idx={p.after.idxInRing})");
                 Debug.Log($"[ComputeTileStateDeltas] MOVE: {moveTiles.Count}x ops=<{opsKey}> {string.Join("; ", moves)}");
+                
+                // Record MOVE operations
+                foreach (var (beforeTile, afterTile) in moveTiles)
+                {
+                    var hcd = engine.gridCellsMap[beforeTile.coord];
+                    var polytron = hcd.sink.boundPolytron;
+                    
+                    deltaOperations.Add(new DeltaOperation
+                    {
+                        type = DeltaOperation.OpType.MOVE,
+                        ops = opsKey,
+                        sourceTile = beforeTile,
+                        targetTile = afterTile,
+                        sourcePolytron = polytron
+                    });
+                }
             }
             
             // Remaining unmatched transformations: 
@@ -864,6 +1076,20 @@ public class BindingManager
                 totalDied += unmatchedBefore.Count;
                 var coords = unmatchedBefore.Select(t => $"(ring={t.ring}, idx={t.idxInRing})");
                 Debug.Log($"[ComputeTileStateDeltas] DIED (within ops group): {unmatchedBefore.Count}x ops=<{opsKey}> (was at {string.Join(", ", coords)})");
+                
+                foreach (var beforeTile in unmatchedBefore)
+                {
+                    var hcd = engine.gridCellsMap[beforeTile.coord];
+                    var polytron = hcd.sink.boundPolytron;
+                    
+                    deltaOperations.Add(new DeltaOperation
+                    {
+                        type = DeltaOperation.OpType.DIED,
+                        ops = opsKey,
+                        sourceTile = beforeTile,
+                        sourcePolytron = polytron
+                    });
+                }
             }
             
             if (unmatchedAfter.Count > 0)
@@ -871,6 +1097,17 @@ public class BindingManager
                 totalBorn += unmatchedAfter.Count;
                 var coords = unmatchedAfter.Select(t => $"(ring={t.ring}, idx={t.idxInRing})");
                 Debug.Log($"[ComputeTileStateDeltas] BORN (within ops group): {unmatchedAfter.Count}x ops=<{opsKey}> at {string.Join(", ", coords)}");
+                
+                foreach (var afterTile in unmatchedAfter)
+                {
+                    deltaOperations.Add(new DeltaOperation
+                    {
+                        type = DeltaOperation.OpType.BORN,
+                        ops = opsKey,
+                        targetTile = afterTile,
+                        sourcePolytron = null
+                    });
+                }
             }
         }
         

@@ -248,7 +248,8 @@ public class MutatronEngine : MonoBehaviour, IPolytronStateProvider
                 int paletteIndex = (polytronId % 10) + 1; // 1..10
                 polytronComponent.recipe = PolyhedronRecipeKabbalah.IntToOperatorsSequence(polytronId)
                     + $"{paletteIndex:D2}"
-                    + (hckv.Value.idxInRing == 0 ? "T" : "C");
+                    // + (hckv.Value.idxInRing == 0 ? "T" : "C");
+                    + "C";
                 polytronComponent.RebuildMesh();
                 // record initial recipe in MindeleevTable
                 polytronComponent.AddEmanation(polytronComponent.recipe);
@@ -332,7 +333,7 @@ public class MutatronEngine : MonoBehaviour, IPolytronStateProvider
 
         // the level number will determine the Metatron complexity
         // and set actualRingsCount, etc.
-        actualLevelConfig.actualRingsCount = 4 - levelNumber; // keep original mapping
+        actualLevelConfig.actualRingsCount = 1 + levelNumber; // keep original mapping
         actualLevelConfig.energyQuantumExchanged = 1;
 
         ResetLevelGraphics();
@@ -587,7 +588,9 @@ public class MutatronEngine : MonoBehaviour, IPolytronStateProvider
             return;
         }
 
+        // Clear all selection and genetic behavior to ensure polytrons are fully available for the dance
         DeselectAllPolytrons();
+        ClearGeneticFriends();
 
         // Step 1: Capture tile states BEFORE CA evolution
         bindingManager.CaptureBeforeCAEvolution();

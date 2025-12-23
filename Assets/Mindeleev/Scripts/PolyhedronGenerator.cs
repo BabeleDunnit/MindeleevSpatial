@@ -65,10 +65,10 @@ public class PolyhedronGenerator : MonoBehaviour
         filter.mesh = newMesh;
         ApplyPolyhedronMaterial(renderer);
 
-        int? newMeshId = null;
-        try { newMeshId = newMesh != null ? (int?)newMesh.GetInstanceID() : null; } catch { newMeshId = null; }
+        // int? newMeshId = null;
+        // try { newMeshId = newMesh != null ? (int?)newMesh.GetInstanceID() : null; } catch { newMeshId = null; }
 
-        Debug.Log($"[RebuildMesh] mesh ids prev={prevMeshId?.ToString() ?? "null"} new={newMeshId?.ToString() ?? "null"}");
+        // Debug.Log($"[RebuildMesh] mesh ids prev={prevMeshId?.ToString() ?? "null"} new={newMeshId?.ToString() ?? "null"}");
 
         // Ensure renderer enabled so changes are visible immediately. Also toggle to force GPU update
         if (renderer != null)
