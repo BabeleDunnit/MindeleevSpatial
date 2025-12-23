@@ -607,36 +607,35 @@ public class BindingManager
             
             if (eligiblePolytron != null)
             {
-                // Bind the polytron to this tile/sink
-                UnbindPolytron(eligiblePolytron);
-                BindPolytronToSink(eligiblePolytron, hcd.sink);
-                
-                // Retrain the polytron's recipe: use tile's ops combined with polytron's radix
-                // Extract the polytron's current radix (palette index and base polyhedron)
-                var polytronRecipeParsed = PolyhedronRecipeParser.Parse(eligiblePolytron.recipe);
-                int polytronPaletteIdx = polytronRecipeParsed.PaletteIdx;
-                char polytronBasePolyhedron = polytronRecipeParsed.BasePolyhedron;
-                
-                // Create new recipe: tile's ops + polytron's radix
-                var retrainedRecipe = new PolyhedronRecipe
+                // Retrain the polytron's recipe while it is still at home (avoid Rebuild guard)
+                try
                 {
-                    Tokens = tileRecipeParsed.Tokens,
-                    PaletteIdx = polytronPaletteIdx,
-                    BasePolyhedron = polytronBasePolyhedron
-                };
-                string retrainedRecipeStr = retrainedRecipe.ToString();
-                
-                // Rebuild the polytron with the new recipe
-                engine.RebuildPolytronFromRecipe(eligiblePolytron, retrainedRecipeStr);
-                
-                // Add the new recipe to the polytron's MindeleevTable
-                eligiblePolytron.AddEmanation(retrainedRecipeStr);
-                
-                // Polytron is now on active duty on the Mutatron, reset cooldown
-                engine.polytronHomeCooldown[eligiblePolytron.sealNumber] = 0;
-                
-                Debug.Log($"[RecallPolytronsToInitialConfiguration] BORN: Recalled polytron_id={eligiblePolytron.sealNumber} to tile at (ring={hcd.ring}, idx={hcd.idxInRing}) with ops=<{tileOps}> and new recipe={retrainedRecipeStr}");
-                recalledCount++;
+                    var polytronRecipeParsed = PolyhedronRecipeParser.Parse(eligiblePolytron.recipe);
+                    int polytronPaletteIdx = polytronRecipeParsed.PaletteIdx;
+                    char polytronBasePolyhedron = polytronRecipeParsed.BasePolyhedron;
+
+                    var retrainedRecipe = new PolyhedronRecipe
+                    {
+                        Tokens = tileRecipeParsed.Tokens,
+                        PaletteIdx = polytronPaletteIdx,
+                        BasePolyhedron = polytronBasePolyhedron
+                    };
+                    string retrainedRecipeStr = retrainedRecipe.ToString();
+
+                    // Rebuild while still at home so the defensive guard in engine allows the change
+                    engine.RebuildPolytronFromRecipe(eligiblePolytron, retrainedRecipeStr);
+
+                    // Now move the polytron from home to the Mutatron sink
+                    UnbindPolytron(eligiblePolytron);
+                    BindPolytronToSink(eligiblePolytron, hcd.sink);
+
+                    // Ensure the MindeleevTable recorded the emanation (Rebuild already calls AddEmanation)
+                    engine.polytronHomeCooldown[eligiblePolytron.sealNumber] = 0;
+
+                    Debug.Log($"[RecallPolytronsToInitialConfiguration] BORN: Recalled polytron_id={eligiblePolytron.sealNumber} to tile at (ring={hcd.ring}, idx={hcd.idxInRing}) with ops=<{tileOps}> and new recipe={retrainedRecipeStr}");
+                    recalledCount++;
+                }
+                catch (Exception) { }
             }
             else
             {
