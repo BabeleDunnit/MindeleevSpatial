@@ -17,7 +17,7 @@ public class BindingManager
     /// Polytrons must rest at home for at least this many turns before becoming available for recall.
     /// Adjust this value to experiment with different polytron availability rhythms.
     /// </summary>
-    public const int POLYTRON_HOME_COOLDOWN_TURNS = 1;
+    public const int POLYTRON_HOME_COOLDOWN_TURNS = 4;
 
     /// <summary>
     /// Snapshot of a tile's state (ops string and coordinate).
@@ -677,12 +677,84 @@ public class BindingManager
         Debug.Log($"[RecallPolytronsToInitialConfiguration] Initial recall complete: {recalledCount} BORN, {missedCount} tiles without available polytron");
     }
 
-    internal void PolytronsDance()
+    /// <summary>
+    /// Helper method: finds an eligible polytron at home (not reserved, not Architron, cooldown=0)
+    /// and binds it to the target sink after rebuilding its recipe to match the target tile.
+    /// Returns true if successful, false if no eligible polytron was found.
+    /// </summary>
+    private bool TryBindEligiblePolytronToTile(MutatronEngine.HexCellData targetHcd, string opsString)
     {
-        Debug.Log("[PolytronsDance] Executing polytron movements based on tile delta operations");
+        // Find an eligible polytron at home (not reserved, not Architron, cooldown=0)
+        Polytron eligiblePolytron = null;
+        for (int i = 0; i < engine.polytrons.Count; i++)
+        {
+            var p = engine.polytrons[i];
+            if (p == null || p.reservedForGenetics || p.isArchitron) continue;
+            
+            // Check if at home
+            if (p.boundSink == null) continue;
+            var pSinkCoord = p.boundSink.hexCoord;
+            if (!engine.gridCellsMap.ContainsKey(pSinkCoord)) continue;
+            var pCell = engine.gridCellsMap[pSinkCoord];
+            if (pCell.ring != 12) continue;
+            
+            // Check cooldown
+            if (!engine.polytronHomeCooldown.ContainsKey(p.sealNumber)) continue;
+            if (engine.polytronHomeCooldown[p.sealNumber] != 0) continue;
+            
+            eligiblePolytron = p;
+            break;
+        }
+        
+        if (eligiblePolytron == null)
+        {
+            return false;  // No eligible polytron found
+        }
+        
+        // Rebuild the polytron with the tile's recipe while still at home
+        try
+        {
+            var parsedTile = PolyhedronRecipeParser.Parse(targetHcd.tile.recipe);
+            var parsedPoly = PolyhedronRecipeParser.Parse(eligiblePolytron.recipe);
+            
+            var retrainedRecipe = new PolyhedronRecipe
+            {
+                Tokens = parsedTile.Tokens,
+                PaletteIdx = parsedPoly.PaletteIdx,
+                BasePolyhedron = parsedPoly.BasePolyhedron
+            };
+            string retrainedRecipeStr = retrainedRecipe.ToString();
+            
+            // Rebuild while still at home
+            engine.RebuildPolytronFromRecipe(eligiblePolytron, retrainedRecipeStr);
+            
+            // Ensure target sink is unbound (unbind any polytron currently there)
+            if (targetHcd.sink.boundPolytron != null && targetHcd.sink.boundPolytron != eligiblePolytron)
+            {
+                UnbindPolytron(targetHcd.sink.boundPolytron);
+            }
+            
+            // Now move to mutatron
+            UnbindPolytron(eligiblePolytron);
+            BindPolytronToSink(eligiblePolytron, targetHcd.sink);
+            engine.polytronHomeCooldown[eligiblePolytron.sealNumber] = 0;
+            
+            return true;
+        }
+        catch (Exception ex)
+        {
+            Debug.LogWarning($"[TryBindEligiblePolytronToTile] failed: {ex}");
+            return false;
+        }
+    }
+
+    internal void PolytronsDance(int levelCount, int evolveCount)
+    {
+        Debug.Log($"[PolytronsDance] (levelCount={levelCount}, Evolve={evolveCount}) Executing polytron movements based on tile delta operations");
         
         // Reset the counter for failed BORN operations in this dance cycle
         failedBornOperations = 0;
+        int rescuedBornOperations = 0;  // STAY/MOVE converted to BORN because source tile was empty
         
         // Group operations by type and ops so we can execute them in a coordinated way
         var opsByType = deltaOperations.GroupBy(d => d.type).ToDictionary(g => g.Key, g => g.ToList());
@@ -710,20 +782,41 @@ public class BindingManager
         {
             foreach (var op in moveOps)
             {
-                if (op.sourcePolytron != null && op.sourceTile.HasValue && op.targetTile.HasValue)
+                if (op.sourceTile.HasValue && op.targetTile.HasValue)
                 {
+                    var sourceHcd = engine.gridCellsMap[op.sourceTile.Value.coord];
                     var targetHcd = engine.gridCellsMap[op.targetTile.Value.coord];
-                    Debug.Log($"[PolytronsDance] MOVE: Polytron_id={op.sourcePolytron.sealNumber} from (ring={op.sourceTile.Value.ring}, idx={op.sourceTile.Value.idxInRing}) to (ring={op.targetTile.Value.ring}, idx={op.targetTile.Value.idxInRing}) (ops=<{op.ops}>)");
                     
-                    // Ensure target sink is unbound (unbind any polytron currently there)
-                    if (targetHcd.sink.boundPolytron != null && targetHcd.sink.boundPolytron != op.sourcePolytron)
+                    // Check if source tile has a bound polytron
+                    if (op.sourcePolytron != null)
                     {
-                        UnbindPolytron(targetHcd.sink.boundPolytron);
+                        // Normal MOVE: source tile has a polytron
+                        Debug.Log($"[PolytronsDance] MOVE: Polytron_id={op.sourcePolytron.sealNumber} from (ring={op.sourceTile.Value.ring}, idx={op.sourceTile.Value.idxInRing}) to (ring={op.targetTile.Value.ring}, idx={op.targetTile.Value.idxInRing}) (ops=<{op.ops}>)");
+                        
+                        // Ensure target sink is unbound (unbind any polytron currently there)
+                        if (targetHcd.sink.boundPolytron != null && targetHcd.sink.boundPolytron != op.sourcePolytron)
+                        {
+                            UnbindPolytron(targetHcd.sink.boundPolytron);
+                        }
+                        
+                        UnbindPolytron(op.sourcePolytron);
+                        BindPolytronToSink(op.sourcePolytron, targetHcd.sink);
+                        moveCount++;
                     }
-                    
-                    UnbindPolytron(op.sourcePolytron);
-                    BindPolytronToSink(op.sourcePolytron, targetHcd.sink);
-                    moveCount++;
+                    else if (sourceHcd.sink.boundPolytron == null)
+                    {
+                        // RESCUE CASE: Source tile is empty (BORN failed in previous turn)
+                        // Treat as BORN operation: find eligible polytron and bind to target
+                        Debug.Log($"[PolytronsDance] MOVE RESCUE: Source tile (ring={op.sourceTile.Value.ring}, idx={op.sourceTile.Value.idxInRing}) is empty, treating as BORN to target (ring={op.targetTile.Value.ring}, idx={op.targetTile.Value.idxInRing}) (ops=<{op.ops}>)");
+                        if (TryBindEligiblePolytronToTile(targetHcd, op.ops))
+                        {
+                            rescuedBornOperations++;
+                        }
+                        else
+                        {
+                            failedBornOperations++;
+                        }
+                    }
                 }
             }
         }
@@ -737,65 +830,10 @@ public class BindingManager
                 {
                     var targetHcd = engine.gridCellsMap[op.targetTile.Value.coord];
                     
-                    // Find an eligible polytron at home (not reserved, not Architron, cooldown=0)
-                    Polytron eligiblePolytron = null;
-                    for (int i = 0; i < engine.polytrons.Count; i++)
+                    if (TryBindEligiblePolytronToTile(targetHcd, op.ops))
                     {
-                        var p = engine.polytrons[i];
-                        if (p == null || p.reservedForGenetics || p.isArchitron) continue;
-                        
-                        // Check if at home
-                        if (p.boundSink == null) continue;
-                        var pSinkCoord = p.boundSink.hexCoord;
-                        if (!engine.gridCellsMap.ContainsKey(pSinkCoord)) continue;
-                        var pCell = engine.gridCellsMap[pSinkCoord];
-                        if (pCell.ring != 12) continue;
-                        
-                        // Check cooldown
-                        if (!engine.polytronHomeCooldown.ContainsKey(p.sealNumber)) continue;
-                        if (engine.polytronHomeCooldown[p.sealNumber] != 0) continue;
-                        
-                        eligiblePolytron = p;
-                        break;
-                    }
-                    
-                    if (eligiblePolytron != null)
-                    {
-                        // Rebuild the polytron with the tile's recipe while still at home
-                        try
-                        {
-                            var parsedTile = PolyhedronRecipeParser.Parse(targetHcd.tile.recipe);
-                            var parsedPoly = PolyhedronRecipeParser.Parse(eligiblePolytron.recipe);
-                            
-                            var retrainedRecipe = new PolyhedronRecipe
-                            {
-                                Tokens = parsedTile.Tokens,
-                                PaletteIdx = parsedPoly.PaletteIdx,
-                                BasePolyhedron = parsedPoly.BasePolyhedron
-                            };
-                            string retrainedRecipeStr = retrainedRecipe.ToString();
-                            
-                            // Rebuild while still at home
-                            engine.RebuildPolytronFromRecipe(eligiblePolytron, retrainedRecipeStr);
-                            
-                            // Ensure target sink is unbound (unbind any polytron currently there)
-                            if (targetHcd.sink.boundPolytron != null && targetHcd.sink.boundPolytron != eligiblePolytron)
-                            {
-                                UnbindPolytron(targetHcd.sink.boundPolytron);
-                            }
-                            
-                            // Now move to mutatron
-                            UnbindPolytron(eligiblePolytron);
-                            BindPolytronToSink(eligiblePolytron, targetHcd.sink);
-                            engine.polytronHomeCooldown[eligiblePolytron.sealNumber] = 0;
-                            
-                            Debug.Log($"[PolytronsDance] BORN: Called polytron_id={eligiblePolytron.sealNumber} to (ring={op.targetTile.Value.ring}, idx={op.targetTile.Value.idxInRing}) with ops=<{op.ops}>");
-                            bornCount++;
-                        }
-                        catch (Exception ex)
-                        {
-                            Debug.LogWarning($"[PolytronsDance] BORN failed: {ex}");
-                        }
+                        Debug.Log($"[PolytronsDance] BORN: Called eligible polytron to (ring={op.targetTile.Value.ring}, idx={op.targetTile.Value.idxInRing}) with ops=<{op.ops}>");
+                        bornCount++;
                     }
                     else
                     {
@@ -806,10 +844,44 @@ public class BindingManager
             }
         }
         
-        // Step 4: STAY operations require no action (polytrons already correctly bound)
-        stayCount = opsByType.TryGetValue(DeltaOperation.OpType.STAY, out var stayOps) ? stayOps.Count : 0;
+        // Step 4: Handle STAY operations (check for rescue cases where source tile is empty)
+        if (opsByType.TryGetValue(DeltaOperation.OpType.STAY, out var stayOps))
+        {
+            foreach (var op in stayOps)
+            {
+                if (op.targetTile.HasValue)
+                {
+                    var targetHcd = engine.gridCellsMap[op.targetTile.Value.coord];
+                    
+                    // Check if target tile (which should be occupied in a normal STAY) has no polytron
+                    if (targetHcd.sink.boundPolytron == null)
+                    {
+                        // RESCUE CASE: Tile is empty (BORN failed in previous turn or earlier MOVE failed)
+                        // Treat as BORN operation: find eligible polytron and bind to target
+                        Debug.Log($"[PolytronsDance] STAY RESCUE: Tile (ring={op.targetTile.Value.ring}, idx={op.targetTile.Value.idxInRing}) is empty, treating as BORN (ops=<{op.ops}>)");
+                        if (TryBindEligiblePolytronToTile(targetHcd, op.ops))
+                        {
+                            rescuedBornOperations++;
+                        }
+                        else
+                        {
+                            failedBornOperations++;
+                        }
+                    }
+                    else
+                    {
+                        // Normal STAY: polytron remains at same location
+                        stayCount++;
+                    }
+                }
+            }
+        }
+        else
+        {
+            stayCount = 0;
+        }
         
-        Debug.Log($"[PolytronsDance] Complete: {bornCount} BORN, {diedCount} DIED, {stayCount} STAY, {moveCount} MOVE (failed BORN: {failedBornOperations})");
+        Debug.Log($"[PolytronsDance] (levelCount={levelCount}, Evolve={evolveCount}) Complete: {bornCount} BORN, {diedCount} DIED, {stayCount} STAY, {moveCount} MOVE (rescued BORN from STAY/MOVE: {rescuedBornOperations}, failed BORN: {failedBornOperations})");
     }
 
     /// <summary>

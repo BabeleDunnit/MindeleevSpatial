@@ -646,7 +646,7 @@ public class MutatronEngine : MonoBehaviour, IPolytronStateProvider
         bindingManager.ComputeTileStateDeltas();
 
         // Step 6: Execute polytron movements based on tile deltas
-        bindingManager.PolytronsDance();
+        bindingManager.PolytronsDance(levelCount, evolveCount);
 
         // Step 7: Decrement home cooldowns (polytrons must rest at least one evolve turn after being sent home)
         var keys = polytronHomeCooldown.Keys.ToList();
