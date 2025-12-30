@@ -51,6 +51,12 @@ public class BindingManager
     }
 
     private List<DeltaOperation> deltaOperations = new();
+    
+    /// <summary>
+    /// Tracks the number of BORN operations that failed to find eligible polytrons in the most recent PolytronsDance().
+    /// Polytrons may be unavailable due to cooldown, being reserved for genetics, or being the Architron.
+    /// </summary>
+    private int failedBornOperations = 0;
 
     public BindingManager(MutatronEngine engine)
     {
@@ -675,6 +681,9 @@ public class BindingManager
     {
         Debug.Log("[PolytronsDance] Executing polytron movements based on tile delta operations");
         
+        // Reset the counter for failed BORN operations in this dance cycle
+        failedBornOperations = 0;
+        
         // Group operations by type and ops so we can execute them in a coordinated way
         var opsByType = deltaOperations.GroupBy(d => d.type).ToDictionary(g => g.Key, g => g.ToList());
         
@@ -791,6 +800,7 @@ public class BindingManager
                     else
                     {
                         Debug.Log($"[PolytronsDance] BORN: No eligible polytron available for (ring={op.targetTile.Value.ring}, idx={op.targetTile.Value.idxInRing}) (ops=<{op.ops}>)");
+                        failedBornOperations++;
                     }
                 }
             }
@@ -799,7 +809,7 @@ public class BindingManager
         // Step 4: STAY operations require no action (polytrons already correctly bound)
         stayCount = opsByType.TryGetValue(DeltaOperation.OpType.STAY, out var stayOps) ? stayOps.Count : 0;
         
-        Debug.Log($"[PolytronsDance] Complete: {bornCount} BORN, {diedCount} DIED, {stayCount} STAY, {moveCount} MOVE");
+        Debug.Log($"[PolytronsDance] Complete: {bornCount} BORN, {diedCount} DIED, {stayCount} STAY, {moveCount} MOVE (failed BORN: {failedBornOperations})");
     }
 
     /// <summary>
