@@ -977,6 +977,10 @@ public class MutatronEngine : MonoBehaviour, IPolytronStateProvider
         bindingManager.BindPolytronToSink(p, ps);
     }
 
+    internal void UnbindPolytron(Polytron p)
+    {
+        bindingManager.UnbindPolytron(p);
+    }
 
     // Basic center detection helper
     internal bool IsMutatronCenter(HexCellData hcd)

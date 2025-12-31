@@ -112,7 +112,8 @@ public class GeneticsManager
 
             Debug.Log($"[SetupGeneticFriends] PICKED friend #{assigned}: polytron_id={candidate.sealNumber} (seal:{candidate.sealName}) boundSink={backup.boundSink?.name} position={candidate.transform.position}");
 
-            // engine.UnbindPolytron(candidate);
+            // Unbind the friend from its original sink so it can freely orbit the Architron
+            engine.UnbindPolytron(candidate);
             candidate.reservedForGenetics = true;
             engine.NotifyPolytronStateChanged(candidate);
 
@@ -174,6 +175,11 @@ public class GeneticsManager
             if (backup.boundSink != null && backup.boundSink.boundPolytron == null)
             {
                 Debug.Log($"[ClearGeneticFriends] immediate rebind available for polytron_id={friend.sealNumber} to sink={backup.boundSink.name}");
+                // Ensure friend is unbound before rebinding (should already be unbound, but be safe)
+                if (friend.boundSink != null)
+                {
+                    engine.UnbindPolytron(friend);
+                }
                 engine.BindPolytronToSink(friend, backup.boundSink);
                 friend.reservedForGenetics = false;
                 friend.interactive = true;
@@ -215,6 +221,11 @@ public class GeneticsManager
 
             if (backup.boundSink != null)
             {
+                // Ensure friend is unbound before rebinding
+                if (friend.boundSink != null)
+                {
+                    engine.UnbindPolytron(friend);
+                }
                 engine.BindPolytronToSink(friend, backup.boundSink);
                 friend.reservedForGenetics = false;
             }
@@ -316,6 +327,11 @@ public class GeneticsManager
                     {
                         if (backup.boundSink != null)
                         {
+                            // Ensure friend is unbound before rebinding
+                            if (friend.boundSink != null)
+                            {
+                                engine.UnbindPolytron(friend);
+                            }
                             engine.BindPolytronToSink(friend, backup.boundSink);
                             friend.reservedForGenetics = false;
                         }
