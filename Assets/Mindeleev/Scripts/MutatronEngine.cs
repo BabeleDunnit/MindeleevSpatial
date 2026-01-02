@@ -770,7 +770,8 @@ public class MutatronEngine : MonoBehaviour, IPolytronStateProvider
         StartCoroutine(Create72PolytronsAndHomesCoroutine());
     }
 
-    int levelCount = 0;
+    int levelCount = 1;
+    
     void Update()
     {
         if (Input.GetKeyDown(KeyCode.M))
