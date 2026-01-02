@@ -74,6 +74,12 @@ public class RecipeToken
 
     public override string ToString()
     {
+        return Operator;
+    }
+
+
+    public string ToStringWithParameters()
+    {
         // Get the operator
         string op = Operator;
 
@@ -205,6 +211,13 @@ public class PolyhedronRecipe
     {
         return string.Concat(Tokens.Select(t => t.ToString()));
     }
+
+    public string OperatorsSequenceWithParameters()
+    {
+        return string.Concat(Tokens.Select(t => t.ToStringWithParameters()));
+    }
+
+
 
     /// <summary>
     /// Generates a human-readable name for the current recipe/emanation.

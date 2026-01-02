@@ -138,7 +138,7 @@ public class PolytronEngineHexCellularAutomataBehaviour : PolytronEnginePhysics
                     3 => "ltC",
                     _ => "C"
                 };
-                sinkComponent.attractedRecipe = sinkRecipe;
+                // sinkComponent.attractedRecipe = sinkRecipe;
                 // sinkComponent.weight *= ((ring + 0.1f) * (float)Math.Exp(ring));
                 // sinkComponent.weight += ((float)(ring * 0.1f)) * 2f; 
                 sinkComponent.weight += Mathf.Pow((float)(ring * 0.1f), 2f);
@@ -194,11 +194,14 @@ public class PolytronEngineHexCellularAutomataBehaviour : PolytronEnginePhysics
             // find all the eligible sinks for the bound with this polytron
             foreach (var sink in sinks)
             {
+                
                 PolytronSink sinkComponent = sink.GetComponent<PolytronSink>();
+                /*
                 if (polytron.recipe != sinkComponent.attractedRecipe)
                 {
                     continue;
                 }
+*/
 
                 if (sinkComponent.boundPolytron != null)
                 {
@@ -278,7 +281,7 @@ public class PolytronEngineHexCellularAutomataBehaviour : PolytronEnginePhysics
                 // PolyhedronGenerator polyGen = polytron.GetComponent<PolyhedronGenerator>();
                 //if (polyGen == null) continue;
 
-                if (polytron.recipe == sinkComponent.attractedRecipe)
+                if (/*polytron.recipe == sinkComponent.attractedRecipe*/ true)
                 {
                     if (sinkComponent.boundPolytron == null)
                     {

@@ -59,6 +59,7 @@ public class MutatronEngine : MonoBehaviour, IPolytronStateProvider
         internal string tileBasePolyhedron;
     }
 
+/*
     // Safe unbind helper: clears both sides of the binding
     internal void UnbindPolytron(Polytron p)
     {
@@ -80,6 +81,7 @@ public class MutatronEngine : MonoBehaviour, IPolytronStateProvider
 
         NotifyPolytronStateChanged(p);
     }
+*/
 
     bool IsMutatronReady()
     {
@@ -90,6 +92,7 @@ public class MutatronEngine : MonoBehaviour, IPolytronStateProvider
     {
         foreach (Polytron p in polytrons)
         {
+
             // special behaviour for the architron
             if (p.isArchitron)
             {
@@ -219,7 +222,8 @@ public class MutatronEngine : MonoBehaviour, IPolytronStateProvider
                 label.transform.rotation = Quaternion.Euler(0, (-60f * (r1 + 2)) + 180, 0);
                 label.transform.position = tile.transform.position + new Vector3(0, 3.5f, 0);
 
-                BindPolytronToSink(polytronGameObject.GetComponent<Polytron>(), hckv);
+                // immediately bind the polytron to his home
+                bindingManager.BindPolytronToSink(polytronGameObject.GetComponent<Polytron>(), hckv);
 
                 yield return new WaitForSeconds(0.01f);
             }
@@ -244,7 +248,8 @@ public class MutatronEngine : MonoBehaviour, IPolytronStateProvider
                 int paletteIndex = (polytronId % 10) + 1; // 1..10
                 polytronComponent.recipe = PolyhedronRecipeKabbalah.IntToOperatorsSequence(polytronId)
                     + $"{paletteIndex:D2}"
-                    + (hckv.Value.idxInRing == 0 ? "T" : "C");
+                    // + (hckv.Value.idxInRing == 0 ? "T" : "C");
+                    + "C";
                 polytronComponent.RebuildMesh();
                 // record initial recipe in MindeleevTable
                 polytronComponent.AddEmanation(polytronComponent.recipe);
@@ -295,6 +300,14 @@ public class MutatronEngine : MonoBehaviour, IPolytronStateProvider
             p.RebuildMesh();
             // record new recipe/emantion after explicit rebuild
             p.AddEmanation(r);
+            // Ensure the MindeleevCursor points to the now-active emanation.
+            try
+            {
+                var list = p.MindeleevTable.GetEmanationsList();
+                int idx = list.IndexOf(r);
+                if (idx >= 0) p.MindeleevCursor = idx;
+            }
+            catch (Exception) { }
             //p.GetComponent<PolytronInfoPanel>().bodyText = r;
             NotifyPolytronStateChanged(p);
         }
@@ -320,11 +333,12 @@ public class MutatronEngine : MonoBehaviour, IPolytronStateProvider
 
         // the level number will determine the Metatron complexity
         // and set actualRingsCount, etc.
-        actualLevelConfig.actualRingsCount = 4 - levelNumber; // keep original mapping
+        actualLevelConfig.actualRingsCount = 1 + levelNumber; // keep original mapping
         actualLevelConfig.energyQuantumExchanged = 1;
 
         ResetLevelGraphics();
-        SendAllPolytronsHome();
+        // SendAllPolytronsHome();
+        bindingManager.SendAllPolytronsHome();
         InitializeCellsCAParametersForCurrentLevel();
 
         StartCoroutine(DrawMetatronGraphicsCoroutine());
@@ -341,7 +355,12 @@ public class MutatronEngine : MonoBehaviour, IPolytronStateProvider
     // Kept as a small extension point for debug or additional initialization.
     public void AfterTilesCreation()
     {
-        UpdatePolytronsSinks();
+        // Bind the Architron to the center tile
+        bindingManager.UnbindPolytron(polytrons[architronIdx]);
+        bindingManager.BindPolytronToSink(polytrons[architronIdx], mutatronCenter.sink);
+
+        // Recall polytrons from homes to initial Mutatron configuration
+        bindingManager.RecallPolytronsToInitialConfiguration();
 
         isRebuildingLevel = false;
     }
@@ -539,6 +558,7 @@ public class MutatronEngine : MonoBehaviour, IPolytronStateProvider
     // Tile creation is handled by GridManager.BuildTilesCoroutine().
     // The engine no longer contains a duplicate implementation.
 
+/*
     void UnbindNonMatchingPolytrons()
     {
         bindingManager.UnbindNonMatchingPolytrons();
@@ -558,6 +578,7 @@ public class MutatronEngine : MonoBehaviour, IPolytronStateProvider
     {
         bindingManager.SendAllPolytronsHome();
     }
+*/
 
     void Evolve()
     {
@@ -567,8 +588,14 @@ public class MutatronEngine : MonoBehaviour, IPolytronStateProvider
             return;
         }
 
+        // Clear all selection and genetic behavior to ensure polytrons are fully available for the dance
         DeselectAllPolytrons();
+        ClearGeneticFriends();
 
+        // Step 1: Capture tile states BEFORE CA evolution
+        bindingManager.CaptureBeforeCAEvolution();
+
+        // Step 2: Run CA algorithm on polytronic numbers
         foreach (var hckv in gridCellsMap)
         {
             if (hckv.Value.ring > actualLevelConfig.actualRingsCount) continue;
@@ -609,26 +636,24 @@ public class MutatronEngine : MonoBehaviour, IPolytronStateProvider
             cellData.nextPolytronicNumberAccumulator = 0;
         }
 
+        // Step 3: Update tile meshes to reflect new polytronic numbers
         if (gridManager != null) gridManager.UpdateTiles();
 
-        UnbindNonMatchingPolytrons();
+        // Step 4: Capture tile states AFTER CA evolution
+        bindingManager.CaptureAfterCAEvolution();
 
-        // Immediately send any unbound polytrons home and set their cooldowns
-        // so they are not eligible to be recalled in the same Evolve() pass.
-        SendUnboundPolytronsHome();
+        // Step 5: Compute BORN/DIED/STAY/MOVE deltas from tile state changes
+        bindingManager.ComputeTileStateDeltas();
 
-        UpdatePolytronsSinks();
+        // Step 6: Execute polytron movements based on tile deltas
+        bindingManager.PolytronsDance(levelCount, evolveCount);
 
-        // decrement home cooldowns (polytrons must rest at least one evolve turn after being sent home)
-        try
+        // Step 7: Decrement home cooldowns (polytrons must rest at least one evolve turn after being sent home)
+        var keys = polytronHomeCooldown.Keys.ToList();
+        foreach (var k in keys)
         {
-            var keys = polytronHomeCooldown.Keys.ToList();
-            foreach (var k in keys)
-            {
-                if (polytronHomeCooldown[k] > 0) polytronHomeCooldown[k]--;
-            }
+            if (polytronHomeCooldown[k] > 0) polytronHomeCooldown[k]--;
         }
-        catch (Exception) { }
 
         evolveCount++;
 
@@ -659,7 +684,7 @@ public class MutatronEngine : MonoBehaviour, IPolytronStateProvider
     {
         AttractPolytronsToTargets();
         // apply attraction to genetic friends if any (delegated to GeneticsManager)
-        if (geneticsManager != null) geneticsManager.AttractGeneticFriends();
+        geneticsManager.AttractGeneticFriends();
     }
 
     void Awake()
@@ -745,7 +770,8 @@ public class MutatronEngine : MonoBehaviour, IPolytronStateProvider
         StartCoroutine(Create72PolytronsAndHomesCoroutine());
     }
 
-    int levelCount = 0;
+    int levelCount = 1;
+    
     void Update()
     {
         if (Input.GetKeyDown(KeyCode.M))
@@ -816,19 +842,24 @@ public class MutatronEngine : MonoBehaviour, IPolytronStateProvider
         if (isNewArchitronAtHome)
         {
 
+            Debug.Log($"[SetNewArchitron] new Architron is at home");
+            bindingManager.UnbindPolytron(actualArchitron);
+            bindingManager.UnbindPolytron(newArchitron);
+
             // the actual architron must be sent back to his home
             BindPolytronToSink(actualArchitron, polytronsHomes[actualArchitron.sealNumber].Value.sink);
-            // and the new architron must be bound to the metatron center
+            // and the new architron must be bound to the mutatron center
             BindPolytronToSink(newArchitron, mutatronCenter.sink);
         }
         else
         {
+            Debug.Log($"[SetNewArchitron] new Architron is not at home");
             // swap bindings atomically using helpers
             var aSink = actualArchitron.boundSink;
             var nSink = newArchitron.boundSink;
 
-            UnbindPolytron(actualArchitron);
-            UnbindPolytron(newArchitron);
+            bindingManager.UnbindPolytron(actualArchitron);
+            bindingManager.UnbindPolytron(newArchitron);
 
             BindPolytronToSink(actualArchitron, nSink);
             BindPolytronToSink(newArchitron, aSink);
@@ -893,6 +924,7 @@ public class MutatronEngine : MonoBehaviour, IPolytronStateProvider
         if (selectionManager != null) selectionManager.OnPolytronClicked(p);
     }
 
+/*
     // Helper: bind wrapper delegating to BindingManager when present
     internal void BindPolytronToSink(Polytron p, KeyValuePair<HexCoord, HexCellData> hckv)
     {
@@ -912,7 +944,9 @@ public class MutatronEngine : MonoBehaviour, IPolytronStateProvider
         if (ps != null) ps.boundPolytron = p;
         NotifyPolytronStateChanged(p);
     }
+*/
 
+/*
     internal void BindPolytronToSink(Polytron p, PolytronSink ps)
     {
         if (bindingManager != null)
@@ -935,6 +969,18 @@ public class MutatronEngine : MonoBehaviour, IPolytronStateProvider
         p.boundSink = ps;
         if (ps != null) ps.boundPolytron = p;
         NotifyPolytronStateChanged(p);
+    }
+*/
+
+
+    internal void BindPolytronToSink(Polytron p, PolytronSink ps)
+    {
+        bindingManager.BindPolytronToSink(p, ps);
+    }
+
+    internal void UnbindPolytron(Polytron p)
+    {
+        bindingManager.UnbindPolytron(p);
     }
 
     // Basic center detection helper
