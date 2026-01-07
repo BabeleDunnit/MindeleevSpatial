@@ -822,6 +822,103 @@ public class PolyhedronRecipeTests
 
     }
 
+    [Test]
+    public void ComplexityUpperBound_FindSequenceSeedThreshold()
+    {
+        // Test to find the maximum operatorSequenceSeed value before hitting various vertex count upper bounds
+        // For each complexity bound (500 to 5000 in steps of 20), enumerate recipes with increasing opSeqSeed
+        // Stop when the polyhedron construction hits the bound for each base polyhedron
+        // We combine IntToOperatorsSequence() with 5 different base polyhedra and palette 01
+
+        List<char> basePolyhedra = new List<char> { 'T', 'C', 'O', 'D', 'I' };
+        List<int> complexityBounds = new List<int>();
+        for (int bound = 500; bound <= 500; bound += 200)
+        {
+            complexityBounds.Add(bound);
+        }
+
+        // Build output table
+        StringBuilder sb = new StringBuilder();
+        sb.AppendLine("Upper Bound Complexity Threshold Test");
+        sb.AppendLine("Maximum operatorSequenceSeed before hitting vertex count limits");
+        sb.AppendLine();
+
+        // Build header
+        sb.Append("vertices count upper bound");
+        foreach (char poly in basePolyhedra)
+        {
+            sb.Append($",max {poly} vertices");
+            sb.Append($",max {poly} opSeqSeed");
+            sb.Append($",{poly} recipe");
+            sb.Append($",{poly} complexity");
+        }
+        sb.AppendLine();
+
+        // For each complexity bound (outer loop)
+        foreach (int bound in complexityBounds)
+        {
+            sb.Append(bound);
+
+            // For each base polyhedron
+            foreach (char poly in basePolyhedra)
+            {
+                int maxOpSeqSeed = -1;
+
+                // Enumerate recipes with increasing operatorSequenceSeed
+                for (int opSeqSeed = 100; opSeqSeed < 5000; opSeqSeed++)
+                {
+                    if(opSeqSeed % 100 == 0)
+                    {
+                        Debug.Log($"{bound},{opSeqSeed}");
+                    }
+
+                    string opSeq = PolyhedronRecipeKabbalah.IntToOperatorsSequence(opSeqSeed);
+                    string recipeStr = opSeq + poly;
+                    PolyhedronRecipe recipe = PolyhedronRecipeParser.Parse(recipeStr);
+
+                    // Build with specific maxVertices limit (palette 01 for all)
+                    recipe.PaletteIdx = 1;
+                    var meshData = PolyhedronRecipeBuilder.Build(recipe, paletteColorsCount: 6, maxVertices: bound);
+                    bool hitLimit = PolyhedronRecipeBuilder.LastBuildHitVertexLimit;
+
+                    if (hitLimit)
+                    {
+                        // Hit the limit, stop searching for this polyhedron
+                        break;
+                    }
+                    else
+                    {
+                        // This opSeqSeed didn't hit the limit, record it as a candidate
+                        maxOpSeqSeed = opSeqSeed;
+                    }
+                }
+
+                string maxOpSeq = PolyhedronRecipeKabbalah.IntToOperatorsSequence(maxOpSeqSeed);
+                string maxRecipeStr = maxOpSeq + poly;
+                var maxRecipe = PolyhedronRecipeParser.Parse(maxRecipeStr);
+                float complexity = PolyhedronRecipeUtils.ComputeComplexity(maxRecipe);
+                var maxMeshData = PolyhedronRecipeBuilder.Build(maxRecipe, paletteColorsCount: 6, maxVertices: -1);
+
+                sb.Append($",{maxMeshData.Item1.Count()}");
+                sb.Append($",{maxOpSeqSeed}");
+                sb.Append($",{maxRecipeStr}");
+                sb.Append($",{complexity}");
+
+
+
+            }
+            sb.AppendLine();
+        }
+
+        // Print to console for visibility
+        Debug.Log(sb.ToString());
+
+        // Also save to file
+        string filePath = Path.Combine(".", "ComplexityUpperBoundThreshold.csv");
+        System.IO.File.WriteAllText(filePath, sb.ToString());
+        Debug.Log($"Complexity upper bound threshold test saved to {filePath}");
+    }
+
 
     public class CsvTable
     {

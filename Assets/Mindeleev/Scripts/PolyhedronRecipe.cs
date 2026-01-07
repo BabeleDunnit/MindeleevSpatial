@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
 using System.Text.RegularExpressions;
+using Unity.VisualScripting;
 
 /// <summary>
 /// Represents a single operator token in a polyhedron recipe.
@@ -437,8 +438,16 @@ public static class PolyhedronRecipeParser
 /// </summary>
 public static class PolyhedronRecipeBuilder
 {
-    public static (Vector3[], int[][], int[]) Build(PolyhedronRecipe recipe, int paletteColorsCount = 6)
+    /// <summary>
+    /// Tracks whether the vertex count upper bound was hit during the last Build operation.
+    /// </summary>
+    public static bool LastBuildHitVertexLimit { get; set; } = false;
+
+    public static (Vector3[], int[][], int[]) Build(PolyhedronRecipe recipe, int paletteColorsCount = 6, int maxVertices = 500)
     {
+
+        LastBuildHitVertexLimit = false;
+
         // Get base polyhedron
         (Vector3[], int[][], int[]) current = recipe.BasePolyhedron switch
         {
@@ -461,9 +470,10 @@ public static class PolyhedronRecipeBuilder
             int facesSidesFilter = Convert.ToInt32(token.Parameter("facesSidesFilter"));
 
             // introduce an upper bound complexity control
-            if (current.Item1.Length > 500)
+            if (maxVertices != -1 && current.Item1.Length > maxVertices)
             {
-                Debug.LogWarning($"Polyhedron complexity upper bound hit, stopping generation - recipe: {recipe.ToString()}, vertices: {current.Item1.Length}");
+                LastBuildHitVertexLimit = true;
+                Debug.LogWarning($"Polyhedron complexity upper bound hit, stopping generation - recipe: {recipe.ToString()}, vertices: {current.Item1.Length}, maxVertices: {maxVertices}");
                 break;
             }
 
