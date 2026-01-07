@@ -782,8 +782,9 @@ public class PolyhedronRecipeTests
                 );
         }
 
+        csv.Save("Complexities.csv");
 
-        // now sort by energy
+        // now sort by energy and see which recipes give the same relative complexity when applied to all the base polyhedra
 
         CsvTable csv2 = new();
         csv2.AddRow("T", "C", "O", "D", "I", "opSeq");
@@ -817,7 +818,7 @@ public class PolyhedronRecipeTests
             );
         }
 
-        csv2.Save("SortIdxByEnergy.csv");
+        csv2.Save("SortIdxByComplexity.csv");
 
     }
 
