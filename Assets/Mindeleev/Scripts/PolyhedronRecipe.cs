@@ -201,8 +201,14 @@ public class PolyhedronRecipe
 
     public override string ToString()
     {
-//         string ops = string.Concat(Tokens.Select(t => t.ToString()));
         string ops = OperatorsSequence();
+        string paletteStr = PaletteIdx.ToString("D2");
+        return $"{ops}{paletteStr}{BasePolyhedron}";
+    }
+
+    public string ToStringWithParameters()
+    {
+        string ops = OperatorsSequenceWithParameters();
         string paletteStr = PaletteIdx.ToString("D2");
         return $"{ops}{paletteStr}{BasePolyhedron}";
     }
@@ -216,8 +222,6 @@ public class PolyhedronRecipe
     {
         return string.Concat(Tokens.Select(t => t.ToStringWithParameters()));
     }
-
-
 
     /// <summary>
     /// Generates a human-readable name for the current recipe/emanation.
