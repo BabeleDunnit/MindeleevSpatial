@@ -41,6 +41,9 @@ public class Polytron : PolyhedronGenerator,
 
     internal bool isArchitron = false;
 
+    // Scoring system: tracks the sum of all emanation scores for this polytron
+    internal float totalPolytronScore = 0f;
+
     // MindeleevTable: a dedicated object holding the unique set of emanations
     // collected for this polytron. We keep a simple AddEmanation wrapper here
     // for backward compatibility with earlier code paths that call
@@ -54,7 +57,19 @@ public class Polytron : PolyhedronGenerator,
         if (mindeleevTable == null) mindeleevTable = new MindeleevTable();
         if (mindeleevTable.AddEmanation(recipe))
         {
-            Debug.Log($"[Polytron] polytron_id={sealNumber} added emanation='{recipe}'");
+            // Calculate and add emanation score
+            try
+            {
+                var parsed = PolyhedronRecipeParser.Parse(recipe);
+                float emanationScore = PolyhedronRecipeUtils.ComputeComplexity(parsed);
+                totalPolytronScore += emanationScore;
+                Debug.Log($"[Polytron] polytron_id={sealNumber} added emanation='{recipe}' with score={emanationScore:F2}, totalScore={totalPolytronScore:F2}");
+            }
+            catch (Exception ex)
+            {
+                Debug.LogWarning($"[Polytron] Failed to calculate score for emanation: {ex}");
+                Debug.Log($"[Polytron] polytron_id={sealNumber} added emanation='{recipe}'");
+            }
         }
     }
 

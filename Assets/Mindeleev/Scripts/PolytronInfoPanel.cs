@@ -324,7 +324,7 @@ public class PolytronInfoPanel : MonoBehaviour
                 break;
         }
 
-        bodyText_.text = $"Role: {roleText}\nLocation: {locText}\nRecipe: {state.Recipe}";
+        bodyText_.text = $"Role: {roleText}\nLocation: {locText}\nRecipe: {state.Recipe}\n";
 
         // Show emanations count and current selection index (if any)
         int emanationCount = 0;
@@ -337,7 +337,24 @@ public class PolytronInfoPanel : MonoBehaviour
 
         if (emanationCount > 0)
         {
-            bodyText_.text += $"\nEmanations: {emanationCount} (showing {currentIndex + 1}/{emanationCount})";
+            bodyText_.text += $"Emanations: {emanationCount} (showing {currentIndex + 1}/{emanationCount})\n";
+            
+            // Add score display
+            float currentEmanationScore = 0f;
+            var currentEmanationList = myPolytron.MindeleevTable.GetEmanationsList();
+            if (currentEmanationList.Count > 0 && myPolytron.MindeleevCursor >= 0 && myPolytron.MindeleevCursor < currentEmanationList.Count)
+            {
+                var currentRecipe = currentEmanationList[myPolytron.MindeleevCursor];
+                try
+                {
+                    var parsed = PolyhedronRecipeParser.Parse(currentRecipe);
+                    currentEmanationScore = PolyhedronRecipeUtils.ComputeComplexity(parsed);
+                }
+                catch { }
+            }
+            bodyText_.text += $"Scores: Total: {myPolytron.totalPolytronScore:F2},";
+            bodyText_.text += $"Emanation: {currentEmanationScore:F2}\n";
+            
             // enable Prev/Next buttons via text (UpdatePanelGUI will toggle visibility)
             if (button1 != null) button1Text = "Prev";
             if (button2 != null) button2Text = "Next";
@@ -589,11 +606,35 @@ public class PolytronInfoPanel : MonoBehaviour
             // Ensure cursor points to selected index (defensive)
             myPolytron.MindeleevCursor = idx;
             providerEngine.NotifyPolytronStateChanged(myPolytron);
+            
+            // Update score display after emanation change
+            UpdateEmanationScoreDisplay();
         }
         catch (Exception ex)
         {
             Debug.LogWarning($"[PolytronInfoPanel] Failed to apply emanation recipe: {ex}");
         }
+    }
+
+    /// <summary>
+    /// Updates and displays the current emanation score and total polytron score in the UI.
+    /// </summary>
+    private void UpdateEmanationScoreDisplay()
+    {
+        if (myPolytron == null)
+            return;
+
+        // Refresh the panel display to show updated scores
+        PolytronState state;
+        if (provider != null)
+        {
+            state = provider.ComputeState(myPolytron);
+        }
+        else
+        {
+            state = LocalPolytronStateEvaluator.ComputeState(myPolytron);
+        }
+        ApplyStateToPanel(state);
     }
 
     public void Activate(bool show)

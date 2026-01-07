@@ -774,7 +774,7 @@ public class MutatronEngine : MonoBehaviour, IPolytronStateProvider
     
     void Update()
     {
-        if (Input.GetKeyDown(KeyCode.M))
+        if (Input.GetKeyDown(KeyCode.L))
         {
             if (BuildLevel(levelCount))
             {

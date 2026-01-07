@@ -45,8 +45,9 @@ public static class PolyhedronRecipeUtils
     }
 
     /// <summary>
-    /// Computes a complexity score for a recipe.
+    /// Computes a complexity score for a recipe, including palette weight.
     /// 0 = trivial (just base polyhedron), higher = more complex.
+    /// Palette index contribution: 00 -> 0.0, 01 -> 2.0, 02 -> 1.89, ..., 10 -> 1.0
     /// </summary>
     public static float ComputeComplexity(PolyhedronRecipe recipe)
     {
@@ -73,9 +74,18 @@ public static class PolyhedronRecipeUtils
 
         float basePolyComplexity = basePolyComplexityMap.TryGetValue(recipe.BasePolyhedron, out var bpc) ? bpc : 1.0f;
 
+        // Palette index weight: 00 -> 0.0, 01 -> 2.0, 02 -> 1.89, ..., 10 -> 1.0
+        float paletteWeight = 0.0f;
+        if (recipe.PaletteIdx > 0 && recipe.PaletteIdx <= 10)
+        {
+            // Linear interpolation: 01 -> 2.0, 10 -> 1.0
+            // formula: 2.0 - (paletteIdx - 1) * (1.0 / 9) = 2.0 - (paletteIdx - 1) / 9
+            paletteWeight = 2.0f - ((recipe.PaletteIdx - 1) / 9.0f);
+        }
+
         // 1. Trivial recipe: only base polyhedron
         if (recipe.Tokens.Count == 0)
-            return basePolyComplexity;
+            return basePolyComplexity + paletteWeight;
 
         // 2. Operator complexity
         float opComplexity = 0f;
@@ -125,8 +135,8 @@ public static class PolyhedronRecipeUtils
             // If build fails, ignore visual complexity
         }
 
-        // Final weighted sum (tweak as desired)
-        float total = basePolyComplexity + opComplexity + lengthComplexity + paramComplexity + visualComplexity;
+        // Final weighted sum (tweak as desired), now including palette weight
+        float total = basePolyComplexity + paletteWeight + opComplexity + lengthComplexity + paramComplexity + visualComplexity;
         return total;
     }
 
