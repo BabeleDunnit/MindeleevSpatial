@@ -825,6 +825,9 @@ public class PolyhedronRecipeTests
     [Test]
     public void ComplexityUpperBound_FindSequenceSeedThreshold()
     {
+
+        Assert.AreEqual(1, 0);
+
         // Test to find the maximum operatorSequenceSeed value before hitting various vertex count upper bounds
         // For each complexity bound (500 to 5000 in steps of 20), enumerate recipes with increasing opSeqSeed
         // Stop when the polyhedron construction hits the bound for each base polyhedron
@@ -832,7 +835,7 @@ public class PolyhedronRecipeTests
 
         List<char> basePolyhedra = new List<char> { 'T', 'C', 'O', 'D', 'I' };
         List<int> complexityBounds = new List<int>();
-        for (int bound = 500; bound <= 500; bound += 200)
+        for (int bound = 500; bound <= 2000; bound += 100)
         {
             complexityBounds.Add(bound);
         }
@@ -867,7 +870,7 @@ public class PolyhedronRecipeTests
                 // Enumerate recipes with increasing operatorSequenceSeed
                 for (int opSeqSeed = 100; opSeqSeed < 5000; opSeqSeed++)
                 {
-                    if(opSeqSeed % 100 == 0)
+                    if (opSeqSeed % 100 == 0)
                     {
                         Debug.Log($"{bound},{opSeqSeed}");
                     }
@@ -919,6 +922,65 @@ public class PolyhedronRecipeTests
         Debug.Log($"Complexity upper bound threshold test saved to {filePath}");
     }
 
+    [Test]
+    public void Table_PolyhedraBuildStats()
+    {
+
+        Assert.AreEqual(1,0);
+
+        List<char> basePolyhedra = new List<char> { 'T', 'C', 'O', 'D', 'I' };
+
+        // Build output table
+        StringBuilder sb = new StringBuilder();
+        sb.AppendLine("Some Stats");
+        sb.AppendLine();
+
+        sb.Append("opSeqSeed");
+        sb.Append(",opSeq");
+
+        // Build header
+        foreach (char poly in basePolyhedra)
+        {
+            sb.Append($",{poly} vertices");
+            sb.Append($",{poly} complexity");
+        }
+        sb.AppendLine();
+
+        // For each base polyhedron
+
+        // Enumerate recipes with increasing operatorSequenceSeed
+        for (int opSeqSeed = 0; opSeqSeed <= 2000; opSeqSeed++)
+        {
+            sb.Append($"{opSeqSeed}");
+            string opSeq = PolyhedronRecipeKabbalah.IntToOperatorsSequence(opSeqSeed);
+            sb.Append($",{opSeq}");
+
+            foreach (char poly in basePolyhedra)
+            {
+
+                string recipeStr = opSeq + poly;
+                PolyhedronRecipe recipe = PolyhedronRecipeParser.Parse(recipeStr);
+
+                // Build with specific maxVertices limit (palette 01 for all)
+                var meshData = PolyhedronRecipeBuilder.Build(recipe, paletteColorsCount: 6, maxVertices: -1);
+
+                float complexity = PolyhedronRecipeUtils.ComputeComplexity(recipe);
+
+                sb.Append($",{meshData.Item1.Count()}");
+                sb.Append($",{complexity}");
+            }
+
+            sb.AppendLine();
+        }
+
+        // Print to console for visibility
+        Debug.Log(sb.ToString());
+
+        // Also save to file
+        string filePath = Path.Combine(".", "PolyhedraBuildStats.csv");
+        System.IO.File.WriteAllText(filePath, sb.ToString());
+        Debug.Log($"PolyhedraBuildStats saved to {filePath}");
+    }
 
     public class CsvTable
     {

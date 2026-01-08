@@ -122,7 +122,7 @@ public static class PolyhedronRecipeUtils
         float visualComplexity = 0f;
         try
         {
-            var tuple = PolyhedronRecipeBuilder.Build(recipe);
+            var tuple = PolyhedronRecipeBuilder.Build(recipe, maxVertices: -1);
             int v = tuple.Item1.Length;
             int f = tuple.Item2.Length;
             int c = tuple.Item3.Distinct().Count();
@@ -139,33 +139,6 @@ public static class PolyhedronRecipeUtils
         float total = basePolyComplexity + paletteWeight + opComplexity + lengthComplexity + paramComplexity + visualComplexity;
         return total;
     }
-
-    /*
-        public static HashSet<string> AllPermutationsWithRepetition(HashSet<char> chars, int maxLength)
-        {
-            var result = new HashSet<string> { "" }; // include the empty string for length 0
-
-            if (maxLength <= 0 || chars == null || chars.Count == 0)
-                return result;
-
-            var charArray = chars.ToArray();
-
-            for (int length = 1; length <= maxLength; length++)
-            {
-                var prev = result.Where(s => s.Length == length - 1).ToList();
-                foreach (var s in prev)
-                {
-                    foreach (var c in charArray)
-                    {
-                        result.Add(s + c);
-                    }
-                }
-            }
-
-            return result;
-        }
-
-        */
     
     public static List<string> AllPermutationsWithRepetition(HashSet<char> chars, int maxLength)
     {

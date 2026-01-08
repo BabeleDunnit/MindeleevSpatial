@@ -445,7 +445,6 @@ public static class PolyhedronRecipeBuilder
 
     public static (Vector3[], int[][], int[]) Build(PolyhedronRecipe recipe, int paletteColorsCount = 6, int maxVertices = 500)
     {
-
         LastBuildHitVertexLimit = false;
 
         // Get base polyhedron
