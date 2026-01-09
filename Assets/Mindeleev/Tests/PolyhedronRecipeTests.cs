@@ -842,9 +842,6 @@ public class PolyhedronRecipeTests
 
         // Build output table
         StringBuilder sb = new StringBuilder();
-        sb.AppendLine("Upper Bound Complexity Threshold Test");
-        sb.AppendLine("Maximum operatorSequenceSeed before hitting vertex count limits");
-        sb.AppendLine();
 
         // Build header
         sb.Append("vertices count upper bound");
@@ -870,11 +867,6 @@ public class PolyhedronRecipeTests
                 // Enumerate recipes with increasing operatorSequenceSeed
                 for (int opSeqSeed = 100; opSeqSeed < 5000; opSeqSeed++)
                 {
-                    if (opSeqSeed % 100 == 0)
-                    {
-                        Debug.Log($"{bound},{opSeqSeed}");
-                    }
-
                     string opSeq = PolyhedronRecipeKabbalah.IntToOperatorsSequence(opSeqSeed);
                     string recipeStr = opSeq + poly;
                     PolyhedronRecipe recipe = PolyhedronRecipeParser.Parse(recipeStr);
@@ -907,8 +899,6 @@ public class PolyhedronRecipeTests
                 sb.Append($",{maxRecipeStr}");
                 sb.Append($",{complexity}");
 
-
-
             }
             sb.AppendLine();
         }
@@ -932,8 +922,6 @@ public class PolyhedronRecipeTests
 
         // Build output table
         StringBuilder sb = new StringBuilder();
-        sb.AppendLine("Some Stats");
-        sb.AppendLine();
 
         sb.Append("opSeqSeed");
         sb.Append(",opSeq");

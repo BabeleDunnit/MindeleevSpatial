@@ -468,14 +468,6 @@ public static class PolyhedronRecipeBuilder
             int faceSignatureRounding = Convert.ToInt32(token.Parameter("faceSignatureRounding"));
             int facesSidesFilter = Convert.ToInt32(token.Parameter("facesSidesFilter"));
 
-            // introduce an upper bound complexity control
-            if (maxVertices != -1 && current.Item1.Length > maxVertices)
-            {
-                LastBuildHitVertexLimit = true;
-                Debug.LogWarning($"Polyhedron complexity upper bound hit, stopping generation - recipe: {recipe.ToString()}, vertices: {current.Item1.Length}, maxVertices: {maxVertices}");
-                break;
-            }
-
             switch (op)
             {
                 case "k":
@@ -525,6 +517,14 @@ public static class PolyhedronRecipeBuilder
                 default:
                     // Unknown operator: skip
                     break;
+            }
+
+            // introduce an upper bound complexity control
+            if (maxVertices != -1 && current.Item1.Length > maxVertices)
+            {
+                LastBuildHitVertexLimit = true;
+                Debug.LogWarning($"Polyhedron complexity upper bound hit, stopping generation - recipe: {recipe.ToString()}, vertices: {current.Item1.Length}, maxVertices: {maxVertices}");
+                break;
             }
         }
 
