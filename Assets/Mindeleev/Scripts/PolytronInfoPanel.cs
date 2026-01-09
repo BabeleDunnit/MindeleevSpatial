@@ -122,6 +122,8 @@ public class PolytronInfoPanel : MonoBehaviour
     IPolytronStateProvider provider;
     MutatronEngine providerEngine;
     Polytron myPolytron;
+    // Track last known genetic mode state to log transitions
+    private bool lastGeneticActive = false;
     // if state arrives before UI is built, keep it here and apply after UI creation
     private PolytronState? pendingState = null;
 
@@ -237,6 +239,7 @@ public class PolytronInfoPanel : MonoBehaviour
         providerEngine = provider as MutatronEngine;
         if (providerEngine != null)
         {
+            Debug.Log($"[PolytronInfoPanel] Found providerEngine, geneticModeActive={providerEngine.geneticModeActive}");
             providerEngine.OnPolytronStateChanged += OnPolytronStateChanged;
             // initialize panel with authoritative state
             var st = providerEngine.ComputeState(myPolytron);
@@ -264,6 +267,7 @@ public class PolytronInfoPanel : MonoBehaviour
     void OnPolytronStateChanged(Polytron p, PolytronState state)
     {
         if (p != myPolytron) return;
+        Debug.Log($"[PolytronInfoPanel] OnPolytronStateChanged called for polytron={p.sealNumber}, geneticModeActive={(providerEngine!=null?providerEngine.geneticModeActive:false)}");
         ApplyStateToPanel(state);
     }
 
@@ -335,10 +339,19 @@ public class PolytronInfoPanel : MonoBehaviour
             currentIndex = Mathf.Clamp(myPolytron.MindeleevCursor, 0, Math.Max(0, emanationCount - 1));
         }
 
+        // Detect genetic mode transitions and log. Also emit detailed state diagnostics
+        bool geneticActive = providerEngine != null && providerEngine.geneticModeActive;
+        Debug.Log($"[PolytronInfoPanel] ApplyStateToPanel: polytron={state.SealNumber}, role={state.Role}, interactive={state.Interactive}, location={state.Location}, geneticActive={geneticActive}");
+        if (geneticActive != lastGeneticActive)
+        {
+            Debug.Log($"[PolytronInfoPanel] Genetic mode transition for polytron {state.SealNumber}: {lastGeneticActive} -> {geneticActive}");
+            lastGeneticActive = geneticActive;
+        }
+
         if (emanationCount > 0)
         {
             bodyText_.text += $"Emanations: {emanationCount} (showing {currentIndex + 1}/{emanationCount})\n";
-            
+
             // Add score display
             float currentEmanationScore = 0f;
             var currentEmanationList = myPolytron.MindeleevTable.GetEmanationsList();
@@ -354,10 +367,30 @@ public class PolytronInfoPanel : MonoBehaviour
             }
             bodyText_.text += $"Scores: Total: {myPolytron.totalPolytronScore:F2},";
             bodyText_.text += $"Emanation: {currentEmanationScore:F2}\n";
-            
+
             // enable Prev/Next buttons via text (UpdatePanelGUI will toggle visibility)
-            if (button1 != null) button1Text = "Prev";
-            if (button2 != null) button2Text = "Next";
+            if (geneticActive && (state.Role == PolytronRole.Architron || state.Role == PolytronRole.ArchitronGenetic))
+            {
+                if (button1 != null) button1Text = "Breed";
+                Debug.Log($"[PolytronInfoPanel] Setting button1='Breed' for Architron {state.SealNumber}");
+                if (button2 != null) button2Text = "";
+                Debug.Log($"[PolytronInfoPanel] Hiding button2 (Next) for Architron {state.SealNumber}");
+            }
+            else if (geneticActive && state.Selection != SelectionSlot.None)
+            {
+                // Show Swap on the selected PARENT polytrons (Palette/Operators selectors), not on ephemeral GeneticFriend children
+                if (button1 != null) button1Text = "Swap";
+                Debug.Log($"[PolytronInfoPanel] Setting button1='Swap' for selected parent polytron {state.SealNumber} sel={state.Selection}");
+                if (button2 != null) button2Text = "";
+                Debug.Log($"[PolytronInfoPanel] Hiding button2 (Next) for selected parent polytron {state.SealNumber}");
+            }
+            else
+            {
+                if (button1 != null) button1Text = "Prev";
+                Debug.Log($"[PolytronInfoPanel] Setting button1='Prev' for polytron {state.SealNumber}");
+                if (button2 != null) button2Text = "Next";
+                Debug.Log($"[PolytronInfoPanel] Setting button2='Next' for polytron {state.SealNumber}");
+            }
         }
         else
         {
@@ -419,23 +452,47 @@ public class PolytronInfoPanel : MonoBehaviour
 
 
         // Button 4: Make Architron (only if not already architron and interactive and on mutatron)
+        // During genetic mode we hide this action to avoid conflicting UI with Breed/Swap.
         if (button4 != null)
         {
-            if (state.Role != PolytronRole.Architron && state.Role != PolytronRole.ArchitronGenetic
-                && state.Interactive
-                && (state.Location == PolytronLocation.Mutatron || state.Location == PolytronLocation.Home))
+            if (geneticActive)
             {
-                //                 button4.gameObject.SetActive(true);
-                button4Text = "Make Architron";
+                button4Text = ""; // hide during genetics
+                Debug.Log($"[PolytronInfoPanel] Hiding Make Architron for polytron {state.SealNumber} due to genetic mode");
             }
             else
             {
-                //                 button4.gameObject.SetActive(false);
-                button4Text = "";
+                if (state.Role != PolytronRole.Architron && state.Role != PolytronRole.ArchitronGenetic
+                    && state.Interactive
+                    && (state.Location == PolytronLocation.Mutatron || state.Location == PolytronLocation.Home))
+                {
+                    button4Text = "Make Architron";
+                    Debug.Log($"[PolytronInfoPanel] Showing Make Architron for polytron {state.SealNumber}");
+                }
+                else
+                {
+                    button4Text = "";
+                }
             }
         }
 
 
+
+        // Emit diagnostic snapshot of button texts and current active states before GUI update
+        try
+        {
+            var b1t = button1Text_ != null ? button1Text_.text : "<null>";
+            var b2t = button2Text_ != null ? button2Text_.text : "<null>";
+            var b3t = button3Text_ != null ? button3Text_.text : "<null>";
+            var b4t = button4Text_ != null ? button4Text_.text : "<null>";
+            bool b1Has = button1Text_ != null && !string.IsNullOrWhiteSpace(button1Text_.text);
+            bool b2Has = button2Text_ != null && !string.IsNullOrWhiteSpace(button2Text_.text);
+            bool b4Has = button4Text_ != null && !string.IsNullOrWhiteSpace(button4Text_.text);
+            bool b1ActiveBefore = button1 != null ? button1.gameObject.activeSelf : false;
+            bool b2ActiveBefore = button2 != null ? button2.gameObject.activeSelf : false;
+            Debug.Log($"[PolytronInfoPanel] Before UpdatePanelGUI: b1='{b1t}' has={b1Has} activeBefore={b1ActiveBefore}; b2='{b2t}' has={b2Has} activeBefore={b2ActiveBefore}; b4='{b4t}' has={b4Has}");
+        }
+        catch { }
 
         UpdatePanelGUI();
     }
@@ -475,6 +532,19 @@ public class PolytronInfoPanel : MonoBehaviour
         bool HasText(TextMeshProUGUI t) => t != null && !string.IsNullOrWhiteSpace(t.text);
 
         Debug.Assert(headerText_ != null);
+        // Diagnostic: log HasText results before toggling
+        try
+        {
+            bool h_header = HasText(headerText_);
+            bool h_body = HasText(bodyText_);
+            bool h_center = centerButtonText_ != null && HasText(centerButtonText_);
+            bool h_b1 = button1Text_ != null && HasText(button1Text_);
+            bool h_b2 = button2Text_ != null && HasText(button2Text_);
+            bool h_b3 = button3Text_ != null && HasText(button3Text_);
+            bool h_b4 = button4Text_ != null && HasText(button4Text_);
+            Debug.Log($"[PolytronInfoPanel] UpdatePanelGUI pre: header={h_header} body={h_body} center={h_center} b1={h_b1} b2={h_b2} b3={h_b3} b4={h_b4}");
+        }
+        catch { }
 
         headerText_.gameObject.SetActive(HasText(headerText_));
         bodyText_.gameObject.SetActive(HasText(bodyText_));
@@ -483,6 +553,13 @@ public class PolytronInfoPanel : MonoBehaviour
         button2.gameObject.SetActive(button2Text_ != null && HasText(button2Text_));
         button3.gameObject.SetActive(button3Text_ != null && HasText(button3Text_));
         button4.gameObject.SetActive(button4Text_ != null && HasText(button4Text_));
+
+        // Diagnostic: log activeSelf states after toggling
+        try
+        {
+            Debug.Log($"[PolytronInfoPanel] UpdatePanelGUI post: b1.active={button1.gameObject.activeSelf} b2.active={button2.gameObject.activeSelf} b4.active={button4.gameObject.activeSelf} b1.text='{(button1Text_!=null?button1Text_.text:"<null>")}' b2.text='{(button2Text_!=null?button2Text_.text:"<null>")}'");
+        }
+        catch { }
     }
 
     void Update()
@@ -511,6 +588,23 @@ public class PolytronInfoPanel : MonoBehaviour
         if (isVisible)
         {
             canvasComponent.transform.rotation = Quaternion.LookRotation(panelTransform.position - cameraTransform.position, Vector3.up /*+ new Vector3(30f, 30f, 30f)*/);
+        }
+
+        // Poll the provider's global genetic flag and force a panel refresh when it changes.
+        if (providerEngine != null)
+        {
+            bool globalGenetic = providerEngine.geneticModeActive;
+            if (globalGenetic != lastGeneticActive)
+            {
+                Debug.Log($"[PolytronInfoPanel] Detected geneticActive change in Update for polytron {myPolytron?.sealNumber}: {lastGeneticActive} -> {globalGenetic}");
+                lastGeneticActive = globalGenetic;
+                PolytronState st;
+                if (provider != null)
+                    st = provider.ComputeState(myPolytron);
+                else
+                    st = LocalPolytronStateEvaluator.ComputeState(myPolytron);
+                ApplyStateToPanel(st);
+            }
         }
 
     }
@@ -550,17 +644,43 @@ public class PolytronInfoPanel : MonoBehaviour
         // Prev / Next emanation (buttons 1 and 2)
         if (index == 1)
         {
+            // Handle genetic-mode special actions (Breed/Swap) if present
+            try
+            {
+                var txt = button1Text_ != null ? button1Text_.text : "";
+                if (txt == "Breed")
+                {
+                    Breed();
+                    return;
+                }
+                else if (txt == "Swap")
+                {
+                    Swap();
+                    return;
+                }
+            }
+            catch { }
+
             CycleEmanation(-1);
             return;
         }
 
         if (index == 2)
         {
-            CycleEmanation(1);
+            // Only cycle forward if Next is visible
+            try
+            {
+                var txt2 = button2Text_ != null ? button2Text_.text : "";
+                if (txt2 == "Next")
+                {
+                    CycleEmanation(1);
+                }
+            }
+            catch { }
             return;
         }
 
-        if (index == 4 && button4Text_.text == "Make Architron")
+        if (index == 4 && button4Text_ != null && button4Text_.text == "Make Architron")
         {
             Debug.Log("Changing Architron");
             mutatron.SetNewArchitron(GetComponent<Polytron>().sealNumber);
@@ -623,7 +743,6 @@ public class PolytronInfoPanel : MonoBehaviour
     {
         if (myPolytron == null)
             return;
-
         // Refresh the panel display to show updated scores
         PolytronState state;
         if (provider != null)
@@ -637,10 +756,22 @@ public class PolytronInfoPanel : MonoBehaviour
         ApplyStateToPanel(state);
     }
 
+    // Stub invoked when Breed button is pressed on Architron during genetic selection
+    public void Breed()
+    {
+        // intentionally empty: wiring point for genetic breed action
+    }
+
+    // Stub invoked when Swap button is pressed on selected genetic friends
+    public void Swap()
+    {
+        // intentionally empty: wiring point for swap action
+    }
+
+    // Activate or deactivate the panel externally
     public void Activate(bool show)
     {
-        //if (animCoroutine != null) StopCoroutine(animCoroutine);
-        // animCoroutine = StartCoroutine(AnimatePanel(show));
         mustActivate = show;
     }
+
 }
