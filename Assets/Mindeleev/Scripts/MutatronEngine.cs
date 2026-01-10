@@ -294,7 +294,7 @@ public class MutatronEngine : MonoBehaviour, IPolytronStateProvider
                 }
             }
 
-            Debug.Log($"[RebuildPolytronFromRecipe] polytron_id={p?.sealNumber.ToString() ?? "?"} oldRecipe={oldRecipe} newRecipe={r} location={location}");
+            // Debug.Log($"[RebuildPolytronFromRecipe] polytron_id={p?.sealNumber.ToString() ?? "?"} oldRecipe={oldRecipe} newRecipe={r} location={location}");
 
             p.recipe = r;
             p.RebuildMesh();
@@ -551,7 +551,7 @@ public class MutatronEngine : MonoBehaviour, IPolytronStateProvider
             // msg += $"Cell (ring={kvp.Key.ring}, idxInRing={kvp.Key.idxInRing}) has polytronic number = {kvp.Value}\n";
         }
 
-        msg += $"total quantized energy: {totalQuantizedEnergy}, most energy: {(energyCellsList.Count > 0 ? energyCellsList[0].ToString() : "none")}";
+        msg += $"total quantized energy: {totalQuantizedEnergy}, most energy: {(energyCellsList.Count > 0 ? "Ring: " + energyCellsList[0].Key.ring + ", idxInRing: " + energyCellsList[0].Key.idxInRing : "none")}";
         Debug.Log(msg);
     }
 

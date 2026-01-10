@@ -443,7 +443,7 @@ public static class PolyhedronRecipeBuilder
     /// </summary>
     public static bool LastBuildHitVertexLimit { get; set; } = false;
 
-    public static (Vector3[], int[][], int[]) Build(PolyhedronRecipe recipe, int paletteColorsCount = 6, int maxVertices = 500)
+    public static (Vector3[], int[][], int[]) Build(PolyhedronRecipe recipe, int paletteColorsCount = 6, int maxVertices = 600)
     {
         LastBuildHitVertexLimit = false;
 

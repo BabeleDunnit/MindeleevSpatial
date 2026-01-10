@@ -63,7 +63,7 @@ public class Polytron : PolyhedronGenerator,
                 var parsed = PolyhedronRecipeParser.Parse(recipe);
                 float emanationScore = PolyhedronRecipeUtils.ComputeComplexity(parsed);
                 totalPolytronScore += emanationScore;
-                Debug.Log($"[Polytron] polytron_id={sealNumber} added emanation='{recipe}' with score={emanationScore:F2}, totalScore={totalPolytronScore:F2}");
+                // Debug.Log($"[Polytron] polytron_id={sealNumber} added emanation='{recipe}' with score={emanationScore:F2}, totalScore={totalPolytronScore:F2}");
             }
             catch (Exception ex)
             {

@@ -267,7 +267,7 @@ public class PolytronInfoPanel : MonoBehaviour
     void OnPolytronStateChanged(Polytron p, PolytronState state)
     {
         if (p != myPolytron) return;
-        Debug.Log($"[PolytronInfoPanel] OnPolytronStateChanged called for polytron={p.sealNumber}, geneticModeActive={(providerEngine!=null?providerEngine.geneticModeActive:false)}");
+        // Debug.Log($"[PolytronInfoPanel] OnPolytronStateChanged called for polytron={p.sealNumber}, geneticModeActive={(providerEngine!=null?providerEngine.geneticModeActive:false)}");
         ApplyStateToPanel(state);
     }
 
@@ -341,10 +341,10 @@ public class PolytronInfoPanel : MonoBehaviour
 
         // Detect genetic mode transitions and log. Also emit detailed state diagnostics
         bool geneticActive = providerEngine != null && providerEngine.geneticModeActive;
-        Debug.Log($"[PolytronInfoPanel] ApplyStateToPanel: polytron={state.SealNumber}, role={state.Role}, interactive={state.Interactive}, location={state.Location}, geneticActive={geneticActive}");
+        // Debug.Log($"[PolytronInfoPanel] ApplyStateToPanel: polytron={state.SealNumber}, role={state.Role}, interactive={state.Interactive}, location={state.Location}, geneticActive={geneticActive}");
         if (geneticActive != lastGeneticActive)
         {
-            Debug.Log($"[PolytronInfoPanel] Genetic mode transition for polytron {state.SealNumber}: {lastGeneticActive} -> {geneticActive}");
+            // Debug.Log($"[PolytronInfoPanel] Genetic mode transition for polytron {state.SealNumber}: {lastGeneticActive} -> {geneticActive}");
             lastGeneticActive = geneticActive;
         }
 
@@ -372,24 +372,24 @@ public class PolytronInfoPanel : MonoBehaviour
             if (geneticActive && (state.Role == PolytronRole.Architron || state.Role == PolytronRole.ArchitronGenetic))
             {
                 if (button1 != null) button1Text = "Breed";
-                Debug.Log($"[PolytronInfoPanel] Setting button1='Breed' for Architron {state.SealNumber}");
+                //Debug.Log($"[PolytronInfoPanel] Setting button1='Breed' for Architron {state.SealNumber}");
                 if (button2 != null) button2Text = "";
-                Debug.Log($"[PolytronInfoPanel] Hiding button2 (Next) for Architron {state.SealNumber}");
+                //Debug.Log($"[PolytronInfoPanel] Hiding button2 (Next) for Architron {state.SealNumber}");
             }
             else if (geneticActive && state.Selection != SelectionSlot.None)
             {
                 // Show Swap on the selected PARENT polytrons (Palette/Operators selectors), not on ephemeral GeneticFriend children
                 if (button1 != null) button1Text = "Swap";
-                Debug.Log($"[PolytronInfoPanel] Setting button1='Swap' for selected parent polytron {state.SealNumber} sel={state.Selection}");
+                // Debug.Log($"[PolytronInfoPanel] Setting button1='Swap' for selected parent polytron {state.SealNumber} sel={state.Selection}");
                 if (button2 != null) button2Text = "";
-                Debug.Log($"[PolytronInfoPanel] Hiding button2 (Next) for selected parent polytron {state.SealNumber}");
+                //Debug.Log($"[PolytronInfoPanel] Hiding button2 (Next) for selected parent polytron {state.SealNumber}");
             }
             else
             {
                 if (button1 != null) button1Text = "Prev";
-                Debug.Log($"[PolytronInfoPanel] Setting button1='Prev' for polytron {state.SealNumber}");
+                //Debug.Log($"[PolytronInfoPanel] Setting button1='Prev' for polytron {state.SealNumber}");
                 if (button2 != null) button2Text = "Next";
-                Debug.Log($"[PolytronInfoPanel] Setting button2='Next' for polytron {state.SealNumber}");
+                //Debug.Log($"[PolytronInfoPanel] Setting button2='Next' for polytron {state.SealNumber}");
             }
         }
         else
@@ -458,7 +458,7 @@ public class PolytronInfoPanel : MonoBehaviour
             if (geneticActive)
             {
                 button4Text = ""; // hide during genetics
-                Debug.Log($"[PolytronInfoPanel] Hiding Make Architron for polytron {state.SealNumber} due to genetic mode");
+                // Debug.Log($"[PolytronInfoPanel] Hiding Make Architron for polytron {state.SealNumber} due to genetic mode");
             }
             else
             {
@@ -467,7 +467,7 @@ public class PolytronInfoPanel : MonoBehaviour
                     && (state.Location == PolytronLocation.Mutatron || state.Location == PolytronLocation.Home))
                 {
                     button4Text = "Make Architron";
-                    Debug.Log($"[PolytronInfoPanel] Showing Make Architron for polytron {state.SealNumber}");
+                    // Debug.Log($"[PolytronInfoPanel] Showing Make Architron for polytron {state.SealNumber}");
                 }
                 else
                 {
@@ -490,7 +490,7 @@ public class PolytronInfoPanel : MonoBehaviour
             bool b4Has = button4Text_ != null && !string.IsNullOrWhiteSpace(button4Text_.text);
             bool b1ActiveBefore = button1 != null ? button1.gameObject.activeSelf : false;
             bool b2ActiveBefore = button2 != null ? button2.gameObject.activeSelf : false;
-            Debug.Log($"[PolytronInfoPanel] Before UpdatePanelGUI: b1='{b1t}' has={b1Has} activeBefore={b1ActiveBefore}; b2='{b2t}' has={b2Has} activeBefore={b2ActiveBefore}; b4='{b4t}' has={b4Has}");
+            // Debug.Log($"[PolytronInfoPanel] Before UpdatePanelGUI: b1='{b1t}' has={b1Has} activeBefore={b1ActiveBefore}; b2='{b2t}' has={b2Has} activeBefore={b2ActiveBefore}; b4='{b4t}' has={b4Has}");
         }
         catch { }
 
@@ -542,7 +542,7 @@ public class PolytronInfoPanel : MonoBehaviour
             bool h_b2 = button2Text_ != null && HasText(button2Text_);
             bool h_b3 = button3Text_ != null && HasText(button3Text_);
             bool h_b4 = button4Text_ != null && HasText(button4Text_);
-            Debug.Log($"[PolytronInfoPanel] UpdatePanelGUI pre: header={h_header} body={h_body} center={h_center} b1={h_b1} b2={h_b2} b3={h_b3} b4={h_b4}");
+            // Debug.Log($"[PolytronInfoPanel] UpdatePanelGUI pre: header={h_header} body={h_body} center={h_center} b1={h_b1} b2={h_b2} b3={h_b3} b4={h_b4}");
         }
         catch { }
 
@@ -557,7 +557,7 @@ public class PolytronInfoPanel : MonoBehaviour
         // Diagnostic: log activeSelf states after toggling
         try
         {
-            Debug.Log($"[PolytronInfoPanel] UpdatePanelGUI post: b1.active={button1.gameObject.activeSelf} b2.active={button2.gameObject.activeSelf} b4.active={button4.gameObject.activeSelf} b1.text='{(button1Text_!=null?button1Text_.text:"<null>")}' b2.text='{(button2Text_!=null?button2Text_.text:"<null>")}'");
+            // Debug.Log($"[PolytronInfoPanel] UpdatePanelGUI post: b1.active={button1.gameObject.activeSelf} b2.active={button2.gameObject.activeSelf} b4.active={button4.gameObject.activeSelf} b1.text='{(button1Text_!=null?button1Text_.text:"<null>")}' b2.text='{(button2Text_!=null?button2Text_.text:"<null>")}'");
         }
         catch { }
     }
@@ -725,8 +725,18 @@ public class PolytronInfoPanel : MonoBehaviour
             myPolytron.AddEmanation(recipe);
             // Ensure cursor points to selected index (defensive)
             myPolytron.MindeleevCursor = idx;
+            // Rewrite the bound tile's emanation from this polytron emanation
+            try
+            {
+                RewriteTileEmanationFromRecipe(recipe);
+            }
+            catch (Exception ex)
+            {
+                Debug.LogWarning($"[PolytronInfoPanel] RewriteTileEmanationFromRecipe failed: {ex}");
+            }
+
             providerEngine.NotifyPolytronStateChanged(myPolytron);
-            
+
             // Update score display after emanation change
             UpdateEmanationScoreDisplay();
         }
@@ -734,6 +744,45 @@ public class PolytronInfoPanel : MonoBehaviour
         {
             Debug.LogWarning($"[PolytronInfoPanel] Failed to apply emanation recipe: {ex}");
         }
+    }
+
+    // Helper that rewrites the tile polytronicNumber from a polytron recipe string
+    void RewriteTileEmanationFromRecipe(string recipe)
+    {
+        if (myPolytron == null) return;
+        if (string.IsNullOrEmpty(recipe)) return;
+
+        int seed = PolyhedronRecipeKabbalah.RecipeToInt(recipe, false);
+        if (seed < 0)
+        {
+            Debug.LogWarning($"[PolytronInfoPanel] RewriteTileEmanationFromRecipe: invalid seed for recipe '{recipe}'");
+            return;
+        }
+
+        var sink = myPolytron.boundSink;
+        if (sink == null)
+        {
+            Debug.LogWarning($"[PolytronInfoPanel] RewriteTileEmanationFromRecipe: polytron {myPolytron.sealNumber} not bound to a sink");
+            return;
+        }
+
+        var coord = sink.hexCoord;
+        if (providerEngine == null)
+        {
+            Debug.LogWarning("[PolytronInfoPanel] RewriteTileEmanationFromRecipe: providerEngine not set");
+            return;
+        }
+
+        if (!providerEngine.gridCellsMap.TryGetValue(coord, out var cell))
+        {
+            Debug.LogWarning($"[PolytronInfoPanel] RewriteTileEmanationFromRecipe: no cell for coord {coord}");
+            return;
+        }
+
+        cell.polytronicNumber = seed;
+        string newTileRecipe = PolyhedronRecipeKabbalah.IntToOperatorsSequence(seed) + cell.tileBasePolyhedron;
+        Debug.Log($"[PolytronInfoPanel] RewriteTileEmanationFromRecipe: setting polytronicNumber={seed} at ring={cell.ring} idx={cell.idxInRing} recipe={newTileRecipe}");
+        providerEngine.RebuildTileMesh(coord, newTileRecipe);
     }
 
     /// <summary>
@@ -765,71 +814,7 @@ public class PolytronInfoPanel : MonoBehaviour
     // Stub invoked when Swap button is pressed on selected genetic friends
     public void Swap()
     {
-        try
-        {
-            if (myPolytron == null)
-            {
-                Debug.LogWarning("[PolytronInfoPanel.Swap] no polytron attached to panel");
-                return;
-            }
-            if (myPolytron.MindeleevTable == null)
-            {
-                Debug.LogWarning($"[PolytronInfoPanel.Swap] polytron {myPolytron.sealNumber} has no MindeleevTable");
-                return;
-            }
-            var list = myPolytron.MindeleevTable.GetEmanationsList();
-            if (list == null || list.Count == 0)
-            {
-                Debug.LogWarning($"[PolytronInfoPanel.Swap] polytron {myPolytron.sealNumber} has no emanations to swap");
-                return;
-            }
-
-            int idx = Mathf.Clamp(myPolytron.MindeleevCursor, 0, list.Count - 1);
-            string selectedRecipe = list[idx];
-            Debug.Log($"[PolytronInfoPanel.Swap] polytron {myPolytron.sealNumber} swapping emanation index={idx} recipe={selectedRecipe}");
-
-            // derive integer seed from recipe (operators sequence only)
-            int seed = PolyhedronRecipeKabbalah.RecipeToInt(selectedRecipe, false);
-            if (seed < 0)
-            {
-                Debug.LogWarning($"[PolytronInfoPanel.Swap] failed to compute seed from recipe '{selectedRecipe}'");
-                return;
-            }
-
-            // ensure polytron is bound to a sink/tile
-            var sink = myPolytron.boundSink;
-            if (sink == null)
-            {
-                Debug.LogWarning($"[PolytronInfoPanel.Swap] polytron {myPolytron.sealNumber} is not bound to a sink, cannot swap tile");
-                return;
-            }
-
-            var coord = sink.hexCoord;
-            if (providerEngine == null)
-            {
-                Debug.LogWarning("[PolytronInfoPanel.Swap] providerEngine not available");
-                return;
-            }
-
-            if (!providerEngine.gridCellsMap.TryGetValue(coord, out var cell))
-            {
-                Debug.LogWarning($"[PolytronInfoPanel.Swap] no cell found for coord {coord}");
-                return;
-            }
-
-            // set the polytronicNumber and rebuild tile mesh
-            cell.polytronicNumber = seed;
-            string newTileRecipe = PolyhedronRecipeKabbalah.IntToOperatorsSequence(seed) + cell.tileBasePolyhedron;
-            Debug.Log($"[PolytronInfoPanel.Swap] Setting cell.polytronicNumber={seed} for tile at ring={cell.ring} idx={cell.idxInRing}, recipe={newTileRecipe}");
-            providerEngine.RebuildTileMesh(coord, newTileRecipe);
-
-            // notify engine that polytron/tile state has changed
-            providerEngine.NotifyPolytronStateChanged(myPolytron);
-        }
-        catch (Exception ex)
-        {
-            Debug.LogWarning($"[PolytronInfoPanel.Swap] exception: {ex}");
-        }
+        // intentionally empty: wiring point for swap action
     }
 
     // Activate or deactivate the panel externally
