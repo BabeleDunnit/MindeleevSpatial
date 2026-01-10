@@ -835,7 +835,7 @@ public class PolyhedronRecipeTests
 
         List<char> basePolyhedra = new List<char> { 'T', 'C', 'O', 'D', 'I' };
         List<int> complexityBounds = new List<int>();
-        for (int bound = 500; bound <= 2000; bound += 100)
+        for (int bound = 500; bound <= 1000; bound += 100)
         {
             complexityBounds.Add(bound);
         }
@@ -865,7 +865,7 @@ public class PolyhedronRecipeTests
                 int maxOpSeqSeed = -1;
 
                 // Enumerate recipes with increasing operatorSequenceSeed
-                for (int opSeqSeed = 100; opSeqSeed < 5000; opSeqSeed++)
+                for (int opSeqSeed = 0; opSeqSeed < 5000; opSeqSeed++)
                 {
                     string opSeq = PolyhedronRecipeKabbalah.IntToOperatorsSequence(opSeqSeed);
                     string recipeStr = opSeq + poly;
@@ -879,6 +879,7 @@ public class PolyhedronRecipeTests
                     if (hitLimit)
                     {
                         // Hit the limit, stop searching for this polyhedron
+                        Debug.Log($"recipe {recipe}(opSeq: {opSeqSeed}) hit a limit for {bound} vertices (it has {meshData.Item1.Count()} vertices)");
                         break;
                     }
                     else

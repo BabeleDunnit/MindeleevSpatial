@@ -765,7 +765,71 @@ public class PolytronInfoPanel : MonoBehaviour
     // Stub invoked when Swap button is pressed on selected genetic friends
     public void Swap()
     {
-        // intentionally empty: wiring point for swap action
+        try
+        {
+            if (myPolytron == null)
+            {
+                Debug.LogWarning("[PolytronInfoPanel.Swap] no polytron attached to panel");
+                return;
+            }
+            if (myPolytron.MindeleevTable == null)
+            {
+                Debug.LogWarning($"[PolytronInfoPanel.Swap] polytron {myPolytron.sealNumber} has no MindeleevTable");
+                return;
+            }
+            var list = myPolytron.MindeleevTable.GetEmanationsList();
+            if (list == null || list.Count == 0)
+            {
+                Debug.LogWarning($"[PolytronInfoPanel.Swap] polytron {myPolytron.sealNumber} has no emanations to swap");
+                return;
+            }
+
+            int idx = Mathf.Clamp(myPolytron.MindeleevCursor, 0, list.Count - 1);
+            string selectedRecipe = list[idx];
+            Debug.Log($"[PolytronInfoPanel.Swap] polytron {myPolytron.sealNumber} swapping emanation index={idx} recipe={selectedRecipe}");
+
+            // derive integer seed from recipe (operators sequence only)
+            int seed = PolyhedronRecipeKabbalah.RecipeToInt(selectedRecipe, false);
+            if (seed < 0)
+            {
+                Debug.LogWarning($"[PolytronInfoPanel.Swap] failed to compute seed from recipe '{selectedRecipe}'");
+                return;
+            }
+
+            // ensure polytron is bound to a sink/tile
+            var sink = myPolytron.boundSink;
+            if (sink == null)
+            {
+                Debug.LogWarning($"[PolytronInfoPanel.Swap] polytron {myPolytron.sealNumber} is not bound to a sink, cannot swap tile");
+                return;
+            }
+
+            var coord = sink.hexCoord;
+            if (providerEngine == null)
+            {
+                Debug.LogWarning("[PolytronInfoPanel.Swap] providerEngine not available");
+                return;
+            }
+
+            if (!providerEngine.gridCellsMap.TryGetValue(coord, out var cell))
+            {
+                Debug.LogWarning($"[PolytronInfoPanel.Swap] no cell found for coord {coord}");
+                return;
+            }
+
+            // set the polytronicNumber and rebuild tile mesh
+            cell.polytronicNumber = seed;
+            string newTileRecipe = PolyhedronRecipeKabbalah.IntToOperatorsSequence(seed) + cell.tileBasePolyhedron;
+            Debug.Log($"[PolytronInfoPanel.Swap] Setting cell.polytronicNumber={seed} for tile at ring={cell.ring} idx={cell.idxInRing}, recipe={newTileRecipe}");
+            providerEngine.RebuildTileMesh(coord, newTileRecipe);
+
+            // notify engine that polytron/tile state has changed
+            providerEngine.NotifyPolytronStateChanged(myPolytron);
+        }
+        catch (Exception ex)
+        {
+            Debug.LogWarning($"[PolytronInfoPanel.Swap] exception: {ex}");
+        }
     }
 
     // Activate or deactivate the panel externally

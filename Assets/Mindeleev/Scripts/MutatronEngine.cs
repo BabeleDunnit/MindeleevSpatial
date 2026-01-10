@@ -913,6 +913,13 @@ public class MutatronEngine : MonoBehaviour, IPolytronStateProvider
     // expose genetic active state for SelectionManager and other callers
     internal bool geneticModeActive => geneticsManager != null && geneticsManager.GeneticModeActive;
 
+    // Expose a safe wrapper to rebuild a single tile mesh from external callers.
+    public void RebuildTileMesh(HexCoord coord, string recipe)
+    {
+        if (gridManager != null)
+            gridManager.RebuildTileMesh(coord, recipe);
+    }
+
     internal void DeselectAllPolytrons()
     {
         if (selectionManager != null) selectionManager.DeselectAllPolytrons();
