@@ -137,6 +137,8 @@ public class Polytron : PolyhedronGenerator,
         }
         else
         {
+            Debug.Assert(false);
+
             // fallback local behaviour
             PointerOutlineStateController csc = GetComponent<PointerOutlineStateController>();
             csc?.AdvanceState();
@@ -177,10 +179,12 @@ public class Polytron : PolyhedronGenerator,
 
     public void OnScroll(PointerEventData eventData)
     {
+        /*
         if (!interactive) return;
         PointerOutlineStateController csc = GetComponent<PointerOutlineStateController>();
         csc.AdvanceState();
-
+        */
+        
         Debug.Log($"[PointerEvent] Scroll on {gameObject.name}, delta: {eventData.scrollDelta}");
     }
 

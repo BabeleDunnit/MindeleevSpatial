@@ -49,6 +49,8 @@ public class PointerOutlineStateController : MonoBehaviour
     /// </summary>
     public void AdvanceState()
     {
+        Debug.Assert(false);
+
         currentState = (currentState + 1) % states.Count;
         ApplyState();
     }

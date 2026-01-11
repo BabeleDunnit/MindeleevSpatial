@@ -2,6 +2,7 @@ using UnityEngine;
 using System;
 using UnityEngine.UI;
 using System.Collections;
+using System.Collections.Generic;
 using TMPro;
 using System.Linq;
 
@@ -29,12 +30,20 @@ public class PolytronInfoPanel : MonoBehaviour
     TextMeshProUGUI bodyText_;
     Button centerButton;
     TextMeshProUGUI centerButtonText_;
+
+    // left top
     Button button1;
     TextMeshProUGUI button1Text_;
+
+    // left bottom
     Button button2;
     TextMeshProUGUI button2Text_;
+
+    // right top
     Button button3;
     TextMeshProUGUI button3Text_;
+
+    // right bottom
     Button button4;
     TextMeshProUGUI button4Text_;
 
@@ -387,9 +396,20 @@ public class PolytronInfoPanel : MonoBehaviour
             else
             {
                 if (button1 != null) button1Text = "Prev";
-                //Debug.Log($"[PolytronInfoPanel] Setting button1='Prev' for polytron {state.SealNumber}");
+                Debug.Log($"[PolytronInfoPanel] Setting button1='Prev' for polytron {state.SealNumber}");
                 if (button2 != null) button2Text = "Next";
-                //Debug.Log($"[PolytronInfoPanel] Setting button2='Next' for polytron {state.SealNumber}");
+                Debug.Log($"[PolytronInfoPanel] Setting button2='Next' for polytron {state.SealNumber}");
+            }
+
+            // Button3: Entangle (only for Architron in normal mode)
+            if (!geneticActive && state.Role == PolytronRole.Architron)
+            {
+                if (button3 != null) button3Text = "Entangle";
+                Debug.Log($"[PolytronInfoPanel] Setting button3='Entangle' for Architron {state.SealNumber}");
+            }
+            else
+            {
+                if (button3 != null) button3Text = "";
             }
         }
         else
@@ -680,6 +700,17 @@ public class PolytronInfoPanel : MonoBehaviour
             return;
         }
 
+        if (index == 3)
+        {
+            // Entangle action for Architron (may be empty stub)
+            try
+            {
+                Entangle();
+            }
+            catch { }
+            return;
+        }
+
         if (index == 4 && button4Text_ != null && button4Text_.text == "Make Architron")
         {
             Debug.Log("Changing Architron");
@@ -713,6 +744,7 @@ public class PolytronInfoPanel : MonoBehaviour
 
             myPolytron.recipe = recipe;
             myPolytron.RebuildMesh();
+            myPolytron.GetComponent<PointerOutlineStateController>().OnHoverEnter();
 
             int? newMeshId = null;
             try { newMeshId = mf?.mesh != null ? (int?)mf.mesh.GetInstanceID() : null; } catch { newMeshId = null; }
@@ -816,6 +848,76 @@ public class PolytronInfoPanel : MonoBehaviour
     {
         // intentionally empty: wiring point for swap action
     }
+
+    // Stub invoked when Entangle button is pressed on Architron in normal mode
+    public void Entangle()
+    {
+        Debug.Log($"[PolytronInfoPanel] Entangle invoked on polytron {myPolytron?.sealNumber}");
+        try
+        {
+            if (myPolytron == null || providerEngine == null) return;
+            if (!myPolytron.isArchitron)
+            {
+                Debug.Log("[PolytronInfoPanel] Entangle: current panel is not Architron");
+                return;
+            }
+
+            // Toggle behavior
+            entangleActive = !entangleActive;
+            if (!entangleActive)
+            {
+                // turn off: restore previously entangled outlines
+                foreach (var p in entangledPolytrons)
+                {
+                    if (p == null) continue;
+                    var outline = p.GetComponent<PointerOutlineStateController>();
+                    outline?.SetState(0);
+                }
+                entangledPolytrons.Clear();
+                Debug.Log("[PolytronInfoPanel] Entangle disabled, restored outlines");
+                return;
+            }
+
+            // enable: compute target operators sequence from Architron's next missing seed
+            var arch = providerEngine.polytrons[providerEngine.architronIdx];
+            if (arch == null)
+            {
+                Debug.LogWarning("[PolytronInfoPanel] Entangle: Architron not found");
+                entangleActive = false;
+                return;
+            }
+
+            int seed = arch.MindeleevTable.NextMissingPolytronicNumber();
+            string targetOps = PolyhedronRecipeKabbalah.IntToOperatorsSequence(seed);
+            Debug.Log($"[PolytronInfoPanel] Entangle: target seed={seed} ops='{targetOps}'");
+
+            // Find polytrons with matching operators sequence and set outline state 3
+            foreach (var p in providerEngine.polytrons)
+            {
+                if (p == null) continue;
+                var ops = p._recipe?.OperatorsSequence() ?? "";
+                if (ops == targetOps)
+                {
+                    var outline = p.GetComponent<PointerOutlineStateController>();
+                    if (outline != null)
+                    {
+                        outline.SetState(3);
+                        entangledPolytrons.Add(p);
+                    }
+                }
+            }
+
+            Debug.Log($"[PolytronInfoPanel] Entangle enabled, matched {entangledPolytrons.Count} polytrons");
+        }
+        catch (Exception ex)
+        {
+            Debug.LogWarning($"[PolytronInfoPanel] Entangle exception: {ex}");
+        }
+    }
+
+    // Entangle toggle state and matched list
+    private bool entangleActive = false;
+    private List<Polytron> entangledPolytrons = new List<Polytron>();
 
     // Activate or deactivate the panel externally
     public void Activate(bool show)
