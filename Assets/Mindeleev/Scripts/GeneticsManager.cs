@@ -139,12 +139,29 @@ public class GeneticsManager
 
         GeneticModeActive = geneticFriends.Count > 0;
 
-        if (engine.selectionManager != null && engine.selectionManager.ArchitronSavedRecipeForSelection != null)
+        // If two parents are selected, override the Architron's operators
+        // sequence temporarily to the next missing polytronic number for the
+        // Architron (do not record this as an emanation).
+        if (engine.selectionManager != null && engine.selectionManager.PaletteSelector != null && engine.selectionManager.OperatorsSelector != null)
         {
-            engine.ApplyRecipeToArchitron(engine.selectionManager.ArchitronSavedRecipeForSelection);
+            try
+            {
+                int nextSeed = arch.MindeleevTable.NextMissingPolytronicNumber();
+                string ops = PolyhedronRecipeKabbalah.IntToOperatorsSequence(nextSeed);
+                string radix = engine.GetRadixRecipe(arch); // paletteIdx + basePoly
+                string tempRecipe = ops + radix;
+                Debug.Log($"[GeneticsManager] Applying temporary Architron recipe for next missing seed={nextSeed}: {tempRecipe}");
+                engine.ApplyRecipeToArchitron(tempRecipe);
+            }
+            catch (System.Exception ex)
+            {
+                Debug.LogWarning($"[GeneticsManager] Failed to apply temporary Architron recipe: {ex}");
+                engine.ApplyRecipeToArchitron(arch.recipe);
+            }
         }
         else
         {
+            // no selectors; keep arch default
             engine.ApplyRecipeToArchitron(arch.recipe);
         }
 
@@ -206,6 +223,26 @@ public class GeneticsManager
         engine.NotifyPolytronStateChanged(engine.polytrons[engine.architronIdx]);
 
         GeneticModeActive = geneticReturning.Count > 0 || geneticFriends.Count > 0;
+        // If genetic mode fully ended, restore Architron original recipe if available
+        if (!GeneticModeActive)
+        {
+            try
+            {
+                var arch = engine.polytrons[engine.architronIdx];
+                if (engine.selectionManager != null && engine.selectionManager.ArchitronSavedRecipeForSelection != null)
+                {
+                    engine.ApplyRecipeToArchitron(engine.selectionManager.ArchitronSavedRecipeForSelection);
+                }
+                else if (arch != null)
+                {
+                    engine.ApplyRecipeToArchitron(arch.recipe);
+                }
+            }
+            catch (System.Exception ex)
+            {
+                Debug.LogWarning($"[GeneticsManager] Failed to restore Architron recipe on genetic end: {ex}");
+            }
+        }
     }
 
     internal void AbortPendingGeneticReturnImmediate()
