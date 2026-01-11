@@ -1039,6 +1039,24 @@ public class MutatronEngine : MonoBehaviour, IPolytronStateProvider
         return paletteIdxStr + baseChar;
     }
 
+    // Extract radix (palette index + base polyhedron) from an arbitrary recipe string.
+    // Uses the parser to obtain the same semantics as GetRadixRecipe(Polytron).
+    internal string GetRadixRecipeFromString(string recipe)
+    {
+        if (string.IsNullOrEmpty(recipe)) return "";
+        try
+        {
+            var parsed = PolyhedronRecipeParser.Parse(recipe);
+            string paletteIdxStr = parsed.PaletteIdx.ToString("D2");
+            char baseChar = parsed.BasePolyhedron;
+            return paletteIdxStr + baseChar;
+        }
+        catch
+        {
+            return "";
+        }
+    }
+
     // --- Genetic feature helpers ---
 
     // Compute cartesian product of ops / palette / base between two polytrons.

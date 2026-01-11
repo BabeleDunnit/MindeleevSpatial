@@ -148,7 +148,14 @@ public class GeneticsManager
             {
                 int nextSeed = arch.MindeleevTable.NextMissingPolytronicNumber();
                 string ops = PolyhedronRecipeKabbalah.IntToOperatorsSequence(nextSeed);
-                string radix = engine.GetRadixRecipe(arch); // paletteIdx + basePoly
+                // Prefer the saved Architron recipe's radix if present (preserves original Architron palette/base),
+                // otherwise fall back to the arch's current radix.
+                string radix = "";
+                if (engine.selectionManager != null && !string.IsNullOrEmpty(engine.selectionManager.ArchitronSavedRecipeForSelection))
+                {
+                    radix = engine.GetRadixRecipeFromString(engine.selectionManager.ArchitronSavedRecipeForSelection);
+                }
+                if (string.IsNullOrEmpty(radix)) radix = engine.GetRadixRecipe(arch);
                 string tempRecipe = ops + radix;
                 Debug.Log($"[GeneticsManager] Applying temporary Architron recipe for next missing seed={nextSeed}: {tempRecipe}");
                 engine.ApplyRecipeToArchitron(tempRecipe);
