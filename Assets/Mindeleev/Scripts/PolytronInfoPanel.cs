@@ -328,7 +328,7 @@ public class PolytronInfoPanel : MonoBehaviour
                 break;
         }
 
-        bodyText_.text = $"Role: {roleText}\nLocation: {locText}\nRecipe: {state.Recipe}\n";
+        bodyText_.text = $"Role: {roleText}\nLocation: {locText}\nRecipe: {state.Recipe}, Seed: {myPolytron.MindeleevTable.GetPolytronicNumber(state.Recipe)}, NextSeed: {myPolytron.MindeleevTable.NextMissingPolytronicNumber()}\n";
 
         // Show emanations count and current selection index (if any)
         int emanationCount = 0;
@@ -722,7 +722,7 @@ public class PolytronInfoPanel : MonoBehaviour
                 Debug.LogWarning($"[PolytronInfoPanel] Rebuild resulted in same mesh id={newMeshId} for polytron_id={myPolytron.sealNumber}; visible recipe may be unchanged");
             }
 
-            myPolytron.AddEmanation(recipe);
+            // myPolytron.AddEmanation(recipe);
             // Ensure cursor points to selected index (defensive)
             myPolytron.MindeleevCursor = idx;
             // Rewrite the bound tile's emanation from this polytron emanation
