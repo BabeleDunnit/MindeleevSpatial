@@ -910,6 +910,9 @@ public class MutatronEngine : MonoBehaviour, IPolytronStateProvider
     internal SelectionManager selectionManager;
     private GridManager gridManager;
 
+    // automatic entangle tracking: polytrons currently outlined due to entangle matching
+    private HashSet<Polytron> autoEntangledPolytrons = new HashSet<Polytron>();
+
     // expose genetic active state for SelectionManager and other callers
     internal bool geneticModeActive => geneticsManager != null && geneticsManager.GeneticModeActive;
 
@@ -1246,6 +1249,64 @@ public class MutatronEngine : MonoBehaviour, IPolytronStateProvider
         {
             Debug.LogWarning($"NotifyPolytronStateChanged threw: {ex}");
         }
+        // Refresh automatic entangle outlines whenever any polytron state changes
+        try
+        {
+            RefreshEntangledPolytrons();
+        }
+        catch (Exception ex)
+        {
+            Debug.LogWarning($"RefreshEntangledPolytrons threw: {ex}");
+        }
+    }
+
+    // Recompute and apply entangle outlines based on Architron's NextMissingPolytronicNumber
+    // Runs after any polytron state change to keep outlines in sync automatically.
+    private void RefreshEntangledPolytrons()
+    {
+        if (polytrons == null || polytrons.Count == 0) return;
+        if (architronIdx < 0 || architronIdx >= polytrons.Count) return;
+
+        var arch = polytrons[architronIdx];
+        if (arch == null) return;
+
+        int targetSeed = 0;
+        try
+        {
+            targetSeed = arch.MindeleevTable.NextMissingPolytronicNumber();
+        }
+        catch
+        {
+            return;
+        }
+
+        string targetOps = PolyhedronRecipeKabbalah.IntToOperatorsSequence(targetSeed);
+
+        // Build new set of matching polytrons
+        var newlyMatched = new HashSet<Polytron>();
+        foreach (var p in polytrons)
+        {
+            if (p == null) continue;
+            string ops = p._recipe?.OperatorsSequence() ?? "";
+            var outline = p.GetComponent<PointerOutlineStateController>();
+            if (outline == null) continue;
+
+            if (ops == targetOps)
+            {
+                outline.SetState(3);
+                newlyMatched.Add(p);
+            }
+            else
+            {
+                // if this polytron was previously entangled, clear the outline state
+                if (autoEntangledPolytrons.Contains(p))
+                {
+                    outline.SetState(0);
+                }
+            }
+        }
+
+        autoEntangledPolytrons = newlyMatched;
     }
 
     // Example: places you should insert NotifyPolytronStateChanged calls (not exhaustive)

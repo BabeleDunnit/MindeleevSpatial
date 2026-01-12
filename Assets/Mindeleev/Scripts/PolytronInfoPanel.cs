@@ -852,67 +852,7 @@ public class PolytronInfoPanel : MonoBehaviour
     // Stub invoked when Entangle button is pressed on Architron in normal mode
     public void Entangle()
     {
-        Debug.Log($"[PolytronInfoPanel] Entangle invoked on polytron {myPolytron?.sealNumber}");
-        try
-        {
-            if (myPolytron == null || providerEngine == null) return;
-            if (!myPolytron.isArchitron)
-            {
-                Debug.Log("[PolytronInfoPanel] Entangle: current panel is not Architron");
-                return;
-            }
-
-            // Toggle behavior
-            entangleActive = !entangleActive;
-            if (!entangleActive)
-            {
-                // turn off: restore previously entangled outlines
-                foreach (var p in entangledPolytrons)
-                {
-                    if (p == null) continue;
-                    var outline = p.GetComponent<PointerOutlineStateController>();
-                    outline?.SetState(0);
-                }
-                entangledPolytrons.Clear();
-                Debug.Log("[PolytronInfoPanel] Entangle disabled, restored outlines");
-                return;
-            }
-
-            // enable: compute target operators sequence from Architron's next missing seed
-            var arch = providerEngine.polytrons[providerEngine.architronIdx];
-            if (arch == null)
-            {
-                Debug.LogWarning("[PolytronInfoPanel] Entangle: Architron not found");
-                entangleActive = false;
-                return;
-            }
-
-            int seed = arch.MindeleevTable.NextMissingPolytronicNumber();
-            string targetOps = PolyhedronRecipeKabbalah.IntToOperatorsSequence(seed);
-            Debug.Log($"[PolytronInfoPanel] Entangle: target seed={seed} ops='{targetOps}'");
-
-            // Find polytrons with matching operators sequence and set outline state 3
-            foreach (var p in providerEngine.polytrons)
-            {
-                if (p == null) continue;
-                var ops = p._recipe?.OperatorsSequence() ?? "";
-                if (ops == targetOps)
-                {
-                    var outline = p.GetComponent<PointerOutlineStateController>();
-                    if (outline != null)
-                    {
-                        outline.SetState(3);
-                        entangledPolytrons.Add(p);
-                    }
-                }
-            }
-
-            Debug.Log($"[PolytronInfoPanel] Entangle enabled, matched {entangledPolytrons.Count} polytrons");
-        }
-        catch (Exception ex)
-        {
-            Debug.LogWarning($"[PolytronInfoPanel] Entangle exception: {ex}");
-        }
+        // intentionally empty: entangle is now automatic via MutatronEngine.NotifyPolytronStateChanged
     }
 
     // Entangle toggle state and matched list
