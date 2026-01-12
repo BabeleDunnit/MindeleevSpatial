@@ -1290,31 +1290,46 @@ public class MutatronEngine : MonoBehaviour, IPolytronStateProvider
             // Never apply automatic entangle outline to the Architron itself.
             if (p.isArchitron)
             {
-                // If Architron was previously auto-entangled, restore its outline state
                 if (autoEntangledPolytrons.Contains(p))
                 {
                     var archOutline = p.GetComponent<PointerOutlineStateController>();
                     archOutline?.SetState(0);
-                    // ensure it's not carried over
                     autoEntangledPolytrons.Remove(p);
                 }
                 continue;
             }
-            string ops = p._recipe?.OperatorsSequence() ?? "";
+
             var outline = p.GetComponent<PointerOutlineStateController>();
             if (outline == null) continue;
 
+            string ops = p._recipe?.OperatorsSequence() ?? "";
+            int curState = outline.GetCurrentState();
+
             if (ops == targetOps)
             {
-                outline.SetState(3);
-                newlyMatched.Add(p);
+                // Only apply entangle outline when the polytron is currently in the default "0" state
+                // or already entangled (3). Do not override selection outlines (1 or 2).
+                if (curState == 0 || curState == 3)
+                {
+                    outline.SetState(3);
+                    newlyMatched.Add(p);
+                }
+                else
+                {
+                    // If it was previously auto-entangled but now selected, remove from tracking
+                    if (autoEntangledPolytrons.Contains(p)) autoEntangledPolytrons.Remove(p);
+                }
             }
             else
             {
-                // if this polytron was previously entangled, clear the outline state
+                // If previously auto-entangled but no longer matching, restore only if current state is the entangle state
                 if (autoEntangledPolytrons.Contains(p))
                 {
-                    outline.SetState(0);
+                    // restore only if we're still in entangle state to avoid stomping selection states
+                    if (outline.GetCurrentState() == 3)
+                    {
+                        outline.SetState(0);
+                    }
                 }
             }
         }
