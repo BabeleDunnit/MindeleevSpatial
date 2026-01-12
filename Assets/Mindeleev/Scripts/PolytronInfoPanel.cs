@@ -855,9 +855,7 @@ public class PolytronInfoPanel : MonoBehaviour
         // intentionally empty: entangle is now automatic via MutatronEngine.NotifyPolytronStateChanged
     }
 
-    // Entangle toggle state and matched list
-    private bool entangleActive = false;
-    private List<Polytron> entangledPolytrons = new List<Polytron>();
+    // Entangle state is handled automatically by the engine; local fields removed.
 
     // Activate or deactivate the panel externally
     public void Activate(bool show)

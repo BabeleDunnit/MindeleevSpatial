@@ -1287,6 +1287,19 @@ public class MutatronEngine : MonoBehaviour, IPolytronStateProvider
         foreach (var p in polytrons)
         {
             if (p == null) continue;
+            // Never apply automatic entangle outline to the Architron itself.
+            if (p.isArchitron)
+            {
+                // If Architron was previously auto-entangled, restore its outline state
+                if (autoEntangledPolytrons.Contains(p))
+                {
+                    var archOutline = p.GetComponent<PointerOutlineStateController>();
+                    archOutline?.SetState(0);
+                    // ensure it's not carried over
+                    autoEntangledPolytrons.Remove(p);
+                }
+                continue;
+            }
             string ops = p._recipe?.OperatorsSequence() ?? "";
             var outline = p.GetComponent<PointerOutlineStateController>();
             if (outline == null) continue;
