@@ -412,10 +412,10 @@ public class PolytronInfoPanel : MonoBehaviour
 
             // Button3: Entangle (only for Architron in normal mode)
             // Button3: Acquire Emanation for non-Architron polytrons, Entangle only for Architron in normal mode
-            if (myPolytron != null && !myPolytron.isArchitron)
+            if (myPolytron != null && !myPolytron.isArchitron && emanationCount > 1)
             {
                 if (button3 != null) button3Text = BTN_ACQUIRE_EMANATION;
-                // Debug.Log($"[PolytronInfoPanel] Setting button3='{BTN_ACQUIRE}' for polytron {state.SealNumber}");
+                // Debug.Log($"[PolytronInfoPanel] Setting button3='{BTN_ACQUIRE_EMANATION}' for polytron {state.SealNumber}");
             }
             else if (!geneticActive && state.Role == PolytronRole.Architron)
             {
@@ -882,7 +882,90 @@ public class PolytronInfoPanel : MonoBehaviour
     public void AcquireEmanation()
     {
         Debug.Log($"[PolytronInfoPanel] AcquireEmanation invoked on polytron {myPolytron?.sealNumber} recipe={myPolytron?.recipe}");
-        // intentionally empty: wiring point for acquire action
+
+        try
+        {
+            if (myPolytron == null || providerEngine == null)
+            {
+                Debug.LogWarning("[PolytronInfoPanel] AcquireEmanation: missing polytron or providerEngine");
+                return;
+            }
+
+            var table = myPolytron.MindeleevTable;
+            if (table == null || table.Count <= 1)
+            {
+                Debug.LogWarning("[PolytronInfoPanel] AcquireEmanation: polytron has <=1 emanation, action not allowed");
+                return;
+            }
+
+            var list = table.GetEmanationsList();
+            if (list == null || list.Count == 0)
+            {
+                Debug.LogWarning("[PolytronInfoPanel] AcquireEmanation: no emanations found");
+                return;
+            }
+
+            int idx = Mathf.Clamp(myPolytron.MindeleevCursor, 0, list.Count - 1);
+            string recipe = list[idx];
+
+            // Remove from source polytron
+            bool removed = myPolytron.RemoveEmanation(recipe);
+            if (!removed)
+            {
+                Debug.LogWarning($"[PolytronInfoPanel] AcquireEmanation: failed to remove recipe '{recipe}' from polytron {myPolytron.sealNumber}");
+                return;
+            }
+
+            // Add to Architron
+            var arch = providerEngine.polytrons[providerEngine.architronIdx];
+            if (arch == null)
+            {
+                Debug.LogWarning("[PolytronInfoPanel] AcquireEmanation: Architron not found");
+            }
+            else
+            {
+                arch.AddEmanation(recipe);
+            }
+
+            // Adjust cursor on source polytron and set its visible recipe to the new selection
+            int newCount = myPolytron.MindeleevTable?.Count ?? 0;
+            if (newCount == 0)
+            {
+                myPolytron.MindeleevCursor = 0;
+            }
+            else
+            {
+                myPolytron.MindeleevCursor = Mathf.Clamp(myPolytron.MindeleevCursor, 0, newCount - 1);
+
+                var newList = myPolytron.MindeleevTable.GetEmanationsList();
+                if (newList != null && newList.Count > 0)
+                {
+                    string newRecipe = newList[myPolytron.MindeleevCursor];
+                    try
+                    {
+                        myPolytron.recipe = newRecipe;
+                        myPolytron.RebuildMesh();
+                        // update bound tile to reflect new polytronic number
+                        try { RewriteTileEmanationFromRecipe(newRecipe); } catch { }
+                    }
+                    catch (Exception ex)
+                    {
+                        Debug.LogWarning($"[PolytronInfoPanel] failed to apply new recipe after acquire: {ex}");
+                    }
+                }
+            }
+
+            // Notify engine so panels update for both polytrons (do this after rebuild)
+            providerEngine.NotifyPolytronStateChanged(myPolytron);
+            if (arch != null) providerEngine.NotifyPolytronStateChanged(arch);
+
+            // Refresh local score display
+            UpdateEmanationScoreDisplay();
+        }
+        catch (Exception ex)
+        {
+            Debug.LogWarning($"[PolytronInfoPanel] AcquireEmanation exception: {ex}");
+        }
     }
 
     // Entangle state is handled automatically by the engine; local fields removed.

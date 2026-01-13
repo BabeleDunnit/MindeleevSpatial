@@ -113,4 +113,19 @@ public class MindeleevTable
     {
         return $"MindeleevTable(count={Count})";
     }
+
+    /// <summary>
+    /// Remove a recorded emanation. Returns true if the recipe was present and removed.
+    /// </summary>
+    public bool RemoveEmanation(string recipe)
+    {
+        if (string.IsNullOrEmpty(recipe)) return false;
+        if (!emanations.ContainsKey(recipe)) return false;
+        bool removed = emanations.Remove(recipe);
+        if (removed)
+        {
+            Debug.Log($"[MindeleevTable] removed emanation='{recipe}' (total={emanations.Count})");
+        }
+        return removed;
+    }
 }

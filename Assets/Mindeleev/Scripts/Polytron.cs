@@ -73,6 +73,33 @@ public class Polytron : PolyhedronGenerator,
         }
     }
 
+    /// <summary>
+    /// Remove an emanation from this polytron's MindeleevTable and subtract its score.
+    /// Returns true if removal succeeded.
+    /// </summary>
+    public bool RemoveEmanation(string recipe)
+    {
+        if (mindeleevTable == null) return false;
+        if (!mindeleevTable.Contains(recipe)) return false;
+
+        bool removed = mindeleevTable.RemoveEmanation(recipe);
+        if (removed)
+        {
+            try
+            {
+                var parsed = PolyhedronRecipeParser.Parse(recipe);
+                float emanationScore = PolyhedronRecipeUtils.ComputeComplexity(parsed);
+                totalPolytronScore -= emanationScore;
+                if (totalPolytronScore < 0f) totalPolytronScore = 0f;
+            }
+            catch (Exception ex)
+            {
+                Debug.LogWarning($"[Polytron] Failed to compute score while removing emanation: {ex}");
+            }
+        }
+        return removed;
+    }
+
     // Cursor used by the UI to track which emanation is currently selected for
     // this Polytron. Stored on the Polytron so the selection persists per-object.
     internal int mindeleevCursor = 0;
