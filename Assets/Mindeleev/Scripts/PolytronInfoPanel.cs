@@ -346,7 +346,7 @@ public class PolytronInfoPanel : MonoBehaviour
                 break;
         }
 
-        bodyText_.text = $"Role: {roleText}\nLocation: {locText}\nRecipe: {state.Recipe}, Seed: {myPolytron.MindeleevTable.GetPolytronicNumber(state.Recipe)}, NextSeed: {myPolytron.MindeleevTable.NextMissingPolytronicNumber()}\n";
+        bodyText_.text = $"Role: {roleText}, Location: {locText}\nRecipe: {state.Recipe}, Seed: {myPolytron.MindeleevTable.GetPolytronicNumber(state.Recipe)}, NextSeed: {myPolytron.MindeleevTable.NextMissingPolytronicNumber()}\n";
 
         // Show emanations count and current selection index (if any)
         int emanationCount = 0;
