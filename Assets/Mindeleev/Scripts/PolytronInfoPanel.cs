@@ -47,6 +47,15 @@ public class PolytronInfoPanel : MonoBehaviour
     Button button4;
     TextMeshProUGUI button4Text_;
 
+    // Button text constants to centralize UI labels
+    private const string BTN_PREV_EMANATION = "Prev Emanation";
+    private const string BTN_NEXT_EMANATION = "Next Emanation";
+    private const string BTN_BREED = "Breed";
+    private const string BTN_SWAP = "Swap";
+    private const string BTN_ENTANGLE = "Entangle";
+    private const string BTN_ACQUIRE_EMANATION = "Acquire Emanation";
+    private const string BTN_MAKE_ARCHITRON = "Make Architron";
+
     MutatronEngine mutatron;
 
     // Internal string properties that wrap the TextMeshProUGUI.text fields.
@@ -378,9 +387,9 @@ public class PolytronInfoPanel : MonoBehaviour
             bodyText_.text += $"Emanation: {currentEmanationScore:F2}\n";
 
             // enable Prev/Next buttons via text (UpdatePanelGUI will toggle visibility)
-            if (geneticActive && (state.Role == PolytronRole.Architron || state.Role == PolytronRole.ArchitronGenetic))
+                if (geneticActive && (state.Role == PolytronRole.Architron || state.Role == PolytronRole.ArchitronGenetic))
             {
-                if (button1 != null) button1Text = "Breed";
+                if (button1 != null) button1Text = BTN_BREED;
                 //Debug.Log($"[PolytronInfoPanel] Setting button1='Breed' for Architron {state.SealNumber}");
                 if (button2 != null) button2Text = "";
                 //Debug.Log($"[PolytronInfoPanel] Hiding button2 (Next) for Architron {state.SealNumber}");
@@ -388,24 +397,30 @@ public class PolytronInfoPanel : MonoBehaviour
             else if (geneticActive && state.Selection != SelectionSlot.None)
             {
                 // Show Swap on the selected PARENT polytrons (Palette/Operators selectors), not on ephemeral GeneticFriend children
-                if (button1 != null) button1Text = "Swap";
+                if (button1 != null) button1Text = BTN_SWAP;
                 // Debug.Log($"[PolytronInfoPanel] Setting button1='Swap' for selected parent polytron {state.SealNumber} sel={state.Selection}");
                 if (button2 != null) button2Text = "";
                 //Debug.Log($"[PolytronInfoPanel] Hiding button2 (Next) for selected parent polytron {state.SealNumber}");
             }
             else
             {
-                if (button1 != null) button1Text = "Prev";
-                Debug.Log($"[PolytronInfoPanel] Setting button1='Prev' for polytron {state.SealNumber}");
-                if (button2 != null) button2Text = "Next";
-                Debug.Log($"[PolytronInfoPanel] Setting button2='Next' for polytron {state.SealNumber}");
+                if (button1 != null) button1Text = BTN_PREV_EMANATION;
+                Debug.Log($"[PolytronInfoPanel] Setting button1='{BTN_PREV_EMANATION}' for polytron {state.SealNumber}");
+                if (button2 != null) button2Text = BTN_NEXT_EMANATION;
+                Debug.Log($"[PolytronInfoPanel] Setting button2='{BTN_NEXT_EMANATION}' for polytron {state.SealNumber}");
             }
 
             // Button3: Entangle (only for Architron in normal mode)
-            if (!geneticActive && state.Role == PolytronRole.Architron)
+            // Button3: Acquire Emanation for non-Architron polytrons, Entangle only for Architron in normal mode
+            if (myPolytron != null && !myPolytron.isArchitron)
             {
-                if (button3 != null) button3Text = "Entangle";
-                Debug.Log($"[PolytronInfoPanel] Setting button3='Entangle' for Architron {state.SealNumber}");
+                if (button3 != null) button3Text = BTN_ACQUIRE_EMANATION;
+                // Debug.Log($"[PolytronInfoPanel] Setting button3='{BTN_ACQUIRE}' for polytron {state.SealNumber}");
+            }
+            else if (!geneticActive && state.Role == PolytronRole.Architron)
+            {
+                if (button3 != null) button3Text = BTN_ENTANGLE;
+                Debug.Log($"[PolytronInfoPanel] Setting button3='{BTN_ENTANGLE}' for Architron {state.SealNumber}");
             }
             else
             {
@@ -439,7 +454,7 @@ public class PolytronInfoPanel : MonoBehaviour
                    if (state.Role != PolytronRole.Architron && state.Role != PolytronRole.ArchitronGenetic && state.Interactive && (state.Location == PolytronLocation.Mutatron || state.Location == PolytronLocation.Home))
                    {
                        button4.gameObject.SetActive(true);
-                       button4Text_.text = "Make Architron";
+                       button4Text_.text = BTN_MAKE_ARCHITRON;
                    }
                    else
                    {
@@ -478,7 +493,7 @@ public class PolytronInfoPanel : MonoBehaviour
             if (geneticActive)
             {
                 button4Text = ""; // hide during genetics
-                // Debug.Log($"[PolytronInfoPanel] Hiding Make Architron for polytron {state.SealNumber} due to genetic mode");
+                // Debug.Log($"[PolytronInfoPanel] Hiding {BTN_MAKE_ARCHITRON} for polytron {state.SealNumber} due to genetic mode");
             }
             else
             {
@@ -486,8 +501,8 @@ public class PolytronInfoPanel : MonoBehaviour
                     && state.Interactive
                     && (state.Location == PolytronLocation.Mutatron || state.Location == PolytronLocation.Home))
                 {
-                    button4Text = "Make Architron";
-                    // Debug.Log($"[PolytronInfoPanel] Showing Make Architron for polytron {state.SealNumber}");
+                    button4Text = BTN_MAKE_ARCHITRON;
+                    // Debug.Log($"[PolytronInfoPanel] Showing {BTN_MAKE_ARCHITRON} for polytron {state.SealNumber}");
                 }
                 else
                 {
@@ -668,12 +683,12 @@ public class PolytronInfoPanel : MonoBehaviour
             try
             {
                 var txt = button1Text_ != null ? button1Text_.text : "";
-                if (txt == "Breed")
+                if (txt == BTN_BREED)
                 {
                     Breed();
                     return;
                 }
-                else if (txt == "Swap")
+                else if (txt == BTN_SWAP)
                 {
                     Swap();
                     return;
@@ -691,7 +706,7 @@ public class PolytronInfoPanel : MonoBehaviour
             try
             {
                 var txt2 = button2Text_ != null ? button2Text_.text : "";
-                if (txt2 == "Next")
+                if (txt2 == BTN_NEXT_EMANATION)
                 {
                     CycleEmanation(1);
                 }
@@ -702,16 +717,24 @@ public class PolytronInfoPanel : MonoBehaviour
 
         if (index == 3)
         {
-            // Entangle action for Architron (may be empty stub)
+            // Button3: Entangle for Architron, Acquire Emanation for other polytrons
             try
             {
-                Entangle();
+                var txt3 = button3Text_ != null ? button3Text_.text : "";
+                if (txt3 == BTN_ACQUIRE_EMANATION)
+                {
+                    AcquireEmanation();
+                }
+                else
+                {
+                    Entangle();
+                }
             }
             catch { }
             return;
         }
 
-        if (index == 4 && button4Text_ != null && button4Text_.text == "Make Architron")
+        if (index == 4 && button4Text_ != null && button4Text_.text == BTN_MAKE_ARCHITRON)
         {
             Debug.Log("Changing Architron");
             mutatron.SetNewArchitron(GetComponent<Polytron>().sealNumber);
@@ -853,6 +876,13 @@ public class PolytronInfoPanel : MonoBehaviour
     public void Entangle()
     {
         // intentionally empty: entangle is now automatic via MutatronEngine.NotifyPolytronStateChanged
+    }
+
+    // Stub invoked when Acquire Emanation button is pressed on non-Architron polytrons
+    public void AcquireEmanation()
+    {
+        Debug.Log($"[PolytronInfoPanel] AcquireEmanation invoked on polytron {myPolytron?.sealNumber} recipe={myPolytron?.recipe}");
+        // intentionally empty: wiring point for acquire action
     }
 
     // Entangle state is handled automatically by the engine; local fields removed.
