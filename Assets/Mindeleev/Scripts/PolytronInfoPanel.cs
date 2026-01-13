@@ -947,6 +947,9 @@ public class PolytronInfoPanel : MonoBehaviour
                         myPolytron.RebuildMesh();
                         // update bound tile to reflect new polytronic number
                         try { RewriteTileEmanationFromRecipe(newRecipe); } catch { }
+
+                        myPolytron.GetComponent<PointerOutlineStateController>().OnHoverEnter();
+                        
                     }
                     catch (Exception ex)
                     {

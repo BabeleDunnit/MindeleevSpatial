@@ -57,18 +57,42 @@ public class Polytron : PolyhedronGenerator,
         if (mindeleevTable == null) mindeleevTable = new MindeleevTable();
         if (mindeleevTable.AddEmanation(recipe))
         {
-            // Calculate and add emanation score
+            // Calculate and add emanation score (already done by MindeleevTable.AddEmanation log)
             try
             {
                 var parsed = PolyhedronRecipeParser.Parse(recipe);
                 float emanationScore = PolyhedronRecipeUtils.ComputeComplexity(parsed);
                 totalPolytronScore += emanationScore;
-                // Debug.Log($"[Polytron] polytron_id={sealNumber} added emanation='{recipe}' with score={emanationScore:F2}, totalScore={totalPolytronScore:F2}");
             }
             catch (Exception ex)
             {
                 Debug.LogWarning($"[Polytron] Failed to calculate score for emanation: {ex}");
-                Debug.Log($"[Polytron] polytron_id={sealNumber} added emanation='{recipe}'");
+            }
+
+            // Make the newly added emanation the visible recipe for this polytron
+            try
+            {
+                // Only change visible recipe when it's different to avoid redundant rebuilds
+                if (this.recipe != recipe)
+                {
+                    this.recipe = recipe;
+                    this.RebuildMesh();
+                }
+
+                // Ensure the cursor points to the newly added emanation
+                var list = this.MindeleevTable.GetEmanationsList();
+                int idx = list.IndexOf(recipe);
+                if (idx >= 0) this.MindeleevCursor = idx;
+
+                // Update outline hover state to reflect change
+                // try { GetComponent<PointerOutlineStateController>()?.OnHoverEnter(); } catch { }
+
+                // Notify engine/UI about the change so panels and overlays refresh
+                try { mutatron?.NotifyPolytronStateChanged(this); } catch { }
+            }
+            catch (Exception ex)
+            {
+                Debug.LogWarning($"[Polytron] AddEmanation post-processing failed: {ex}");
             }
         }
     }
