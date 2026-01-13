@@ -964,6 +964,26 @@ public class PolytronInfoPanel : MonoBehaviour
 
             // Refresh local score display
             UpdateEmanationScoreDisplay();
+
+            // If genetic selection is active and both parents are selected, recompute
+            // crossover recipes so the genetic friend polytrons reflect the new parent emanation.
+            try
+            {
+                if (providerEngine != null && providerEngine.geneticModeActive && providerEngine.selectionManager != null)
+                {
+                    var sel = providerEngine.selectionManager;
+                    if (sel.PaletteSelector != null && sel.OperatorsSelector != null)
+                    {
+                        var cross = providerEngine.ComputeCrossoverRecipes(sel.PaletteSelector, sel.OperatorsSelector);
+                        Debug.Log($"[PolytronInfoPanel] AcquireEmanation: recomputing crossovers ({cross.Count}) and updating genetic friends");
+                        providerEngine.SetupGeneticFriends(cross);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.LogWarning($"[PolytronInfoPanel] AcquireEmanation: failed to refresh genetic friends: {ex}");
+            }
         }
         catch (Exception ex)
         {

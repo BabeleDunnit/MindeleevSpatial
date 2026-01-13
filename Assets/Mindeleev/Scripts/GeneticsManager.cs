@@ -45,8 +45,16 @@ public class GeneticsManager
         var arch = engine.polytrons[engine.architronIdx];
         if (arch == null) return;
 
-        geneticFriends.Clear();
-        geneticBackups.Clear();
+        // If we already have genetic friends from a previous setup, prefer to reuse them
+        bool reuseExisting = geneticFriends != null && geneticFriends.Count > 0;
+
+        if (!reuseExisting)
+        {
+            geneticFriends.Clear();
+            geneticBackups.Clear();
+        }
+
+        // Always reset transient motion/return state
         geneticRelativeOffsets.Clear();
         geneticReturnTargets.Clear();
         geneticReturning.Clear();
@@ -93,48 +101,150 @@ public class GeneticsManager
         Debug.Log("[SetupGeneticFriends] onMutatron: " + string.Join(",", onMutatron.Select(c => c?.sealNumber.ToString() ?? "null")));
         Debug.Log("[SetupGeneticFriends] atHome: " + string.Join(",", atHome.Select(c => c?.sealNumber.ToString() ?? "null")));
 
-        for (int i = 0; i < pickPool.Count && assigned < needed; i++)
+        // If we are reusing existing friends, first reassign recipes to them up to the available count.
+        if (reuseExisting)
         {
-            var candidate = pickPool[i];
-            if (candidate == null) continue;
-            if (geneticBackups.ContainsKey(candidate)) continue;
-
-            var backup = new PolytronStateBackup
+            // Reassign recipes for already-selected friends
+            for (int i = 0; i < geneticFriends.Count && i < needed; i++)
             {
-                recipe = candidate.recipe,
-                boundSink = candidate.boundSink,
-                position = candidate.transform.position,
-                localScale = candidate.transform.localScale
-            };
+                var friend = geneticFriends[i];
+                if (friend == null) continue;
+                friend.recipe = crossoverRecipes[i];
+                friend.RebuildMesh();
+                engine.NotifyPolytronStateChanged(friend);
+                assigned++;
+            }
 
-            geneticBackups[candidate] = backup;
-            geneticFriends.Add(candidate);
+            // If we need more friends, pick additional candidates from the pickPool
+            for (int i = 0; i < pickPool.Count && assigned < needed; i++)
+            {
+                var candidate = pickPool[i];
+                if (candidate == null) continue;
+                if (geneticBackups.ContainsKey(candidate)) continue; // already used
+                if (geneticFriends.Contains(candidate)) continue;
 
-            Debug.Log($"[SetupGeneticFriends] PICKED friend #{assigned}: polytron_id={candidate.sealNumber} (seal:{candidate.sealName}) boundSink={backup.boundSink?.name} position={candidate.transform.position}");
+                var backup = new PolytronStateBackup
+                {
+                    recipe = candidate.recipe,
+                    boundSink = candidate.boundSink,
+                    position = candidate.transform.position,
+                    localScale = candidate.transform.localScale
+                };
 
-            // Unbind the friend from its original sink so it can freely orbit the Architron
-            engine.UnbindPolytron(candidate);
-            candidate.reservedForGenetics = true;
-            engine.NotifyPolytronStateChanged(candidate);
+                geneticBackups[candidate] = backup;
+                geneticFriends.Add(candidate);
 
-            Debug.Log($"[SetupGeneticFriends] UNBOUND and RESERVED friend #{assigned}: polytron_id={candidate.sealNumber} reservedForGenetics={candidate.reservedForGenetics}");
+                Debug.Log($"[SetupGeneticFriends] PICKED friend #{assigned}: polytron_id={candidate.sealNumber} (seal:{candidate.sealName}) boundSink={backup.boundSink?.name} position={candidate.transform.position}");
 
-            candidate.recipe = crossoverRecipes[assigned];
-            candidate.RebuildMesh();
+                engine.UnbindPolytron(candidate);
+                candidate.reservedForGenetics = true;
+                engine.NotifyPolytronStateChanged(candidate);
 
-            var wa = candidate.GetComponent<WaveAnimation>();
-            if (wa != null) wa.Pause(true);
-            candidate.interactive = false;
+                Debug.Log($"[SetupGeneticFriends] UNBOUND and RESERVED friend #{assigned}: polytron_id={candidate.sealNumber} reservedForGenetics={candidate.reservedForGenetics}");
 
-            candidate.transform.localScale = backup.localScale * 0.3f;
+                candidate.recipe = crossoverRecipes[assigned];
+                candidate.RebuildMesh();
 
-            float angle = ((float)assigned / Mathf.Max(1, needed)) * Mathf.PI * 2f;
-            Vector3 rel = Vector3.up * h + new Vector3(Mathf.Cos(angle) * horizRadius, 0f, Mathf.Sin(angle) * horizRadius);
-            geneticRelativeOffsets[candidate] = rel;
+                var wa = candidate.GetComponent<WaveAnimation>();
+                if (wa != null) wa.Pause(true);
+                candidate.interactive = false;
 
-            engine.NotifyPolytronStateChanged(candidate);
+                candidate.transform.localScale = backup.localScale * 0.3f;
 
-            assigned++;
+                float angle = ((float)assigned / Mathf.Max(1, needed)) * Mathf.PI * 2f;
+                Vector3 rel = Vector3.up * h + new Vector3(Mathf.Cos(angle) * horizRadius, 0f, Mathf.Sin(angle) * horizRadius);
+                geneticRelativeOffsets[candidate] = rel;
+
+                engine.NotifyPolytronStateChanged(candidate);
+
+                assigned++;
+            }
+
+            // If we have more existing friends than needed, return extras
+            if (geneticFriends.Count > needed)
+            {
+                var extras = geneticFriends.Skip(needed).ToList();
+                foreach (var extra in extras)
+                {
+                    if (extra == null) continue;
+                    if (!geneticBackups.TryGetValue(extra, out var backup)) continue;
+
+                    extra.recipe = backup.recipe;
+                    extra.RebuildMesh();
+                    var wa = extra.GetComponent<WaveAnimation>();
+                    if (wa != null) wa.Pause(false);
+                    extra.transform.localScale = backup.localScale;
+
+                    if (backup.boundSink != null && backup.boundSink.boundPolytron == null)
+                    {
+                        if (extra.boundSink != null) engine.UnbindPolytron(extra);
+                        engine.BindPolytronToSink(extra, backup.boundSink);
+                        extra.reservedForGenetics = false;
+                        extra.interactive = true;
+                        geneticBackups.Remove(extra);
+                        var outline = extra.GetComponent<PointerOutlineStateController>();
+                        outline?.SetState(0);
+                        engine.NotifyPolytronStateChanged(extra);
+                    }
+                    else
+                    {
+                        extra.interactive = false;
+                        geneticReturnTargets[extra] = backup.position;
+                        geneticReturning.Add(extra);
+                        geneticRelativeOffsets.Remove(extra);
+                        var outline = extra.GetComponent<PointerOutlineStateController>();
+                        outline?.SetState(0);
+                    }
+                }
+
+                geneticFriends = geneticFriends.Take(needed).ToList();
+            }
+        }
+        else
+        {
+            for (int i = 0; i < pickPool.Count && assigned < needed; i++)
+            {
+                var candidate = pickPool[i];
+                if (candidate == null) continue;
+                if (geneticBackups.ContainsKey(candidate)) continue;
+
+                var backup = new PolytronStateBackup
+                {
+                    recipe = candidate.recipe,
+                    boundSink = candidate.boundSink,
+                    position = candidate.transform.position,
+                    localScale = candidate.transform.localScale
+                };
+
+                geneticBackups[candidate] = backup;
+                geneticFriends.Add(candidate);
+
+                Debug.Log($"[SetupGeneticFriends] PICKED friend #{assigned}: polytron_id={candidate.sealNumber} (seal:{candidate.sealName}) boundSink={backup.boundSink?.name} position={candidate.transform.position}");
+
+                // Unbind the friend from its original sink so it can freely orbit the Architron
+                engine.UnbindPolytron(candidate);
+                candidate.reservedForGenetics = true;
+                engine.NotifyPolytronStateChanged(candidate);
+
+                Debug.Log($"[SetupGeneticFriends] UNBOUND and RESERVED friend #{assigned}: polytron_id={candidate.sealNumber} reservedForGenetics={candidate.reservedForGenetics}");
+
+                candidate.recipe = crossoverRecipes[assigned];
+                candidate.RebuildMesh();
+
+                var wa = candidate.GetComponent<WaveAnimation>();
+                if (wa != null) wa.Pause(true);
+                candidate.interactive = false;
+
+                candidate.transform.localScale = backup.localScale * 0.3f;
+
+                float angle = ((float)assigned / Mathf.Max(1, needed)) * Mathf.PI * 2f;
+                Vector3 rel = Vector3.up * h + new Vector3(Mathf.Cos(angle) * horizRadius, 0f, Mathf.Sin(angle) * horizRadius);
+                geneticRelativeOffsets[candidate] = rel;
+
+                engine.NotifyPolytronStateChanged(candidate);
+
+                assigned++;
+            }
         }
 
         GeneticModeActive = geneticFriends.Count > 0;
