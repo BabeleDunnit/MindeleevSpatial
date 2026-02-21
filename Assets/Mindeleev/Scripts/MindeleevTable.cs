@@ -134,6 +134,42 @@ public class MindeleevTable
     }
 
     /// <summary>
+    /// Count how many stored emanations share the same transformation (operators sequence)
+    /// as the provided recipe. Uses the parser to compare the operators sequence.
+    /// </summary>
+    public int CountEmanationsWithSameTransformation(string recipe)
+    {
+        if (string.IsNullOrEmpty(recipe)) return 0;
+        string targetOps;
+        try
+        {
+            var parsed = PolyhedronRecipeParser.Parse(recipe);
+            targetOps = parsed.OperatorsSequence();
+        }
+        catch
+        {
+            return 0;
+        }
+
+        int count = 0;
+        foreach (var r in emanations.Keys)
+        {
+            try
+            {
+                var p = PolyhedronRecipeParser.Parse(r);
+                if (p.OperatorsSequence() == targetOps) count++;
+            }
+            catch { }
+        }
+        return count;
+    }
+
+    /// <summary>
+    /// Total number of possible radix combinations (palettes x base polyhedra).
+    /// </summary>
+    public static int TotalRadixCombinations => (PolyhedronRecipe.PaletteNames.Length - 1)* PolyhedronRecipe.PolyhedronNames.Count;
+
+    /// <summary>
     /// Remove a recorded emanation. Returns true if the recipe was present and removed.
     /// </summary>
     public bool RemoveEmanation(string recipe)

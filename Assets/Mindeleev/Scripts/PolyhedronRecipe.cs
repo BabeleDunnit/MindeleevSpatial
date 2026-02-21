@@ -225,31 +225,53 @@ public class PolyhedronRecipe
     }
 
     /// <summary>
-    /// Generates a human-readable name for the current recipe/emanation.
+    /// Human-readable transformation name built from operator symbolic names.
+    /// Uses the `OperatorNames` table to produce short human-friendly tokens
+    /// for each operator (e.g. "TruInSte").
     /// </summary>
-    public string RecipeName()
+    public string TransformationName()
     {
-        // Concatenate operator names
         var opNames = Tokens.Select(t =>
         {
             if (OperatorNames.TryGetValue(t.Operator, out var name))
                 return name;
             return char.ToUpperInvariant(t.Operator[0]) + t.Operator.Substring(1).ToLowerInvariant();
         });
+        return string.Join("", opNames);
+    }
 
-        string opsPart = string.Join("", opNames);
-
-        // Palette name
+    /// <summary>
+    /// Human-readable radix name composed of the palette name and base polyhedron
+    /// human name (from `PaletteNames` and `PolyhedronNames`). Example: "ArchCub".
+    /// </summary>
+    public string RadixName()
+    {
         string paletteName = (PaletteIdx >= 0 && PaletteIdx < PaletteNames.Length)
             ? PaletteNames[PaletteIdx]
             : $"Palette{PaletteIdx}";
 
-        // Base polyhedron name
         string polyName = PolyhedronNames.TryGetValue(BasePolyhedron, out var pname)
             ? pname
             : char.ToUpperInvariant(BasePolyhedron).ToString();
 
-        return $"{opsPart}{paletteName}{polyName}";
+        return paletteName + polyName;
+    }
+
+    /// <summary>
+    /// Symbolic radix (palette index + base char), e.g. "03C".
+    /// </summary>
+    public string Radix()
+    {
+        return PaletteIdx.ToString("D2") + BasePolyhedron;
+    }
+
+    /// <summary>
+    /// Full human-readable emanation name composed of the transformation
+    /// human name and the radix human name.
+    /// </summary>
+    public string EmanationName()
+    {
+        return TransformationName() + RadixName();
     }
 }
 

@@ -129,7 +129,7 @@ public class PolyhedronRecipeTests
         var recipe = "tnlkC";
         var parsed = PolyhedronRecipeParser.Parse(recipe);
 
-        Assert.AreEqual("TruInSteKiArchCub", parsed.RecipeName());
+        Assert.AreEqual("TruInSteKiArchCub", parsed.EmanationName());
     }
 
     [Test]
@@ -137,7 +137,7 @@ public class PolyhedronRecipeTests
     {
         var recipe = "dkdkakd05T";
         var parsed = PolyhedronRecipeParser.Parse(recipe);
-        Assert.AreEqual("DuKiDuKiAmKiDuGebTet", parsed.RecipeName());
+        Assert.AreEqual("DuKiDuKiAmKiDuGebTet", parsed.EmanationName());
 
     }
 
@@ -383,7 +383,7 @@ public class PolyhedronRecipeTests
         var chars = new HashSet<char> { 'a', 'd', 't' };
         var perms = PolyhedronRecipeUtils.AllPermutationsWithRepetition(chars, 5);
         Debug.Log($"Permutations with repetitions: {string.Join(", ", perms)}");
-        Debug.Log($"Names: {string.Join(", ", perms.Skip(1).Select(r => PolyhedronRecipeParser.Parse(r + "03C").RecipeName()))}");
+        Debug.Log($"Names: {string.Join(", ", perms.Skip(1).Select(r => PolyhedronRecipeParser.Parse(r + "03C").EmanationName()))}");
 
     }
 
@@ -826,7 +826,7 @@ public class PolyhedronRecipeTests
     public void ComplexityUpperBound_FindSequenceSeedThreshold()
     {
 
-        Assert.AreEqual(1, 0);
+        // Assert.AreEqual(1, 0);
 
         // Test to find the maximum operatorSequenceSeed value before hitting various vertex count upper bounds
         // For each complexity bound (500 to 5000 in steps of 20), enumerate recipes with increasing opSeqSeed

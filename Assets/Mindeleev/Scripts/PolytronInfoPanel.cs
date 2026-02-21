@@ -316,7 +316,6 @@ public class PolytronInfoPanel : MonoBehaviour
             return;
         }
 
-
         // Header always shows name and role
         headerText_.text = (state.SealNumber + 1) + " - " + state.SealName;
 
@@ -358,7 +357,7 @@ public class PolytronInfoPanel : MonoBehaviour
             try
             {
                 var parsed = PolyhedronRecipeParser.Parse(state.Recipe);
-                gameBodyText = parsed.RecipeName();
+                gameBodyText = parsed.EmanationName();
             }
             catch
             {
@@ -461,9 +460,32 @@ public class PolytronInfoPanel : MonoBehaviour
 
         // Assign chosen body text based on runtime toggle
         if (showDebugInfo)
+        {
             bodyText_.text = debugBodyText;
+        }
         else
+        {
+            // Build gameBodyText with emanation name + (index/total) and completeness info
+            try
+            {
+                if (myPolytron != null && myPolytron.MindeleevTable != null && myPolytron.MindeleevTable.Count > 0)
+                {
+                    var ordered = myPolytron.MindeleevTable.GetEmanationsListByPolytronicNumber();
+                    int idx = Mathf.Clamp(myPolytron.MindeleevCursor, 0, Math.Max(0, ordered.Count - 1));
+                    string currentRecipe = ordered[idx];
+                    var parsed = PolyhedronRecipeParser.Parse(currentRecipe);
+                    string name = parsed.EmanationName();
+                    gameBodyText = $"Emanation: {name} ({idx + 1}/{ordered.Count})\n";
+
+                    int collected = myPolytron.MindeleevTable.CountEmanationsWithSameTransformation(currentRecipe);
+                    int total = MindeleevTable.TotalRadixCombinations;
+                    gameBodyText += $"Emanation Completeness: {collected}/{total}";
+                }
+            }
+            catch { }
+
             bodyText_.text = gameBodyText;
+        }
 
         /*
                // Center button: available when on Mutatron to "focus" / center camera (example)
