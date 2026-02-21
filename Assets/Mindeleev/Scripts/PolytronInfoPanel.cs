@@ -404,10 +404,18 @@ public class PolytronInfoPanel : MonoBehaviour
             }
             else
             {
-                if (button1 != null) button1Text = BTN_PREV_EMANATION;
-                Debug.Log($"[PolytronInfoPanel] Setting button1='{BTN_PREV_EMANATION}' for polytron {state.SealNumber}");
-                if (button2 != null) button2Text = BTN_NEXT_EMANATION;
-                Debug.Log($"[PolytronInfoPanel] Setting button2='{BTN_NEXT_EMANATION}' for polytron {state.SealNumber}");
+                if (emanationCount > 1)
+                {
+                    if (button1 != null) button1Text = BTN_PREV_EMANATION;
+                    Debug.Log($"[PolytronInfoPanel] Setting button1='{BTN_PREV_EMANATION}' for polytron {state.SealNumber}");
+                    if (button2 != null) button2Text = BTN_NEXT_EMANATION;
+                    Debug.Log($"[PolytronInfoPanel] Setting button2='{BTN_NEXT_EMANATION}' for polytron {state.SealNumber}");
+                }
+                else
+                {
+                    if (button1 != null) button1Text = "";
+                    if (button2 != null) button2Text = "";
+                }
             }
 
             // Button3: Entangle (only for Architron in normal mode)
