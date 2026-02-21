@@ -136,6 +136,8 @@ public class PolytronInfoPanel : MonoBehaviour
 
     private bool mustActivate = false;
     private Coroutine animCoroutine;
+    // Toggle between debug info and simplified game info (toggled by 'I')
+    private bool showDebugInfo = true;
 
     IPolytronStateProvider provider;
     MutatronEngine providerEngine;
@@ -346,7 +348,23 @@ public class PolytronInfoPanel : MonoBehaviour
                 break;
         }
 
-        bodyText_.text = $"Role: {roleText}, Location: {locText}\nRecipe: {state.Recipe}, Seed: {myPolytron.MindeleevTable.GetPolytronicNumber(state.Recipe)}, NextSeed: {myPolytron.MindeleevTable.NextMissingPolytronicNumber()}\n";
+        // Build two different body texts: debug (detailed) and game (minimal)
+        string debugBodyText = $"Role: {roleText}, Location: {locText}\nRecipe: {state.Recipe}, Seed: {myPolytron.MindeleevTable.GetPolytronicNumber(state.Recipe)}, NextSeed: {myPolytron.MindeleevTable.NextMissingPolytronicNumber()}\n";
+
+        string gameBodyText = "";
+        // gameBodyText for now is the human-friendly recipe name if parsable
+        if (!string.IsNullOrEmpty(state.Recipe))
+        {
+            try
+            {
+                var parsed = PolyhedronRecipeParser.Parse(state.Recipe);
+                gameBodyText = parsed.RecipeName();
+            }
+            catch
+            {
+                gameBodyText = state.Recipe;
+            }
+        }
 
         // Show emanations count and current selection index (if any)
         int emanationCount = 0;
@@ -368,7 +386,7 @@ public class PolytronInfoPanel : MonoBehaviour
 
         if (emanationCount > 0)
         {
-            bodyText_.text += $"Emanations: {emanationCount} (showing {currentIndex + 1}/{emanationCount})\n";
+            debugBodyText += $"Emanations: {emanationCount} (showing {currentIndex + 1}/{emanationCount})\n";
 
             // Add score display
             float currentEmanationScore = 0f;
@@ -383,8 +401,8 @@ public class PolytronInfoPanel : MonoBehaviour
                 }
                 catch { }
             }
-            bodyText_.text += $"Scores: Total: {myPolytron.totalPolytronScore:F2},";
-            bodyText_.text += $"Emanation: {currentEmanationScore:F2}\n";
+            debugBodyText += $"Scores: Total: {myPolytron.totalPolytronScore:F2}, ";
+            debugBodyText += $"Emanation: {currentEmanationScore:F2}\n";
 
             // enable Prev/Next buttons via text (UpdatePanelGUI will toggle visibility)
                 if (geneticActive && (state.Role == PolytronRole.Architron || state.Role == PolytronRole.ArchitronGenetic))
@@ -440,6 +458,12 @@ public class PolytronInfoPanel : MonoBehaviour
             if (button1 != null) button1Text = "";
             if (button2 != null) button2Text = "";
         }
+
+        // Assign chosen body text based on runtime toggle
+        if (showDebugInfo)
+            bodyText_.text = debugBodyText;
+        else
+            bodyText_.text = gameBodyText;
 
         /*
                // Center button: available when on Mutatron to "focus" / center camera (example)
@@ -648,6 +672,18 @@ public class PolytronInfoPanel : MonoBehaviour
                     st = LocalPolytronStateEvaluator.ComputeState(myPolytron);
                 ApplyStateToPanel(st);
             }
+        }
+
+        // Toggle displayed body info between debug and game view when 'I' is pressed
+        if (Input.GetKeyDown(KeyCode.I))
+        {
+            showDebugInfo = !showDebugInfo;
+            PolytronState st;
+            if (provider != null)
+                st = provider.ComputeState(myPolytron);
+            else
+                st = LocalPolytronStateEvaluator.ComputeState(myPolytron);
+            ApplyStateToPanel(st);
         }
 
     }
