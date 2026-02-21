@@ -80,7 +80,7 @@ public class Polytron : PolyhedronGenerator,
                 }
 
                 // Ensure the cursor points to the newly added emanation
-                var list = this.MindeleevTable.GetEmanationsList();
+                var list = this.MindeleevTable.GetEmanationsListByPolytronicNumber();
                 int idx = list.IndexOf(recipe);
                 if (idx >= 0) this.MindeleevCursor = idx;
 

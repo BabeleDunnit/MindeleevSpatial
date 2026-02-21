@@ -43,12 +43,31 @@ public class MindeleevTable
     /// <summary>
     /// Return a deterministic list of emanations suitable for cycling. We use
     /// lexical order to provide a predictable ordering for UI cycling.
+    ///
+    /// NOTE: This lexical ordering is retained for backward compatibility. For
+    /// UI cycling based on numeric seed progression prefer
+    /// `GetEmanationsListByPolytronicNumber()` which orders recipes by their
+    /// stored polytronicNumber.
     /// </summary>
     public List<string> GetEmanationsList()
     {
         var list = emanations.Keys.ToList();
         list.Sort(StringComparer.Ordinal);
         return list;
+    }
+
+    /// <summary>
+    /// Return a list of recipes ordered by their stored polytronicNumber (ascending).
+    /// Tie-breaker: recipe string ordinal. This ordering is the recommended one
+    /// for UI cycling (Prev/Next) because it follows numeric seed progression.
+    /// </summary>
+    public List<string> GetEmanationsListByPolytronicNumber()
+    {
+        return emanations
+            .OrderBy(kv => kv.Value)
+            .ThenBy(kv => kv.Key, StringComparer.Ordinal)
+            .Select(kv => kv.Key)
+            .ToList();
     }
 
     /// <summary>

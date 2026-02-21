@@ -50,7 +50,7 @@ public class PolytronInfoPanel : MonoBehaviour
     // Button text constants to centralize UI labels
     private const string BTN_PREV_EMANATION = "Prev Emanation";
     private const string BTN_NEXT_EMANATION = "Next Emanation";
-    private const string BTN_BREED = "Breed - Unused";
+    private const string BTN_BREED = "Breed";
     private const string BTN_SWAP = "Swap - Unused";
     private const string BTN_ENTANGLE = "Entangle - Unused";
     private const string BTN_ACQUIRE_EMANATION = "Acquire Emanation";
@@ -372,7 +372,7 @@ public class PolytronInfoPanel : MonoBehaviour
 
             // Add score display
             float currentEmanationScore = 0f;
-            var currentEmanationList = myPolytron.MindeleevTable.GetEmanationsList();
+            var currentEmanationList = myPolytron.MindeleevTable.GetEmanationsListByPolytronicNumber();
             if (currentEmanationList.Count > 0 && myPolytron.MindeleevCursor >= 0 && myPolytron.MindeleevCursor < currentEmanationList.Count)
             {
                 var currentRecipe = currentEmanationList[myPolytron.MindeleevCursor];
@@ -760,7 +760,9 @@ public class PolytronInfoPanel : MonoBehaviour
         idx = ((idx + delta) % count + count) % count; // wrap
         myPolytron.MindeleevCursor = idx;
 
-        string recipe = list[idx];
+        // Use numeric ordering when indexing by cursor
+        var orderedList = myPolytron.MindeleevTable.GetEmanationsListByPolytronicNumber();
+        string recipe = orderedList[idx];
         Debug.Log($"[PolytronInfoPanel] Cycling emanation for polytron_id={myPolytron.sealNumber} to index={idx} recipe={recipe}");
         // Apply selected recipe directly on the Polytron and rebuild immediately.
         // We avoid calling the engine helper since it refuses recipe changes
@@ -871,7 +873,101 @@ public class PolytronInfoPanel : MonoBehaviour
     // Stub invoked when Breed button is pressed on Architron during genetic selection
     public void Breed()
     {
-        // intentionally empty: wiring point for genetic breed action
+        try
+        {
+            if (providerEngine == null)
+            {
+                Debug.LogWarning("[PolytronInfoPanel] Breed: providerEngine missing");
+                return;
+            }
+
+            if (!providerEngine.geneticModeActive)
+            {
+                Debug.LogWarning("[PolytronInfoPanel] Breed: not in genetic mode");
+                return;
+            }
+
+            // Ensure this panel corresponds to the Architron
+            var arch = providerEngine.polytrons[providerEngine.architronIdx];
+            if (arch == null || myPolytron == null || !myPolytron.isArchitron)
+            {
+                Debug.LogWarning("[PolytronInfoPanel] Breed: not invoked on Architron panel");
+                return;
+            }
+
+            // Collect genetic friends currently orbiting the Architron
+            var friends = new List<Polytron>();
+            foreach (var p in providerEngine.polytrons)
+            {
+                if (p == null) continue;
+                var st = providerEngine.ComputeState(p);
+                if (st.Role == PolytronRole.GeneticFriend)
+                {
+                    friends.Add(p);
+                }
+            }
+
+            if (friends.Count == 0)
+            {
+                Debug.LogWarning("[PolytronInfoPanel] Breed: no genetic friends available");
+                return;
+            }
+
+            // Pick a random friend that has at least one emanation
+            Polytron chosenFriend = null;
+            List<string> friendEmanations = null;
+            var rng = new System.Random();
+            var shuffled = friends.OrderBy(_ => rng.Next()).ToList();
+            foreach (var f in shuffled)
+            {
+                var table = f.MindeleevTable;
+                if (table == null) continue;
+                var list = table.GetEmanationsList();
+                if (list != null && list.Count > 0)
+                {
+                    chosenFriend = f;
+                    friendEmanations = list;
+                    break;
+                }
+            }
+
+            if (chosenFriend == null || friendEmanations == null || friendEmanations.Count == 0)
+            {
+                Debug.LogWarning("[PolytronInfoPanel] Breed: no emanations found on genetic friends");
+                return;
+            }
+
+            // Select a random emanation from the chosen friend
+            int idx = UnityEngine.Random.Range(0, friendEmanations.Count);
+            string recipe = friendEmanations[idx];
+
+            Debug.Log($"[PolytronInfoPanel] Breed: selected recipe {recipe} from friend polytron #{chosenFriend.sealNumber}");
+
+            // Add to Architron
+            arch.AddEmanation(recipe);
+
+            // Notify engine for arch and source friend
+            providerEngine.NotifyPolytronStateChanged(arch);
+            providerEngine.NotifyPolytronStateChanged(chosenFriend);
+
+            // Deselect the two parents (if selection manager exists)
+            try
+            {
+                var sel = providerEngine.selectionManager;
+                if (sel != null)
+                {
+                    sel.ClearPaletteSelection();
+                    sel.ClearOperatorsSelection();
+                }
+            }
+            catch { }
+
+            Debug.Log("[PolytronInfoPanel] Breed: completed");
+        }
+        catch (Exception ex)
+        {
+            Debug.LogWarning($"[PolytronInfoPanel] Breed exception: {ex}");
+        }
     }
 
     // Stub invoked when Swap button is pressed on selected genetic friends
@@ -906,7 +1002,7 @@ public class PolytronInfoPanel : MonoBehaviour
                 return;
             }
 
-            var list = table.GetEmanationsList();
+            var list = table.GetEmanationsListByPolytronicNumber();
             if (list == null || list.Count == 0)
             {
                 Debug.LogWarning("[PolytronInfoPanel] AcquireEmanation: no emanations found");
@@ -945,7 +1041,7 @@ public class PolytronInfoPanel : MonoBehaviour
             {
                 myPolytron.MindeleevCursor = Mathf.Clamp(myPolytron.MindeleevCursor, 0, newCount - 1);
 
-                var newList = myPolytron.MindeleevTable.GetEmanationsList();
+                var newList = myPolytron.MindeleevTable.GetEmanationsListByPolytronicNumber();
                 if (newList != null && newList.Count > 0)
                 {
                     string newRecipe = newList[myPolytron.MindeleevCursor];
