@@ -1306,6 +1306,21 @@ public class MutatronEngine : MonoBehaviour, IPolytronStateProvider
             var outline = p.GetComponent<PointerOutlineStateController>();
             if (outline == null) continue;
 
+            // Exclude genetic friends and those currently returning from automatic entangle
+            if (geneticsManager != null && (geneticsManager.IsGeneticFriend(p) || geneticsManager.IsReturning(p)))
+            {
+                // If this polytron was previously auto-entangled, clear that state to avoid visual confusion
+                if (autoEntangledPolytrons.Contains(p))
+                {
+                    if (outline.GetCurrentState() == 3)
+                    {
+                        outline.SetState(0);
+                    }
+                    autoEntangledPolytrons.Remove(p);
+                }
+                continue;
+            }
+
             string ops = p._recipe?.OperatorsSequence() ?? "";
             int curState = outline.GetCurrentState();
 

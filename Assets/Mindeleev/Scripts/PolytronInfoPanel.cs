@@ -50,9 +50,9 @@ public class PolytronInfoPanel : MonoBehaviour
     // Button text constants to centralize UI labels
     private const string BTN_PREV_EMANATION = "Prev Emanation";
     private const string BTN_NEXT_EMANATION = "Next Emanation";
-    private const string BTN_BREED = "Breed";
-    private const string BTN_SWAP = "Swap";
-    private const string BTN_ENTANGLE = "Entangle";
+    private const string BTN_BREED = "Breed - Unused";
+    private const string BTN_SWAP = "Swap - Unused";
+    private const string BTN_ENTANGLE = "Entangle - Unused";
     private const string BTN_ACQUIRE_EMANATION = "Acquire Emanation";
     private const string BTN_MAKE_ARCHITRON = "Make Architron";
 
