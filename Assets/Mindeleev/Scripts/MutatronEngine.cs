@@ -916,6 +916,8 @@ public class MutatronEngine : MonoBehaviour, IPolytronStateProvider
 
     // automatic entangle tracking: polytrons currently outlined due to entangle matching
     private HashSet<Polytron> autoEntangledPolytrons = new HashSet<Polytron>();
+    // automatic tracking for polytrons outlined because they belong to an incomplete emanation family
+    private HashSet<Polytron> autoMissingEmanationPolytrons = new HashSet<Polytron>();
 
     // expose genetic active state for SelectionManager and other callers
     internal bool geneticModeActive => geneticsManager != null && geneticsManager.GeneticModeActive;
@@ -1286,8 +1288,33 @@ public class MutatronEngine : MonoBehaviour, IPolytronStateProvider
 
         string targetOps = PolyhedronRecipeKabbalah.IntToOperatorsSequence(targetSeed);
 
-        // Build new set of matching polytrons
-        var newlyMatched = new HashSet<Polytron>();
+        // Determine incomplete transformation groups from the Architron's MindeleevTable
+        var incompleteOps = new HashSet<string>();
+        try
+        {
+            var archList = arch.MindeleevTable.GetEmanationsListByPolytronicNumber();
+            foreach (var recipe in archList)
+            {
+                try
+                {
+                    var parsed = PolyhedronRecipeParser.Parse(recipe);
+                    string ops = parsed.OperatorsSequence();
+                    int collected = arch.MindeleevTable.CountEmanationsWithSameTransformation(recipe);
+                    int total = MindeleevTable.TotalRadixCombinations;
+                    if (collected < total)
+                    {
+                        incompleteOps.Add(ops);
+                    }
+                }
+                catch { }
+            }
+        }
+        catch { }
+
+        // Build new sets of matching polytrons for target (state 3) and incomplete families (state 4)
+        var newlyMatchedTarget = new HashSet<Polytron>();
+        var newlyMatchedMissing = new HashSet<Polytron>();
+
         foreach (var p in polytrons)
         {
             if (p == null) continue;
@@ -1300,45 +1327,98 @@ public class MutatronEngine : MonoBehaviour, IPolytronStateProvider
                     archOutline?.SetState(0);
                     autoEntangledPolytrons.Remove(p);
                 }
+                if (autoMissingEmanationPolytrons.Contains(p))
+                {
+                    var archOutline = p.GetComponent<PointerOutlineStateController>();
+                    archOutline?.SetState(0);
+                    autoMissingEmanationPolytrons.Remove(p);
+                }
                 continue;
             }
 
             var outline = p.GetComponent<PointerOutlineStateController>();
             if (outline == null) continue;
 
-            string ops = p._recipe?.OperatorsSequence() ?? "";
             int curState = outline.GetCurrentState();
 
-            if (ops == targetOps)
+            // For target (state 3) use the polytron's currently displayed recipe only
+            string currentOps = "";
+            try
             {
-                // Only apply entangle outline when the polytron is currently in the default "0" state
-                // or already entangled (3). Do not override selection outlines (1 or 2).
-                if (curState == 0 || curState == 3)
+                currentOps = p._recipe?.OperatorsSequence() ?? "";
+            }
+            catch { currentOps = ""; }
+
+            bool matchedTarget = (!string.IsNullOrEmpty(currentOps) && currentOps == targetOps);
+
+            // For missing/incomplete family (state 4) consider any stored emanation in the MindeleevTable
+            var pOps = new HashSet<string>();
+            try
+            {
+                if (p.MindeleevTable != null)
+                {
+                    var list = p.MindeleevTable.GetEmanationsListByPolytronicNumber();
+                    foreach (var r in list)
+                    {
+                        try { pOps.Add(PolyhedronRecipeParser.Parse(r).OperatorsSequence()); } catch { }
+                    }
+                }
+            }
+            catch { }
+
+            bool matchedMissing = pOps.Overlaps(incompleteOps);
+
+            // Priority: target (3) takes precedence over missing (4). Never override selection outlines (1 or 2).
+            if (matchedTarget)
+            {
+                // Allow target (3) to override missing (4) so cycling to a target recipe
+                // immediately upgrades an auto-missing polytron to target.
+                if (curState == 0 || curState == 3 || curState == 4)
                 {
                     outline.SetState(3);
-                    newlyMatched.Add(p);
+                    newlyMatchedTarget.Add(p);
                 }
                 else
                 {
-                    // If it was previously auto-entangled but now selected, remove from tracking
                     if (autoEntangledPolytrons.Contains(p)) autoEntangledPolytrons.Remove(p);
+                }
+                // If it was previously marked as missing, remove from missing tracking
+                if (autoMissingEmanationPolytrons.Contains(p)) autoMissingEmanationPolytrons.Remove(p);
+            }
+            else if (matchedMissing)
+            {
+                // Allow transitioning from auto-entangled (3) -> missing (4) so outlines update
+                // when a target emanation was acquired. Never override selection outlines (1 or 2).
+                if (curState == 0 || curState == 4 || curState == 3)
+                {
+                    outline.SetState(4);
+                    newlyMatchedMissing.Add(p);
+                    // if it was previously tracked as a target, remove from that set
+                    if (autoEntangledPolytrons.Contains(p)) autoEntangledPolytrons.Remove(p);
+                }
+                else
+                {
+                    if (autoMissingEmanationPolytrons.Contains(p)) autoMissingEmanationPolytrons.Remove(p);
                 }
             }
             else
             {
-                // If previously auto-entangled but no longer matching, restore only if current state is the entangle state
-                if (autoEntangledPolytrons.Contains(p))
+                // If this polytron currently has an auto-applied outline (3 or 4)
+                // but no longer matches target or missing criteria, clear it.
+                // Do not override selection outlines (1 or 2) because curState reflects current outline.
+                if (curState == 3 || curState == 4)
                 {
-                    // restore only if we're still in entangle state to avoid stomping selection states
-                    if (outline.GetCurrentState() == 3)
-                    {
-                        outline.SetState(0);
-                    }
+                    outline.SetState(0);
                 }
+
+                // Ensure tracking sets are kept in sync (remove if present)
+                if (autoEntangledPolytrons.Contains(p)) autoEntangledPolytrons.Remove(p);
+                if (autoMissingEmanationPolytrons.Contains(p)) autoMissingEmanationPolytrons.Remove(p);
             }
         }
 
-        autoEntangledPolytrons = newlyMatched;
+        autoEntangledPolytrons = newlyMatchedTarget;
+        autoMissingEmanationPolytrons = newlyMatchedMissing;
     }
 
     // Example: places you should insert NotifyPolytronStateChanged calls (not exhaustive)
