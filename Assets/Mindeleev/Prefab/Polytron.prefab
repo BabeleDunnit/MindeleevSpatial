@@ -1947,6 +1947,9 @@ MonoBehaviour:
   - name: Entagled
     outlineColor: {r: 1, g: 0, b: 0.9496021, a: 0}
     outlineWidth: 0.2
+  - name: MissingEmanation
+    outlineColor: {r: 0.5147662, g: 0, b: 1, a: 0}
+    outlineWidth: 0.2
   initialState: 0
   onHover:
     name: onHover
