@@ -273,6 +273,32 @@ public class PolyhedronRecipe
     {
         return TransformationName() + RadixName();
     }
+
+    /// <summary>
+    /// Build a human-readable transformation name from a raw operators sequence
+    /// (e.g. "tdn") using the `OperatorNames` table.
+    /// </summary>
+    public static string TransformationNameFromOperatorsSequence(string ops)
+    {
+        if (string.IsNullOrEmpty(ops)) return "";
+        var parts = ops.Select(c =>
+        {
+            var s = c.ToString();
+            if (OperatorNames.TryGetValue(s, out var name)) return name;
+            return char.ToUpperInvariant(c).ToString();
+        });
+        return string.Join("", parts);
+    }
+
+    /// <summary>
+    /// Convert a polytronicNumber (int) into a human-readable transformation name.
+    /// Uses PolyhedronRecipeKabbalah.IntToOperatorsSequence internally.
+    /// </summary>
+    public static string TransformationNameFromInt(int polytronicNumber)
+    {
+        var ops = PolyhedronRecipeKabbalah.IntToOperatorsSequence(polytronicNumber);
+        return TransformationNameFromOperatorsSequence(ops);
+    }
 }
 
 /// <summary>

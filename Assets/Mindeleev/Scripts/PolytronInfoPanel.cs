@@ -480,6 +480,15 @@ public class PolytronInfoPanel : MonoBehaviour
                     int collected = myPolytron.MindeleevTable.CountEmanationsWithSameTransformation(currentRecipe);
                     int total = MindeleevTable.TotalRadixCombinations;
                     gameBodyText += $"Emanation Completeness: {collected}/{total}";
+
+                    // Next transformation to collect (by numeric seed -> transformation name)
+                    try
+                    {
+                        int nextSeed = myPolytron.MindeleevTable.NextMissingPolytronicNumber();
+                        string nextTransName = PolyhedronRecipe.TransformationNameFromInt(nextSeed);
+                        gameBodyText += $"\nNext Transformation: {nextTransName} (seed {nextSeed})";
+                    }
+                    catch { }
                 }
             }
             catch { }
@@ -971,34 +980,31 @@ public class PolytronInfoPanel : MonoBehaviour
                 return;
             }
 
-            // Pick a random friend that has at least one emanation
-            Polytron chosenFriend = null;
-            List<string> friendEmanations = null;
-            var rng = new System.Random();
-            var shuffled = friends.OrderBy(_ => rng.Next()).ToList();
-            foreach (var f in shuffled)
+            // Collect the currently assigned recipe from each genetic friend (these are
+            // the actual genetic children produced from the parents' cartesian product)
+            var candidates = new List<(Polytron friend, string recipe)>();
+            foreach (var f in friends)
             {
-                var table = f.MindeleevTable;
-                if (table == null) continue;
-                var list = table.GetEmanationsList();
-                if (list != null && list.Count > 0)
+                try
                 {
-                    chosenFriend = f;
-                    friendEmanations = list;
-                    break;
+                    if (f == null) continue;
+                    if (string.IsNullOrEmpty(f.recipe)) continue;
+                    candidates.Add((f, f.recipe));
                 }
+                catch { }
             }
 
-            if (chosenFriend == null || friendEmanations == null || friendEmanations.Count == 0)
+            if (candidates.Count == 0)
             {
-                Debug.LogWarning("[PolytronInfoPanel] Breed: no emanations found on genetic friends");
+                Debug.LogWarning("[PolytronInfoPanel] Breed: no assigned genetic child recipes available on friends");
                 return;
             }
 
-            // Select a random emanation from the chosen friend
-            int idx = UnityEngine.Random.Range(0, friendEmanations.Count);
-            string recipe = friendEmanations[idx];
-
+            // Pick uniformly among the assigned friend recipes
+            int pick = UnityEngine.Random.Range(0, candidates.Count);
+            var chosen = candidates[pick];
+            string recipe = chosen.recipe;
+            Polytron chosenFriend = chosen.friend;
             Debug.Log($"[PolytronInfoPanel] Breed: selected recipe {recipe} from friend polytron #{chosenFriend.sealNumber}");
 
             // Add to Architron
