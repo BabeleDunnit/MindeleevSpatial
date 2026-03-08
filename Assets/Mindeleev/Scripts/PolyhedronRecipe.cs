@@ -257,6 +257,24 @@ public class PolyhedronRecipe
         return paletteName + polyName;
     }
 
+    public string PaletteName()
+    {
+        string paletteName = (PaletteIdx >= 0 && PaletteIdx < PaletteNames.Length)
+            ? PaletteNames[PaletteIdx]
+            : $"Palette{PaletteIdx}";
+
+        return paletteName;
+    }
+
+    public string BasePolyhedronName()
+    {
+        string polyName = PolyhedronNames.TryGetValue(BasePolyhedron, out var pname)
+            ? pname
+            : char.ToUpperInvariant(BasePolyhedron).ToString();
+
+        return polyName;
+    }
+
     /// <summary>
     /// Symbolic radix (palette index + base char), e.g. "03C".
     /// </summary>
@@ -271,7 +289,7 @@ public class PolyhedronRecipe
     /// </summary>
     public string EmanationName()
     {
-        return TransformationName() + RadixName();
+        return "<" + TransformationName() + "|" + PaletteName() + "|" + BasePolyhedronName() + ">";
     }
 
     /// <summary>
