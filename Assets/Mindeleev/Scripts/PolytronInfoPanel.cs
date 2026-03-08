@@ -286,9 +286,17 @@ public class PolytronInfoPanel : MonoBehaviour
     // handler invoked by MutatronEngine when a polytron state changes
     void OnPolytronStateChanged(Polytron p, PolytronState state)
     {
-        if (p != myPolytron) return;
-        // Debug.Log($"[PolytronInfoPanel] OnPolytronStateChanged called for polytron={p.sealNumber}, geneticModeActive={(providerEngine!=null?providerEngine.geneticModeActive:false)}");
-        ApplyStateToPanel(state);
+        bool isMyPolytron = (p == myPolytron);
+        bool isArchitron = (providerEngine != null && p == (providerEngine.polytrons != null && providerEngine.architronIdx >= 0 && providerEngine.architronIdx < providerEngine.polytrons.Count ? providerEngine.polytrons[providerEngine.architronIdx] : null));
+        
+        // Refresh if it's my polytron or if it's the Architron (button visibility depends on Architron's nextMissing and incomplete families)
+        if (isMyPolytron || isArchitron)
+        {
+            // If it's my polytron, use the provided state; otherwise recompute my own state
+            PolytronState stateToApply = isMyPolytron ? state : provider.ComputeState(myPolytron);
+            // Debug.Log($"[PolytronInfoPanel] OnPolytronStateChanged: polytron={p.sealNumber}, isMyPolytron={isMyPolytron}, isArchitron={isArchitron}, refreshing panel");
+            ApplyStateToPanel(stateToApply);
+        }
     }
 
     void UpdateTextsAndButtons()
@@ -439,8 +447,55 @@ public class PolytronInfoPanel : MonoBehaviour
             // Button3: Acquire Emanation for non-Architron polytrons, Entangle only for Architron in normal mode
             if (myPolytron != null && !myPolytron.isArchitron && emanationCount > 1)
             {
-                if (button3 != null) button3Text = BTN_ACQUIRE_EMANATION;
-                // Debug.Log($"[PolytronInfoPanel] Setting button3='{BTN_ACQUIRE_EMANATION}' for polytron {state.SealNumber}");
+                bool showAcquire = false;
+                try
+                {
+                    // Determine the polytron's actual visible emanation by cursor (authoritative source)
+                    string actualRecipe = null;
+                    if (myPolytron.MindeleevTable != null)
+                    {
+                        var ordered = myPolytron.MindeleevTable.GetEmanationsListByPolytronicNumber();
+                        if (ordered != null && ordered.Count > 0)
+                        {
+                            int idx = Mathf.Clamp(myPolytron.MindeleevCursor, 0, ordered.Count - 1);
+                            actualRecipe = ordered[idx];
+                        }
+                    }
+
+                    if (!string.IsNullOrEmpty(actualRecipe) && providerEngine != null)
+                    {
+                        var arch = providerEngine.polytrons != null && providerEngine.architronIdx >= 0 && providerEngine.architronIdx < providerEngine.polytrons.Count
+                            ? providerEngine.polytrons[providerEngine.architronIdx]
+                            : null;
+
+                        var archTable = arch != null ? arch.MindeleevTable : null;
+                        if (archTable != null)
+                        {
+                            int seed = PolyhedronRecipeKabbalah.RecipeToInt(actualRecipe, false);
+                            if (seed >= 0)
+                            {
+                                // Next-missing check
+                                int nextMissing = archTable.NextMissingPolytronicNumber();
+                                if (seed == nextMissing)
+                                {
+                                    showAcquire = true;
+                                }
+                                else
+                                {
+                                    // Check if this emanation belongs to an already-started (but incomplete) family
+                                    int collected = archTable.CountEmanationsWithSameTransformation(actualRecipe);
+                                    if (collected > 0 && collected < MindeleevTable.TotalRadixCombinations)
+                                    {
+                                        showAcquire = true;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+                catch { }
+
+                if (button3 != null) button3Text = showAcquire ? BTN_ACQUIRE_EMANATION : "";
             }
             else if (!geneticActive && state.Role == PolytronRole.Architron)
             {
