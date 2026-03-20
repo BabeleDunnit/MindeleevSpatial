@@ -52,7 +52,7 @@ public class PolytronInfoPanel : MonoBehaviour
     private const string BTN_NEXT_EMANATION = "Next Emanation";
     private const string BTN_BREED = "Breed";
     private const string BTN_SWAP = "Swap - Unused";
-    private const string BTN_ENTANGLE = "Entangle - Unused";
+    private const string BTN_MIND_ELEEV = "Mind Eleev";
     private const string BTN_ACQUIRE_EMANATION = "Acquire Emanation";
     private const string BTN_MAKE_ARCHITRON = "Make Architron";
 
@@ -499,8 +499,8 @@ public class PolytronInfoPanel : MonoBehaviour
             }
             else if (!geneticActive && state.Role == PolytronRole.Architron)
             {
-                if (button3 != null) button3Text = BTN_ENTANGLE;
-                Debug.Log($"[PolytronInfoPanel] Setting button3='{BTN_ENTANGLE}' for Architron {state.SealNumber}");
+                if (button3 != null) button3Text = BTN_MIND_ELEEV;
+                Debug.Log($"[PolytronInfoPanel] Setting button3='{BTN_MIND_ELEEV}' for Architron {state.SealNumber}");
             }
             else
             {
@@ -857,7 +857,7 @@ public class PolytronInfoPanel : MonoBehaviour
                 }
                 else
                 {
-                    Entangle();
+                    MindEleev();
                 }
             }
             catch { }
@@ -1211,9 +1211,9 @@ public class PolytronInfoPanel : MonoBehaviour
     }
 
     // Stub invoked when Entangle button is pressed on Architron in normal mode
-    public void Entangle()
+    public void MindEleev()
     {
-        // intentionally empty: entangle is now automatic via MutatronEngine.NotifyPolytronStateChanged
+        Debug.Log("[PolytronInfoPanel] Entering Mind-Eleeev");
     }
 
     // Stub invoked when Acquire Emanation button is pressed on non-Architron polytrons
