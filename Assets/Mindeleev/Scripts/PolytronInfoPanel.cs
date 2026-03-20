@@ -1263,6 +1263,30 @@ public class PolytronInfoPanel : MonoBehaviour
             else
             {
                 arch.AddEmanation(recipe);
+
+                // Rebuild the center tile with the Architron's new recipe
+                try
+                {
+                    if (!string.IsNullOrEmpty(arch.recipe))
+                    {
+                        var centerCoord = new HexCoord(0, 0);
+                        if (providerEngine.gridCellsMap.TryGetValue(centerCoord, out var centerCell))
+                        {
+                            int seed = PolyhedronRecipeKabbalah.RecipeToInt(arch.recipe, false);
+                            if (seed >= 0)
+                            {
+                                centerCell.polytronicNumber = seed;
+                                string newTileRecipe = PolyhedronRecipeKabbalah.IntToOperatorsSequence(seed) + centerCell.tileBasePolyhedron;
+                                providerEngine.RebuildTileMesh(centerCoord, newTileRecipe);
+                                Debug.Log($"[PolytronInfoPanel] AcquireEmanation: rebuilt center tile with recipe={newTileRecipe} (seed={seed})");
+                            }
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Debug.LogWarning($"[PolytronInfoPanel] AcquireEmanation: failed to rebuild center tile: {ex}");
+                }
             }
 
             // Adjust cursor on source polytron and set its visible recipe to the new selection
