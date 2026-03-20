@@ -1170,15 +1170,24 @@ public class PolytronInfoPanel : MonoBehaviour
             // Rebuild the center tile (ring=0, idx=0) with the Architron's newly bred recipe
             try
             {
-                if (providerEngine != null)
+                if (providerEngine != null && arch != null && !string.IsNullOrEmpty(arch.recipe))
                 {
                     var centerCoord = new HexCoord(0, 0);
                     if (providerEngine.gridCellsMap.TryGetValue(centerCoord, out var centerCell))
                     {
-                        // Use the polytronicNumber already stored in the center cell to generate the tile recipe
-                        string newTileRecipe = PolyhedronRecipeKabbalah.IntToOperatorsSequence(centerCell.polytronicNumber) + centerCell.tileBasePolyhedron;
-                        providerEngine.RebuildTileMesh(centerCoord, newTileRecipe);
-                        Debug.Log($"[PolytronInfoPanel] Breed: rebuilt center tile (coord={centerCoord}) with recipe={newTileRecipe}");
+                        // Extract the seed from the Architron's recipe and rebuild the center tile
+                        int seed = PolyhedronRecipeKabbalah.RecipeToInt(arch.recipe, false);
+                        if (seed >= 0)
+                        {
+                            centerCell.polytronicNumber = seed;  // Update the cell's record
+                            string newTileRecipe = PolyhedronRecipeKabbalah.IntToOperatorsSequence(seed) + centerCell.tileBasePolyhedron;
+                            providerEngine.RebuildTileMesh(centerCoord, newTileRecipe);
+                            Debug.Log($"[PolytronInfoPanel] Breed: rebuilt center tile (coord={centerCoord}) with recipe={newTileRecipe} (seed={seed})");
+                        }
+                        else
+                        {
+                            Debug.LogWarning($"[PolytronInfoPanel] Breed: failed to extract seed from Architron recipe '{arch.recipe}'");
+                        }
                     }
                 }
             }
