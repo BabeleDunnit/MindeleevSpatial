@@ -90,6 +90,17 @@ public class SelectionManager
         engine.NotifyPolytronStateChanged(arch);
     }
 
+    /// <summary>
+    /// Clears the saved Architron recipe that would be restored when genetic mode or selection mode exits.
+    /// Called after Breed() to prevent recipe overwrites.
+    /// </summary>
+    internal void ClearArchitronSavedRecipe()
+    {
+        ArchitronSavedRecipeForSelection = null;
+        architronHoverSavedRecipe = null;
+        architronHoverOverrideActive = false;
+    }
+
     internal void OnPolytronClicked(Polytron p)
     {
         if (p == null || p.isArchitron) return;

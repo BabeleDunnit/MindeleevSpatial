@@ -202,7 +202,7 @@ public class Polytron : PolyhedronGenerator,
     public void OnPointerEnter(PointerEventData eventData)
     {
         if (!interactive) return;
-        Debug.Log("OnPointerEnter");
+        // Debug.Log("OnPointerEnter");
 
         GetComponent<PointerOutlineStateController>()?.OnHoverEnter();
         GetComponent<PolytronInfoPanel>()?.Activate(true);
@@ -214,7 +214,7 @@ public class Polytron : PolyhedronGenerator,
     public void OnPointerExit(PointerEventData eventData)
     {
         if (!interactive) return;
-        Debug.Log("OnPointerExit");
+        // Debug.Log("OnPointerExit");
 
         GetComponent<PointerOutlineStateController>()?.OnHoverExit();
         GetComponent<PolytronInfoPanel>()?.Activate(false);

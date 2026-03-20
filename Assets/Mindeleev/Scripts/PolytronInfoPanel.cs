@@ -1065,9 +1065,57 @@ public class PolytronInfoPanel : MonoBehaviour
             // Add to Architron
             arch.AddEmanation(recipe);
 
-            // Notify engine for arch and source friend
-            providerEngine.NotifyPolytronStateChanged(arch);
+            // Update the Architron's cursor and visible recipe to the newly added emanation
+            try
+            {
+                var orderedList = arch.MindeleevTable.GetEmanationsListByPolytronicNumber();
+                Debug.Log($"[PolytronInfoPanel] Breed: orderedList={orderedList}, count={orderedList?.Count ?? -1}");
+                if (orderedList != null && orderedList.Count > 0)
+                {
+                    // Find the index of the newly added recipe
+                    int newIdx = orderedList.IndexOf(recipe);
+                    Debug.Log($"[PolytronInfoPanel] Breed: recipe='{recipe}', newIdx={newIdx}, orderedList contents: {string.Join(", ", orderedList)}");
+                    if (newIdx >= 0)
+                    {
+                        arch.MindeleevCursor = newIdx;
+                        arch.recipe = recipe;
+                        arch.RebuildMesh();
+                        arch.GetComponent<PointerOutlineStateController>()?.OnHoverEnter();
+                        Debug.Log($"[PolytronInfoPanel] Breed: set Architron cursor to index {newIdx}, recipe={recipe}");
+                    }
+                }
+                else
+                {
+                    Debug.LogWarning($"[PolytronInfoPanel] Breed: orderedList is null or empty");
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.LogWarning($"[PolytronInfoPanel] Breed: failed to update Architron cursor/recipe: {ex}");
+            }
+
+            // Notify engine for source friend (to update its panel)
             providerEngine.NotifyPolytronStateChanged(chosenFriend);
+
+            // Refresh the Architron panel directly with a freshly computed state (to ensure it reflects our cursor/recipe changes)
+            try
+            {
+                if (providerEngine != null && myPolytron == arch)
+                {
+                    var freshState = providerEngine.ComputeState(arch);
+                    ApplyStateToPanel(freshState);
+                    Debug.Log($"[PolytronInfoPanel] Breed: refreshed Architron panel with fresh state, recipe={freshState.Recipe}");
+                }
+                else
+                {
+                    // Fallback: notify arch if it's not the current panel
+                    providerEngine.NotifyPolytronStateChanged(arch);
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.LogWarning($"[PolytronInfoPanel] Breed: failed to refresh Architron panel: {ex}");
+            }
 
             // Deselect the two parents (if selection manager exists)
             try
@@ -1080,6 +1128,64 @@ public class PolytronInfoPanel : MonoBehaviour
                 }
             }
             catch { }
+
+            // After clearing selections, SelectionManager / GeneticsManager may restore
+            // a previously saved Architron recipe. Force-apply the newly bred recipe
+            // so the visible Architron reflects the addition.
+            try
+            {
+                if (providerEngine != null)
+                {
+                    providerEngine.ApplyRecipeToArchitron(recipe);
+                    // Ensure panels refresh
+                    providerEngine.NotifyPolytronStateChanged(arch);
+                    if (myPolytron == arch)
+                    {
+                        var fresh = providerEngine.ComputeState(arch);
+                        ApplyStateToPanel(fresh);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.LogWarning($"[PolytronInfoPanel] Breed: failed to reapply arch recipe: {ex}");
+            }
+
+            // Clear saved recipes so OnPointerExit, GeneticsManager, or other paths don't
+            // restore the old recipe and erase our newly bred emanation.
+            try
+            {
+                if (providerEngine != null && providerEngine.selectionManager != null)
+                {
+                    // Clear the saved recipe that SelectionManager would restore on genetic mode end
+                    providerEngine.selectionManager.ClearArchitronSavedRecipe();
+                    Debug.Log("[PolytronInfoPanel] Breed: cleared saved Architron recipe from SelectionManager");
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.LogWarning($"[PolytronInfoPanel] Breed: failed to clear saved recipes: {ex}");
+            }
+
+            // Rebuild the center tile (ring=0, idx=0) with the Architron's newly bred recipe
+            try
+            {
+                if (providerEngine != null)
+                {
+                    var centerCoord = new HexCoord(0, 0);
+                    if (providerEngine.gridCellsMap.TryGetValue(centerCoord, out var centerCell))
+                    {
+                        // Use the polytronicNumber already stored in the center cell to generate the tile recipe
+                        string newTileRecipe = PolyhedronRecipeKabbalah.IntToOperatorsSequence(centerCell.polytronicNumber) + centerCell.tileBasePolyhedron;
+                        providerEngine.RebuildTileMesh(centerCoord, newTileRecipe);
+                        Debug.Log($"[PolytronInfoPanel] Breed: rebuilt center tile (coord={centerCoord}) with recipe={newTileRecipe}");
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.LogWarning($"[PolytronInfoPanel] Breed: failed to rebuild center tile: {ex}");
+            }
 
             Debug.Log("[PolytronInfoPanel] Breed: completed");
         }
