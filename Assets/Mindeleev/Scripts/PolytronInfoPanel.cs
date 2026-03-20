@@ -760,8 +760,8 @@ public class PolytronInfoPanel : MonoBehaviour
             }
         }
 
-        // Toggle displayed body info between debug and game view when 'I' is pressed
-        if (Input.GetKeyDown(KeyCode.I))
+        // Toggle displayed body info between debug and game view when 'V' is pressed
+        if (Input.GetKeyDown(KeyCode.V))
         {
             showDebugInfo = !showDebugInfo;
             PolytronState st;

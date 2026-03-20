@@ -2,7 +2,7 @@
 
 commands:
 
-I: switch info in the polytrons panels
+V: switch info views in the polytrons panels
 L: new level
 E: evolve
 
