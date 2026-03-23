@@ -2,6 +2,7 @@ using UnityEngine;
 using System;
 using UnityEngine.UI;
 using System.Collections;
+using System.Collections.Generic;
 using TMPro;
 using System.Linq;
 
@@ -29,14 +30,31 @@ public class PolytronInfoPanel : MonoBehaviour
     TextMeshProUGUI bodyText_;
     Button centerButton;
     TextMeshProUGUI centerButtonText_;
+
+    // left top
     Button button1;
     TextMeshProUGUI button1Text_;
+
+    // left bottom
     Button button2;
     TextMeshProUGUI button2Text_;
+
+    // right top
     Button button3;
     TextMeshProUGUI button3Text_;
+
+    // right bottom
     Button button4;
     TextMeshProUGUI button4Text_;
+
+    // Button text constants to centralize UI labels
+    private const string BTN_PREV_EMANATION = "Prev Emanation";
+    private const string BTN_NEXT_EMANATION = "Next Emanation";
+    private const string BTN_BREED = "Breed";
+    private const string BTN_SWAP = "Swap - Unused";
+    private const string BTN_MIND_ELEEV = "Mind Eleev";
+    private const string BTN_ACQUIRE_EMANATION = "Acquire Emanation";
+    private const string BTN_MAKE_ARCHITRON = "Make Architron";
 
     MutatronEngine mutatron;
 
@@ -118,10 +136,14 @@ public class PolytronInfoPanel : MonoBehaviour
 
     private bool mustActivate = false;
     private Coroutine animCoroutine;
+    // Toggle between debug info and simplified game info (toggled by 'I')
+    private bool showDebugInfo = true;
 
     IPolytronStateProvider provider;
     MutatronEngine providerEngine;
     Polytron myPolytron;
+    // Track last known genetic mode state to log transitions
+    private bool lastGeneticActive = false;
     // if state arrives before UI is built, keep it here and apply after UI creation
     private PolytronState? pendingState = null;
 
@@ -237,6 +259,7 @@ public class PolytronInfoPanel : MonoBehaviour
         providerEngine = provider as MutatronEngine;
         if (providerEngine != null)
         {
+            Debug.Log($"[PolytronInfoPanel] Found providerEngine, geneticModeActive={providerEngine.geneticModeActive}");
             providerEngine.OnPolytronStateChanged += OnPolytronStateChanged;
             // initialize panel with authoritative state
             var st = providerEngine.ComputeState(myPolytron);
@@ -263,8 +286,17 @@ public class PolytronInfoPanel : MonoBehaviour
     // handler invoked by MutatronEngine when a polytron state changes
     void OnPolytronStateChanged(Polytron p, PolytronState state)
     {
-        if (p != myPolytron) return;
-        ApplyStateToPanel(state);
+        bool isMyPolytron = (p == myPolytron);
+        bool isArchitron = (providerEngine != null && p == (providerEngine.polytrons != null && providerEngine.architronIdx >= 0 && providerEngine.architronIdx < providerEngine.polytrons.Count ? providerEngine.polytrons[providerEngine.architronIdx] : null));
+        
+        // Refresh if it's my polytron or if it's the Architron (button visibility depends on Architron's nextMissing and incomplete families)
+        if (isMyPolytron || isArchitron)
+        {
+            // If it's my polytron, use the provided state; otherwise recompute my own state
+            PolytronState stateToApply = isMyPolytron ? state : provider.ComputeState(myPolytron);
+            // Debug.Log($"[PolytronInfoPanel] OnPolytronStateChanged: polytron={p.sealNumber}, isMyPolytron={isMyPolytron}, isArchitron={isArchitron}, refreshing panel");
+            ApplyStateToPanel(stateToApply);
+        }
     }
 
     void UpdateTextsAndButtons()
@@ -291,7 +323,6 @@ public class PolytronInfoPanel : MonoBehaviour
             pendingState = state;
             return;
         }
-
 
         // Header always shows name and role
         headerText_.text = (state.SealNumber + 1) + " - " + state.SealName;
@@ -324,7 +355,23 @@ public class PolytronInfoPanel : MonoBehaviour
                 break;
         }
 
-        bodyText_.text = $"Role: {roleText}\nLocation: {locText}\nRecipe: {state.Recipe}";
+        // Build two different body texts: debug (detailed) and game (minimal)
+        string debugBodyText = $"Role: {roleText}, Location: {locText}\nRecipe: {state.Recipe}, Seed: {myPolytron.MindeleevTable.GetPolytronicNumber(state.Recipe)}, NextSeed: {myPolytron.MindeleevTable.NextMissingPolytronicNumber()}\n";
+
+        string gameBodyText = "";
+        // gameBodyText for now is the human-friendly recipe name if parsable
+        if (!string.IsNullOrEmpty(state.Recipe))
+        {
+            try
+            {
+                var parsed = PolyhedronRecipeParser.Parse(state.Recipe);
+                gameBodyText = parsed.EmanationName();
+            }
+            catch
+            {
+                gameBodyText = state.Recipe;
+            }
+        }
 
         // Show emanations count and current selection index (if any)
         int emanationCount = 0;
@@ -335,17 +382,173 @@ public class PolytronInfoPanel : MonoBehaviour
             currentIndex = Mathf.Clamp(myPolytron.MindeleevCursor, 0, Math.Max(0, emanationCount - 1));
         }
 
+        // Detect genetic mode transitions and log. Also emit detailed state diagnostics
+        bool geneticActive = providerEngine != null && providerEngine.geneticModeActive;
+        // Debug.Log($"[PolytronInfoPanel] ApplyStateToPanel: polytron={state.SealNumber}, role={state.Role}, interactive={state.Interactive}, location={state.Location}, geneticActive={geneticActive}");
+        if (geneticActive != lastGeneticActive)
+        {
+            // Debug.Log($"[PolytronInfoPanel] Genetic mode transition for polytron {state.SealNumber}: {lastGeneticActive} -> {geneticActive}");
+            lastGeneticActive = geneticActive;
+        }
+
         if (emanationCount > 0)
         {
-            bodyText_.text += $"\nEmanations: {emanationCount} (showing {currentIndex + 1}/{emanationCount})";
+            debugBodyText += $"Emanations: {emanationCount} (showing {currentIndex + 1}/{emanationCount})\n";
+
+            // Add score display
+            float currentEmanationScore = 0f;
+            var currentEmanationList = myPolytron.MindeleevTable.GetEmanationsListByPolytronicNumber();
+            if (currentEmanationList.Count > 0 && myPolytron.MindeleevCursor >= 0 && myPolytron.MindeleevCursor < currentEmanationList.Count)
+            {
+                var currentRecipe = currentEmanationList[myPolytron.MindeleevCursor];
+                try
+                {
+                    var parsed = PolyhedronRecipeParser.Parse(currentRecipe);
+                    currentEmanationScore = PolyhedronRecipeUtils.ComputeComplexity(parsed);
+                }
+                catch { }
+            }
+            debugBodyText += $"Scores: Total: {myPolytron.totalPolytronScore:F2}, ";
+            debugBodyText += $"Emanation: {currentEmanationScore:F2}\n";
+
             // enable Prev/Next buttons via text (UpdatePanelGUI will toggle visibility)
-            if (button1 != null) button1Text = "Prev";
-            if (button2 != null) button2Text = "Next";
+                if (geneticActive && (state.Role == PolytronRole.Architron || state.Role == PolytronRole.ArchitronGenetic))
+            {
+                if (button1 != null) button1Text = BTN_BREED;
+                //Debug.Log($"[PolytronInfoPanel] Setting button1='Breed' for Architron {state.SealNumber}");
+                if (button2 != null) button2Text = "";
+                //Debug.Log($"[PolytronInfoPanel] Hiding button2 (Next) for Architron {state.SealNumber}");
+            }
+            else if (geneticActive && state.Selection != SelectionSlot.None)
+            {
+                // Show Swap on the selected PARENT polytrons (Palette/Operators selectors), not on ephemeral GeneticFriend children
+                if (button1 != null) button1Text = BTN_SWAP;
+                // Debug.Log($"[PolytronInfoPanel] Setting button1='Swap' for selected parent polytron {state.SealNumber} sel={state.Selection}");
+                if (button2 != null) button2Text = "";
+                //Debug.Log($"[PolytronInfoPanel] Hiding button2 (Next) for selected parent polytron {state.SealNumber}");
+            }
+            else
+            {
+                if (emanationCount > 1)
+                {
+                    if (button1 != null) button1Text = BTN_PREV_EMANATION;
+                    Debug.Log($"[PolytronInfoPanel] Setting button1='{BTN_PREV_EMANATION}' for polytron {state.SealNumber}");
+                    if (button2 != null) button2Text = BTN_NEXT_EMANATION;
+                    Debug.Log($"[PolytronInfoPanel] Setting button2='{BTN_NEXT_EMANATION}' for polytron {state.SealNumber}");
+                }
+                else
+                {
+                    if (button1 != null) button1Text = "";
+                    if (button2 != null) button2Text = "";
+                }
+            }
+
+            // Button3: Entangle (only for Architron in normal mode)
+            // Button3: Acquire Emanation for non-Architron polytrons, Entangle only for Architron in normal mode
+            if (myPolytron != null && !myPolytron.isArchitron && emanationCount > 1)
+            {
+                bool showAcquire = false;
+                try
+                {
+                    // Determine the polytron's actual visible emanation by cursor (authoritative source)
+                    string actualRecipe = null;
+                    if (myPolytron.MindeleevTable != null)
+                    {
+                        var ordered = myPolytron.MindeleevTable.GetEmanationsListByPolytronicNumber();
+                        if (ordered != null && ordered.Count > 0)
+                        {
+                            int idx = Mathf.Clamp(myPolytron.MindeleevCursor, 0, ordered.Count - 1);
+                            actualRecipe = ordered[idx];
+                        }
+                    }
+
+                    if (!string.IsNullOrEmpty(actualRecipe) && providerEngine != null)
+                    {
+                        var arch = providerEngine.polytrons != null && providerEngine.architronIdx >= 0 && providerEngine.architronIdx < providerEngine.polytrons.Count
+                            ? providerEngine.polytrons[providerEngine.architronIdx]
+                            : null;
+
+                        var archTable = arch != null ? arch.MindeleevTable : null;
+                        if (archTable != null)
+                        {
+                            int seed = PolyhedronRecipeKabbalah.RecipeToInt(actualRecipe, false);
+                            if (seed >= 0)
+                            {
+                                // Next-missing check
+                                int nextMissing = archTable.NextMissingPolytronicNumber();
+                                if (seed == nextMissing)
+                                {
+                                    showAcquire = true;
+                                }
+                                else
+                                {
+                                    // Check if this emanation belongs to an already-started (but incomplete) family
+                                    int collected = archTable.CountEmanationsWithSameTransformation(actualRecipe);
+                                    if (collected > 0 && collected < MindeleevTable.TotalRadixCombinations)
+                                    {
+                                        showAcquire = true;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+                catch { }
+
+                if (button3 != null) button3Text = showAcquire ? BTN_ACQUIRE_EMANATION : "";
+            }
+            else if (!geneticActive && state.Role == PolytronRole.Architron)
+            {
+                if (button3 != null) button3Text = BTN_MIND_ELEEV;
+                Debug.Log($"[PolytronInfoPanel] Setting button3='{BTN_MIND_ELEEV}' for Architron {state.SealNumber}");
+            }
+            else
+            {
+                if (button3 != null) button3Text = "";
+            }
         }
         else
         {
             if (button1 != null) button1Text = "";
             if (button2 != null) button2Text = "";
+        }
+
+        // Assign chosen body text based on runtime toggle
+        if (showDebugInfo)
+        {
+            bodyText_.text = debugBodyText;
+        }
+        else
+        {
+            // Build gameBodyText with emanation name + (index/total) and completeness info
+            try
+            {
+                if (myPolytron != null && myPolytron.MindeleevTable != null && myPolytron.MindeleevTable.Count > 0)
+                {
+                    var ordered = myPolytron.MindeleevTable.GetEmanationsListByPolytronicNumber();
+                    int idx = Mathf.Clamp(myPolytron.MindeleevCursor, 0, Math.Max(0, ordered.Count - 1));
+                    string currentRecipe = ordered[idx];
+                    var parsed = PolyhedronRecipeParser.Parse(currentRecipe);
+                    string name = parsed.EmanationName();
+                    gameBodyText = $"Emanation: {name} ({idx + 1}/{ordered.Count})\n";
+
+                    int collected = myPolytron.MindeleevTable.CountEmanationsWithSameTransformation(currentRecipe);
+                    int total = MindeleevTable.TotalRadixCombinations;
+                    gameBodyText += $"Emanation Completeness: {collected}/{total}";
+
+                    // Next transformation to collect (by numeric seed -> transformation name)
+                    try
+                    {
+                        int nextSeed = myPolytron.MindeleevTable.NextMissingPolytronicNumber();
+                        string nextTransName = PolyhedronRecipe.TransformationNameFromInt(nextSeed);
+                        gameBodyText += $"\nNext Transformation: {nextTransName} (seed {nextSeed})";
+                    }
+                    catch { }
+                }
+            }
+            catch { }
+
+            bodyText_.text = gameBodyText;
         }
 
         /*
@@ -369,7 +572,7 @@ public class PolytronInfoPanel : MonoBehaviour
                    if (state.Role != PolytronRole.Architron && state.Role != PolytronRole.ArchitronGenetic && state.Interactive && (state.Location == PolytronLocation.Mutatron || state.Location == PolytronLocation.Home))
                    {
                        button4.gameObject.SetActive(true);
-                       button4Text_.text = "Make Architron";
+                       button4Text_.text = BTN_MAKE_ARCHITRON;
                    }
                    else
                    {
@@ -402,23 +605,47 @@ public class PolytronInfoPanel : MonoBehaviour
 
 
         // Button 4: Make Architron (only if not already architron and interactive and on mutatron)
+        // During genetic mode we hide this action to avoid conflicting UI with Breed/Swap.
         if (button4 != null)
         {
-            if (state.Role != PolytronRole.Architron && state.Role != PolytronRole.ArchitronGenetic
-                && state.Interactive
-                && (state.Location == PolytronLocation.Mutatron || state.Location == PolytronLocation.Home))
+            if (geneticActive)
             {
-                //                 button4.gameObject.SetActive(true);
-                button4Text = "Make Architron";
+                button4Text = ""; // hide during genetics
+                // Debug.Log($"[PolytronInfoPanel] Hiding {BTN_MAKE_ARCHITRON} for polytron {state.SealNumber} due to genetic mode");
             }
             else
             {
-                //                 button4.gameObject.SetActive(false);
-                button4Text = "";
+                if (state.Role != PolytronRole.Architron && state.Role != PolytronRole.ArchitronGenetic
+                    && state.Interactive
+                    && (state.Location == PolytronLocation.Mutatron || state.Location == PolytronLocation.Home))
+                {
+                    button4Text = BTN_MAKE_ARCHITRON;
+                    // Debug.Log($"[PolytronInfoPanel] Showing {BTN_MAKE_ARCHITRON} for polytron {state.SealNumber}");
+                }
+                else
+                {
+                    button4Text = "";
+                }
             }
         }
 
 
+
+        // Emit diagnostic snapshot of button texts and current active states before GUI update
+        try
+        {
+            var b1t = button1Text_ != null ? button1Text_.text : "<null>";
+            var b2t = button2Text_ != null ? button2Text_.text : "<null>";
+            var b3t = button3Text_ != null ? button3Text_.text : "<null>";
+            var b4t = button4Text_ != null ? button4Text_.text : "<null>";
+            bool b1Has = button1Text_ != null && !string.IsNullOrWhiteSpace(button1Text_.text);
+            bool b2Has = button2Text_ != null && !string.IsNullOrWhiteSpace(button2Text_.text);
+            bool b4Has = button4Text_ != null && !string.IsNullOrWhiteSpace(button4Text_.text);
+            bool b1ActiveBefore = button1 != null ? button1.gameObject.activeSelf : false;
+            bool b2ActiveBefore = button2 != null ? button2.gameObject.activeSelf : false;
+            // Debug.Log($"[PolytronInfoPanel] Before UpdatePanelGUI: b1='{b1t}' has={b1Has} activeBefore={b1ActiveBefore}; b2='{b2t}' has={b2Has} activeBefore={b2ActiveBefore}; b4='{b4t}' has={b4Has}");
+        }
+        catch { }
 
         UpdatePanelGUI();
     }
@@ -458,6 +685,19 @@ public class PolytronInfoPanel : MonoBehaviour
         bool HasText(TextMeshProUGUI t) => t != null && !string.IsNullOrWhiteSpace(t.text);
 
         Debug.Assert(headerText_ != null);
+        // Diagnostic: log HasText results before toggling
+        try
+        {
+            bool h_header = HasText(headerText_);
+            bool h_body = HasText(bodyText_);
+            bool h_center = centerButtonText_ != null && HasText(centerButtonText_);
+            bool h_b1 = button1Text_ != null && HasText(button1Text_);
+            bool h_b2 = button2Text_ != null && HasText(button2Text_);
+            bool h_b3 = button3Text_ != null && HasText(button3Text_);
+            bool h_b4 = button4Text_ != null && HasText(button4Text_);
+            // Debug.Log($"[PolytronInfoPanel] UpdatePanelGUI pre: header={h_header} body={h_body} center={h_center} b1={h_b1} b2={h_b2} b3={h_b3} b4={h_b4}");
+        }
+        catch { }
 
         headerText_.gameObject.SetActive(HasText(headerText_));
         bodyText_.gameObject.SetActive(HasText(bodyText_));
@@ -466,6 +706,13 @@ public class PolytronInfoPanel : MonoBehaviour
         button2.gameObject.SetActive(button2Text_ != null && HasText(button2Text_));
         button3.gameObject.SetActive(button3Text_ != null && HasText(button3Text_));
         button4.gameObject.SetActive(button4Text_ != null && HasText(button4Text_));
+
+        // Diagnostic: log activeSelf states after toggling
+        try
+        {
+            // Debug.Log($"[PolytronInfoPanel] UpdatePanelGUI post: b1.active={button1.gameObject.activeSelf} b2.active={button2.gameObject.activeSelf} b4.active={button4.gameObject.activeSelf} b1.text='{(button1Text_!=null?button1Text_.text:"<null>")}' b2.text='{(button2Text_!=null?button2Text_.text:"<null>")}'");
+        }
+        catch { }
     }
 
     void Update()
@@ -494,6 +741,35 @@ public class PolytronInfoPanel : MonoBehaviour
         if (isVisible)
         {
             canvasComponent.transform.rotation = Quaternion.LookRotation(panelTransform.position - cameraTransform.position, Vector3.up /*+ new Vector3(30f, 30f, 30f)*/);
+        }
+
+        // Poll the provider's global genetic flag and force a panel refresh when it changes.
+        if (providerEngine != null)
+        {
+            bool globalGenetic = providerEngine.geneticModeActive;
+            if (globalGenetic != lastGeneticActive)
+            {
+                Debug.Log($"[PolytronInfoPanel] Detected geneticActive change in Update for polytron {myPolytron?.sealNumber}: {lastGeneticActive} -> {globalGenetic}");
+                lastGeneticActive = globalGenetic;
+                PolytronState st;
+                if (provider != null)
+                    st = provider.ComputeState(myPolytron);
+                else
+                    st = LocalPolytronStateEvaluator.ComputeState(myPolytron);
+                ApplyStateToPanel(st);
+            }
+        }
+
+        // Toggle displayed body info between debug and game view when 'V' is pressed
+        if (Input.GetKeyDown(KeyCode.V))
+        {
+            showDebugInfo = !showDebugInfo;
+            PolytronState st;
+            if (provider != null)
+                st = provider.ComputeState(myPolytron);
+            else
+                st = LocalPolytronStateEvaluator.ComputeState(myPolytron);
+            ApplyStateToPanel(st);
         }
 
     }
@@ -533,17 +809,62 @@ public class PolytronInfoPanel : MonoBehaviour
         // Prev / Next emanation (buttons 1 and 2)
         if (index == 1)
         {
+            // Handle genetic-mode special actions (Breed/Swap) if present
+            try
+            {
+                var txt = button1Text_ != null ? button1Text_.text : "";
+                if (txt == BTN_BREED)
+                {
+                    Breed();
+                    return;
+                }
+                else if (txt == BTN_SWAP)
+                {
+                    Swap();
+                    return;
+                }
+            }
+            catch { }
+
             CycleEmanation(-1);
             return;
         }
 
         if (index == 2)
         {
-            CycleEmanation(1);
+            // Only cycle forward if Next is visible
+            try
+            {
+                var txt2 = button2Text_ != null ? button2Text_.text : "";
+                if (txt2 == BTN_NEXT_EMANATION)
+                {
+                    CycleEmanation(1);
+                }
+            }
+            catch { }
             return;
         }
 
-        if (index == 4 && button4Text_.text == "Make Architron")
+        if (index == 3)
+        {
+            // Button3: Entangle for Architron, Acquire Emanation for other polytrons
+            try
+            {
+                var txt3 = button3Text_ != null ? button3Text_.text : "";
+                if (txt3 == BTN_ACQUIRE_EMANATION)
+                {
+                    AcquireEmanation();
+                }
+                else
+                {
+                    MindEleev();
+                }
+            }
+            catch { }
+            return;
+        }
+
+        if (index == 4 && button4Text_ != null && button4Text_.text == BTN_MAKE_ARCHITRON)
         {
             Debug.Log("Changing Architron");
             mutatron.SetNewArchitron(GetComponent<Polytron>().sealNumber);
@@ -561,7 +882,9 @@ public class PolytronInfoPanel : MonoBehaviour
         idx = ((idx + delta) % count + count) % count; // wrap
         myPolytron.MindeleevCursor = idx;
 
-        string recipe = list[idx];
+        // Use numeric ordering when indexing by cursor
+        var orderedList = myPolytron.MindeleevTable.GetEmanationsListByPolytronicNumber();
+        string recipe = orderedList[idx];
         Debug.Log($"[PolytronInfoPanel] Cycling emanation for polytron_id={myPolytron.sealNumber} to index={idx} recipe={recipe}");
         // Apply selected recipe directly on the Polytron and rebuild immediately.
         // We avoid calling the engine helper since it refuses recipe changes
@@ -576,6 +899,7 @@ public class PolytronInfoPanel : MonoBehaviour
 
             myPolytron.recipe = recipe;
             myPolytron.RebuildMesh();
+            myPolytron.GetComponent<PointerOutlineStateController>().OnHoverEnter();
 
             int? newMeshId = null;
             try { newMeshId = mf?.mesh != null ? (int?)mf.mesh.GetInstanceID() : null; } catch { newMeshId = null; }
@@ -585,10 +909,23 @@ public class PolytronInfoPanel : MonoBehaviour
                 Debug.LogWarning($"[PolytronInfoPanel] Rebuild resulted in same mesh id={newMeshId} for polytron_id={myPolytron.sealNumber}; visible recipe may be unchanged");
             }
 
-            myPolytron.AddEmanation(recipe);
+            // myPolytron.AddEmanation(recipe);
             // Ensure cursor points to selected index (defensive)
             myPolytron.MindeleevCursor = idx;
+            // Rewrite the bound tile's emanation from this polytron emanation
+            try
+            {
+                RewriteTileEmanationFromRecipe(recipe);
+            }
+            catch (Exception ex)
+            {
+                Debug.LogWarning($"[PolytronInfoPanel] RewriteTileEmanationFromRecipe failed: {ex}");
+            }
+
             providerEngine.NotifyPolytronStateChanged(myPolytron);
+
+            // Update score display after emanation change
+            UpdateEmanationScoreDisplay();
         }
         catch (Exception ex)
         {
@@ -596,10 +933,432 @@ public class PolytronInfoPanel : MonoBehaviour
         }
     }
 
+    // Helper that rewrites the tile polytronicNumber from a polytron recipe string
+    void RewriteTileEmanationFromRecipe(string recipe)
+    {
+        if (myPolytron == null) return;
+        if (string.IsNullOrEmpty(recipe)) return;
+
+        int seed = PolyhedronRecipeKabbalah.RecipeToInt(recipe, false);
+        if (seed < 0)
+        {
+            Debug.LogWarning($"[PolytronInfoPanel] RewriteTileEmanationFromRecipe: invalid seed for recipe '{recipe}'");
+            return;
+        }
+
+        var sink = myPolytron.boundSink;
+        if (sink == null)
+        {
+            Debug.LogWarning($"[PolytronInfoPanel] RewriteTileEmanationFromRecipe: polytron {myPolytron.sealNumber} not bound to a sink");
+            return;
+        }
+
+        var coord = sink.hexCoord;
+        if (providerEngine == null)
+        {
+            Debug.LogWarning("[PolytronInfoPanel] RewriteTileEmanationFromRecipe: providerEngine not set");
+            return;
+        }
+
+        if (!providerEngine.gridCellsMap.TryGetValue(coord, out var cell))
+        {
+            Debug.LogWarning($"[PolytronInfoPanel] RewriteTileEmanationFromRecipe: no cell for coord {coord}");
+            return;
+        }
+
+        cell.polytronicNumber = seed;
+        string newTileRecipe = PolyhedronRecipeKabbalah.IntToOperatorsSequence(seed) + cell.tileBasePolyhedron;
+        Debug.Log($"[PolytronInfoPanel] RewriteTileEmanationFromRecipe: setting polytronicNumber={seed} at ring={cell.ring} idx={cell.idxInRing} recipe={newTileRecipe}");
+        providerEngine.RebuildTileMesh(coord, newTileRecipe);
+    }
+
+    /// <summary>
+    /// Updates and displays the current emanation score and total polytron score in the UI.
+    /// </summary>
+    private void UpdateEmanationScoreDisplay()
+    {
+        if (myPolytron == null)
+            return;
+        // Refresh the panel display to show updated scores
+        PolytronState state;
+        if (provider != null)
+        {
+            state = provider.ComputeState(myPolytron);
+        }
+        else
+        {
+            state = LocalPolytronStateEvaluator.ComputeState(myPolytron);
+        }
+        ApplyStateToPanel(state);
+    }
+
+    // Stub invoked when Breed button is pressed on Architron during genetic selection
+    public void Breed()
+    {
+        try
+        {
+            if (providerEngine == null)
+            {
+                Debug.LogWarning("[PolytronInfoPanel] Breed: providerEngine missing");
+                return;
+            }
+
+            if (!providerEngine.geneticModeActive)
+            {
+                Debug.LogWarning("[PolytronInfoPanel] Breed: not in genetic mode");
+                return;
+            }
+
+            // Ensure this panel corresponds to the Architron
+            var arch = providerEngine.polytrons[providerEngine.architronIdx];
+            if (arch == null || myPolytron == null || !myPolytron.isArchitron)
+            {
+                Debug.LogWarning("[PolytronInfoPanel] Breed: not invoked on Architron panel");
+                return;
+            }
+
+            // Collect genetic friends currently orbiting the Architron
+            var friends = new List<Polytron>();
+            foreach (var p in providerEngine.polytrons)
+            {
+                if (p == null) continue;
+                var st = providerEngine.ComputeState(p);
+                if (st.Role == PolytronRole.GeneticFriend)
+                {
+                    friends.Add(p);
+                }
+            }
+
+            if (friends.Count == 0)
+            {
+                Debug.LogWarning("[PolytronInfoPanel] Breed: no genetic friends available");
+                return;
+            }
+
+            // Collect the currently assigned recipe from each genetic friend (these are
+            // the actual genetic children produced from the parents' cartesian product)
+            var candidates = new List<(Polytron friend, string recipe)>();
+            foreach (var f in friends)
+            {
+                try
+                {
+                    if (f == null) continue;
+                    if (string.IsNullOrEmpty(f.recipe)) continue;
+                    candidates.Add((f, f.recipe));
+                }
+                catch { }
+            }
+
+            if (candidates.Count == 0)
+            {
+                Debug.LogWarning("[PolytronInfoPanel] Breed: no assigned genetic child recipes available on friends");
+                return;
+            }
+
+            // Pick uniformly among the assigned friend recipes
+            int pick = UnityEngine.Random.Range(0, candidates.Count);
+            var chosen = candidates[pick];
+            string recipe = chosen.recipe;
+            Polytron chosenFriend = chosen.friend;
+            Debug.Log($"[PolytronInfoPanel] Breed: selected recipe {recipe} from friend polytron #{chosenFriend.sealNumber}");
+
+            // Add to Architron
+            arch.AddEmanation(recipe);
+
+            // Update the Architron's cursor and visible recipe to the newly added emanation
+            try
+            {
+                var orderedList = arch.MindeleevTable.GetEmanationsListByPolytronicNumber();
+                Debug.Log($"[PolytronInfoPanel] Breed: orderedList={orderedList}, count={orderedList?.Count ?? -1}");
+                if (orderedList != null && orderedList.Count > 0)
+                {
+                    // Find the index of the newly added recipe
+                    int newIdx = orderedList.IndexOf(recipe);
+                    Debug.Log($"[PolytronInfoPanel] Breed: recipe='{recipe}', newIdx={newIdx}, orderedList contents: {string.Join(", ", orderedList)}");
+                    if (newIdx >= 0)
+                    {
+                        arch.MindeleevCursor = newIdx;
+                        arch.recipe = recipe;
+                        arch.RebuildMesh();
+                        arch.GetComponent<PointerOutlineStateController>()?.OnHoverEnter();
+                        Debug.Log($"[PolytronInfoPanel] Breed: set Architron cursor to index {newIdx}, recipe={recipe}");
+                    }
+                }
+                else
+                {
+                    Debug.LogWarning($"[PolytronInfoPanel] Breed: orderedList is null or empty");
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.LogWarning($"[PolytronInfoPanel] Breed: failed to update Architron cursor/recipe: {ex}");
+            }
+
+            // Notify engine for source friend (to update its panel)
+            providerEngine.NotifyPolytronStateChanged(chosenFriend);
+
+            // Refresh the Architron panel directly with a freshly computed state (to ensure it reflects our cursor/recipe changes)
+            try
+            {
+                if (providerEngine != null && myPolytron == arch)
+                {
+                    var freshState = providerEngine.ComputeState(arch);
+                    ApplyStateToPanel(freshState);
+                    Debug.Log($"[PolytronInfoPanel] Breed: refreshed Architron panel with fresh state, recipe={freshState.Recipe}");
+                }
+                else
+                {
+                    // Fallback: notify arch if it's not the current panel
+                    providerEngine.NotifyPolytronStateChanged(arch);
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.LogWarning($"[PolytronInfoPanel] Breed: failed to refresh Architron panel: {ex}");
+            }
+
+            // Deselect the two parents (if selection manager exists)
+            try
+            {
+                var sel = providerEngine.selectionManager;
+                if (sel != null)
+                {
+                    sel.ClearPaletteSelection();
+                    sel.ClearOperatorsSelection();
+                }
+            }
+            catch { }
+
+            // After clearing selections, SelectionManager / GeneticsManager may restore
+            // a previously saved Architron recipe. Force-apply the newly bred recipe
+            // so the visible Architron reflects the addition.
+            try
+            {
+                if (providerEngine != null)
+                {
+                    providerEngine.ApplyRecipeToArchitron(recipe);
+                    // Ensure panels refresh
+                    providerEngine.NotifyPolytronStateChanged(arch);
+                    if (myPolytron == arch)
+                    {
+                        var fresh = providerEngine.ComputeState(arch);
+                        ApplyStateToPanel(fresh);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.LogWarning($"[PolytronInfoPanel] Breed: failed to reapply arch recipe: {ex}");
+            }
+
+            // Clear saved recipes so OnPointerExit, GeneticsManager, or other paths don't
+            // restore the old recipe and erase our newly bred emanation.
+            try
+            {
+                if (providerEngine != null && providerEngine.selectionManager != null)
+                {
+                    // Clear the saved recipe that SelectionManager would restore on genetic mode end
+                    providerEngine.selectionManager.ClearArchitronSavedRecipe();
+                    Debug.Log("[PolytronInfoPanel] Breed: cleared saved Architron recipe from SelectionManager");
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.LogWarning($"[PolytronInfoPanel] Breed: failed to clear saved recipes: {ex}");
+            }
+
+            // Rebuild the center tile (ring=0, idx=0) with the Architron's newly bred recipe
+            try
+            {
+                if (providerEngine != null && arch != null && !string.IsNullOrEmpty(arch.recipe))
+                {
+                    var centerCoord = new HexCoord(0, 0);
+                    if (providerEngine.gridCellsMap.TryGetValue(centerCoord, out var centerCell))
+                    {
+                        // Extract the seed from the Architron's recipe and rebuild the center tile
+                        int seed = PolyhedronRecipeKabbalah.RecipeToInt(arch.recipe, false);
+                        if (seed >= 0)
+                        {
+                            centerCell.polytronicNumber = seed;  // Update the cell's record
+                            string newTileRecipe = PolyhedronRecipeKabbalah.IntToOperatorsSequence(seed) + centerCell.tileBasePolyhedron;
+                            providerEngine.RebuildTileMesh(centerCoord, newTileRecipe);
+                            Debug.Log($"[PolytronInfoPanel] Breed: rebuilt center tile (coord={centerCoord}) with recipe={newTileRecipe} (seed={seed})");
+                        }
+                        else
+                        {
+                            Debug.LogWarning($"[PolytronInfoPanel] Breed: failed to extract seed from Architron recipe '{arch.recipe}'");
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.LogWarning($"[PolytronInfoPanel] Breed: failed to rebuild center tile: {ex}");
+            }
+
+            Debug.Log("[PolytronInfoPanel] Breed: completed");
+        }
+        catch (Exception ex)
+        {
+            Debug.LogWarning($"[PolytronInfoPanel] Breed exception: {ex}");
+        }
+    }
+
+    // Stub invoked when Swap button is pressed on selected genetic friends
+    public void Swap()
+    {
+        // intentionally empty: wiring point for swap action
+    }
+
+    // Stub invoked when Entangle button is pressed on Architron in normal mode
+    public void MindEleev()
+    {
+        Debug.Log("[PolytronInfoPanel] Entering Mind-Eleeev");
+    }
+
+    // Stub invoked when Acquire Emanation button is pressed on non-Architron polytrons
+    public void AcquireEmanation()
+    {
+        Debug.Log($"[PolytronInfoPanel] AcquireEmanation invoked on polytron {myPolytron?.sealNumber} recipe={myPolytron?.recipe}");
+
+        try
+        {
+            if (myPolytron == null || providerEngine == null)
+            {
+                Debug.LogWarning("[PolytronInfoPanel] AcquireEmanation: missing polytron or providerEngine");
+                return;
+            }
+
+            var table = myPolytron.MindeleevTable;
+            if (table == null || table.Count <= 1)
+            {
+                Debug.LogWarning("[PolytronInfoPanel] AcquireEmanation: polytron has <=1 emanation, action not allowed");
+                return;
+            }
+
+            var list = table.GetEmanationsListByPolytronicNumber();
+            if (list == null || list.Count == 0)
+            {
+                Debug.LogWarning("[PolytronInfoPanel] AcquireEmanation: no emanations found");
+                return;
+            }
+
+            int idx = Mathf.Clamp(myPolytron.MindeleevCursor, 0, list.Count - 1);
+            string recipe = list[idx];
+
+            // Remove from source polytron
+            bool removed = myPolytron.RemoveEmanation(recipe);
+            if (!removed)
+            {
+                Debug.LogWarning($"[PolytronInfoPanel] AcquireEmanation: failed to remove recipe '{recipe}' from polytron {myPolytron.sealNumber}");
+                return;
+            }
+
+            // Add to Architron
+            var arch = providerEngine.polytrons[providerEngine.architronIdx];
+            if (arch == null)
+            {
+                Debug.LogWarning("[PolytronInfoPanel] AcquireEmanation: Architron not found");
+            }
+            else
+            {
+                arch.AddEmanation(recipe);
+
+                // Rebuild the center tile with the Architron's new recipe
+                try
+                {
+                    if (!string.IsNullOrEmpty(arch.recipe))
+                    {
+                        var centerCoord = new HexCoord(0, 0);
+                        if (providerEngine.gridCellsMap.TryGetValue(centerCoord, out var centerCell))
+                        {
+                            int seed = PolyhedronRecipeKabbalah.RecipeToInt(arch.recipe, false);
+                            if (seed >= 0)
+                            {
+                                centerCell.polytronicNumber = seed;
+                                string newTileRecipe = PolyhedronRecipeKabbalah.IntToOperatorsSequence(seed) + centerCell.tileBasePolyhedron;
+                                providerEngine.RebuildTileMesh(centerCoord, newTileRecipe);
+                                Debug.Log($"[PolytronInfoPanel] AcquireEmanation: rebuilt center tile with recipe={newTileRecipe} (seed={seed})");
+                            }
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Debug.LogWarning($"[PolytronInfoPanel] AcquireEmanation: failed to rebuild center tile: {ex}");
+                }
+            }
+
+            // Adjust cursor on source polytron and set its visible recipe to the new selection
+            int newCount = myPolytron.MindeleevTable?.Count ?? 0;
+            if (newCount == 0)
+            {
+                myPolytron.MindeleevCursor = 0;
+            }
+            else
+            {
+                myPolytron.MindeleevCursor = Mathf.Clamp(myPolytron.MindeleevCursor, 0, newCount - 1);
+
+                var newList = myPolytron.MindeleevTable.GetEmanationsListByPolytronicNumber();
+                if (newList != null && newList.Count > 0)
+                {
+                    string newRecipe = newList[myPolytron.MindeleevCursor];
+                    try
+                    {
+                        myPolytron.recipe = newRecipe;
+                        myPolytron.RebuildMesh();
+                        // update bound tile to reflect new polytronic number
+                        try { RewriteTileEmanationFromRecipe(newRecipe); } catch { }
+
+                        myPolytron.GetComponent<PointerOutlineStateController>().OnHoverEnter();
+                        
+                    }
+                    catch (Exception ex)
+                    {
+                        Debug.LogWarning($"[PolytronInfoPanel] failed to apply new recipe after acquire: {ex}");
+                    }
+                }
+            }
+
+            // Notify engine so panels update for both polytrons (do this after rebuild)
+            providerEngine.NotifyPolytronStateChanged(myPolytron);
+            if (arch != null) providerEngine.NotifyPolytronStateChanged(arch);
+
+            // Refresh local score display
+            UpdateEmanationScoreDisplay();
+
+            // If genetic selection is active and both parents are selected, recompute
+            // crossover recipes so the genetic friend polytrons reflect the new parent emanation.
+            try
+            {
+                if (providerEngine != null && providerEngine.geneticModeActive && providerEngine.selectionManager != null)
+                {
+                    var sel = providerEngine.selectionManager;
+                    if (sel.PaletteSelector != null && sel.OperatorsSelector != null)
+                    {
+                        var cross = providerEngine.ComputeCrossoverRecipes(sel.PaletteSelector, sel.OperatorsSelector);
+                        Debug.Log($"[PolytronInfoPanel] AcquireEmanation: recomputing crossovers ({cross.Count}) and updating genetic friends");
+                        providerEngine.SetupGeneticFriends(cross);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.LogWarning($"[PolytronInfoPanel] AcquireEmanation: failed to refresh genetic friends: {ex}");
+            }
+        }
+        catch (Exception ex)
+        {
+            Debug.LogWarning($"[PolytronInfoPanel] AcquireEmanation exception: {ex}");
+        }
+    }
+
+    // Entangle state is handled automatically by the engine; local fields removed.
+
+    // Activate or deactivate the panel externally
     public void Activate(bool show)
     {
-        //if (animCoroutine != null) StopCoroutine(animCoroutine);
-        // animCoroutine = StartCoroutine(AnimatePanel(show));
         mustActivate = show;
     }
+
 }

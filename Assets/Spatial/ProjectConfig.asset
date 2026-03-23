@@ -14,5 +14,6 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   _configVersion: 1
   _defaultWorldID: dg1xrc2ofynzfxev0l3p2
+  _defaultTeamID: 
   _packages:
   - {fileID: 11400000, guid: 3baae5249f83f4800931864f7cbd37a8, type: 2}

@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
 using System.Text.RegularExpressions;
+using Unity.VisualScripting;
 
 /// <summary>
 /// Represents a single operator token in a polyhedron recipe.
@@ -201,8 +202,14 @@ public class PolyhedronRecipe
 
     public override string ToString()
     {
-//         string ops = string.Concat(Tokens.Select(t => t.ToString()));
         string ops = OperatorsSequence();
+        string paletteStr = PaletteIdx.ToString("D2");
+        return $"{ops}{paletteStr}{BasePolyhedron}";
+    }
+
+    public string ToStringWithParameters()
+    {
+        string ops = OperatorsSequenceWithParameters();
         string paletteStr = PaletteIdx.ToString("D2");
         return $"{ops}{paletteStr}{BasePolyhedron}";
     }
@@ -217,34 +224,98 @@ public class PolyhedronRecipe
         return string.Concat(Tokens.Select(t => t.ToStringWithParameters()));
     }
 
-
-
     /// <summary>
-    /// Generates a human-readable name for the current recipe/emanation.
+    /// Human-readable transformation name built from operator symbolic names.
+    /// Uses the `OperatorNames` table to produce short human-friendly tokens
+    /// for each operator (e.g. "TruInSte").
     /// </summary>
-    public string RecipeName()
+    public string TransformationName()
     {
-        // Concatenate operator names
         var opNames = Tokens.Select(t =>
         {
             if (OperatorNames.TryGetValue(t.Operator, out var name))
                 return name;
             return char.ToUpperInvariant(t.Operator[0]) + t.Operator.Substring(1).ToLowerInvariant();
         });
+        return string.Join("", opNames);
+    }
 
-        string opsPart = string.Join("", opNames);
-
-        // Palette name
+    /// <summary>
+    /// Human-readable radix name composed of the palette name and base polyhedron
+    /// human name (from `PaletteNames` and `PolyhedronNames`). Example: "ArchCub".
+    /// </summary>
+    public string RadixName()
+    {
         string paletteName = (PaletteIdx >= 0 && PaletteIdx < PaletteNames.Length)
             ? PaletteNames[PaletteIdx]
             : $"Palette{PaletteIdx}";
 
-        // Base polyhedron name
         string polyName = PolyhedronNames.TryGetValue(BasePolyhedron, out var pname)
             ? pname
             : char.ToUpperInvariant(BasePolyhedron).ToString();
 
-        return $"{opsPart}{paletteName}{polyName}";
+        return paletteName + polyName;
+    }
+
+    public string PaletteName()
+    {
+        string paletteName = (PaletteIdx >= 0 && PaletteIdx < PaletteNames.Length)
+            ? PaletteNames[PaletteIdx]
+            : $"Palette{PaletteIdx}";
+
+        return paletteName;
+    }
+
+    public string BasePolyhedronName()
+    {
+        string polyName = PolyhedronNames.TryGetValue(BasePolyhedron, out var pname)
+            ? pname
+            : char.ToUpperInvariant(BasePolyhedron).ToString();
+
+        return polyName;
+    }
+
+    /// <summary>
+    /// Symbolic radix (palette index + base char), e.g. "03C".
+    /// </summary>
+    public string Radix()
+    {
+        return PaletteIdx.ToString("D2") + BasePolyhedron;
+    }
+
+    /// <summary>
+    /// Full human-readable emanation name composed of the transformation
+    /// human name and the radix human name.
+    /// </summary>
+    public string EmanationName()
+    {
+        return "<" + TransformationName() + "|" + PaletteName() + "|" + BasePolyhedronName() + ">";
+    }
+
+    /// <summary>
+    /// Build a human-readable transformation name from a raw operators sequence
+    /// (e.g. "tdn") using the `OperatorNames` table.
+    /// </summary>
+    public static string TransformationNameFromOperatorsSequence(string ops)
+    {
+        if (string.IsNullOrEmpty(ops)) return "";
+        var parts = ops.Select(c =>
+        {
+            var s = c.ToString();
+            if (OperatorNames.TryGetValue(s, out var name)) return name;
+            return char.ToUpperInvariant(c).ToString();
+        });
+        return string.Join("", parts);
+    }
+
+    /// <summary>
+    /// Convert a polytronicNumber (int) into a human-readable transformation name.
+    /// Uses PolyhedronRecipeKabbalah.IntToOperatorsSequence internally.
+    /// </summary>
+    public static string TransformationNameFromInt(int polytronicNumber)
+    {
+        var ops = PolyhedronRecipeKabbalah.IntToOperatorsSequence(polytronicNumber);
+        return TransformationNameFromOperatorsSequence(ops);
     }
 }
 
@@ -433,8 +504,15 @@ public static class PolyhedronRecipeParser
 /// </summary>
 public static class PolyhedronRecipeBuilder
 {
-    public static (Vector3[], int[][], int[]) Build(PolyhedronRecipe recipe, int paletteColorsCount = 6)
+    /// <summary>
+    /// Tracks whether the vertex count upper bound was hit during the last Build operation.
+    /// </summary>
+    public static bool LastBuildHitVertexLimit { get; set; } = false;
+
+    public static (Vector3[], int[][], int[]) Build(PolyhedronRecipe recipe, int paletteColorsCount = 6, int maxVertices = 600)
     {
+        LastBuildHitVertexLimit = false;
+
         // Get base polyhedron
         (Vector3[], int[][], int[]) current = recipe.BasePolyhedron switch
         {
@@ -455,13 +533,6 @@ public static class PolyhedronRecipeBuilder
             // Use named parameter access for clarity
             int faceSignatureRounding = Convert.ToInt32(token.Parameter("faceSignatureRounding"));
             int facesSidesFilter = Convert.ToInt32(token.Parameter("facesSidesFilter"));
-
-            // introduce an upper bound complexity control
-            if (current.Item1.Length > 500)
-            {
-                Debug.LogWarning($"Polyhedron complexity upper bound hit, stopping generation - recipe: {recipe.ToString()}, vertices: {current.Item1.Length}");
-                break;
-            }
 
             switch (op)
             {
@@ -512,6 +583,14 @@ public static class PolyhedronRecipeBuilder
                 default:
                     // Unknown operator: skip
                     break;
+            }
+
+            // introduce an upper bound complexity control
+            if (maxVertices != -1 && current.Item1.Length > maxVertices)
+            {
+                LastBuildHitVertexLimit = true;
+                Debug.LogWarning($"Polyhedron complexity upper bound hit, stopping generation - recipe: {recipe.ToString()}, vertices: {current.Item1.Length}, maxVertices: {maxVertices}");
+                break;
             }
         }
 

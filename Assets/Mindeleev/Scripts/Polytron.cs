@@ -41,6 +41,9 @@ public class Polytron : PolyhedronGenerator,
 
     internal bool isArchitron = false;
 
+    // Scoring system: tracks the sum of all emanation scores for this polytron
+    internal float totalPolytronScore = 0f;
+
     // MindeleevTable: a dedicated object holding the unique set of emanations
     // collected for this polytron. We keep a simple AddEmanation wrapper here
     // for backward compatibility with earlier code paths that call
@@ -54,8 +57,71 @@ public class Polytron : PolyhedronGenerator,
         if (mindeleevTable == null) mindeleevTable = new MindeleevTable();
         if (mindeleevTable.AddEmanation(recipe))
         {
-            Debug.Log($"[Polytron] polytron_id={sealNumber} added emanation='{recipe}'");
+            // Calculate and add emanation score (already done by MindeleevTable.AddEmanation log)
+            try
+            {
+                var parsed = PolyhedronRecipeParser.Parse(recipe);
+                float emanationScore = PolyhedronRecipeUtils.ComputeComplexity(parsed);
+                totalPolytronScore += emanationScore;
+            }
+            catch (Exception ex)
+            {
+                Debug.LogWarning($"[Polytron] Failed to calculate score for emanation: {ex}");
+            }
+
+            // Make the newly added emanation the visible recipe for this polytron
+            try
+            {
+                // Only change visible recipe when it's different to avoid redundant rebuilds
+                if (this.recipe != recipe)
+                {
+                    this.recipe = recipe;
+                    this.RebuildMesh();
+                }
+
+                // Ensure the cursor points to the newly added emanation
+                var list = this.MindeleevTable.GetEmanationsListByPolytronicNumber();
+                int idx = list.IndexOf(recipe);
+                if (idx >= 0) this.MindeleevCursor = idx;
+
+                // Update outline hover state to reflect change
+                // try { GetComponent<PointerOutlineStateController>()?.OnHoverEnter(); } catch { }
+
+                // Notify engine/UI about the change so panels and overlays refresh
+                try { mutatron?.NotifyPolytronStateChanged(this); } catch { }
+            }
+            catch (Exception ex)
+            {
+                Debug.LogWarning($"[Polytron] AddEmanation post-processing failed: {ex}");
+            }
         }
+    }
+
+    /// <summary>
+    /// Remove an emanation from this polytron's MindeleevTable and subtract its score.
+    /// Returns true if removal succeeded.
+    /// </summary>
+    public bool RemoveEmanation(string recipe)
+    {
+        if (mindeleevTable == null) return false;
+        if (!mindeleevTable.Contains(recipe)) return false;
+
+        bool removed = mindeleevTable.RemoveEmanation(recipe);
+        if (removed)
+        {
+            try
+            {
+                var parsed = PolyhedronRecipeParser.Parse(recipe);
+                float emanationScore = PolyhedronRecipeUtils.ComputeComplexity(parsed);
+                totalPolytronScore -= emanationScore;
+                if (totalPolytronScore < 0f) totalPolytronScore = 0f;
+            }
+            catch (Exception ex)
+            {
+                Debug.LogWarning($"[Polytron] Failed to compute score while removing emanation: {ex}");
+            }
+        }
+        return removed;
     }
 
     // Cursor used by the UI to track which emanation is currently selected for
@@ -122,6 +188,8 @@ public class Polytron : PolyhedronGenerator,
         }
         else
         {
+            Debug.Assert(false);
+
             // fallback local behaviour
             PointerOutlineStateController csc = GetComponent<PointerOutlineStateController>();
             csc?.AdvanceState();
@@ -134,7 +202,7 @@ public class Polytron : PolyhedronGenerator,
     public void OnPointerEnter(PointerEventData eventData)
     {
         if (!interactive) return;
-        Debug.Log("OnPointerEnter");
+        // Debug.Log("OnPointerEnter");
 
         GetComponent<PointerOutlineStateController>()?.OnHoverEnter();
         GetComponent<PolytronInfoPanel>()?.Activate(true);
@@ -146,7 +214,7 @@ public class Polytron : PolyhedronGenerator,
     public void OnPointerExit(PointerEventData eventData)
     {
         if (!interactive) return;
-        Debug.Log("OnPointerExit");
+        // Debug.Log("OnPointerExit");
 
         GetComponent<PointerOutlineStateController>()?.OnHoverExit();
         GetComponent<PolytronInfoPanel>()?.Activate(false);
@@ -162,10 +230,12 @@ public class Polytron : PolyhedronGenerator,
 
     public void OnScroll(PointerEventData eventData)
     {
+        /*
         if (!interactive) return;
         PointerOutlineStateController csc = GetComponent<PointerOutlineStateController>();
         csc.AdvanceState();
-
+        */
+        
         Debug.Log($"[PointerEvent] Scroll on {gameObject.name}, delta: {eventData.scrollDelta}");
     }
 

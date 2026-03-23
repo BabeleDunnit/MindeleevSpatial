@@ -161,35 +161,6 @@ public static class PolytronName
         throw new InvalidOperationException($"No angel/demon period found for {day:D2}/{month:D2}. (Check table consistency.)");
     }
 
-    /*
-        // ===== Test helpers =====
-        public static void Test_PrintAll72()
-        {
-            for (int i = 1; i <= 72; i++)
-            {
-                var e = Table[i - 1];
-                Console.WriteLine($"{i,2}. {GetName(i)}   [{e.Angel} / {e.Demon}]  {FmtPeriod(e)}");
-            }
-        }
-
-        /// <summary>
-        /// Stampa un nome per ogni giorno dell'anno 'year' (rispetta mesi e bisestile).
-        /// </summary>
-        public static void Test_PrintAllByCalendar(int year = 2025)
-        {
-            for (int m = 1; m <= 12; m++)
-            {
-                int max = DateTime.DaysInMonth(year, m);
-                for (int d = 1; d <= max; d++)
-                {
-                    int idx = GetIdxFromDayAndMonth(d, m, year);
-                    string name = GetName(idx);
-                    Console.WriteLine($"{year}-{m:D2}-{d:D2}  ->  #{idx:D2}  {name}");
-                }
-            }
-        }
-    */
-
     // ===== Internals: name synthesis =====
 
     private static readonly Regex VowelSplit = new Regex(@"(?i)(?=[aeiouy])", RegexOptions.Compiled);

@@ -23,11 +23,14 @@ public class SelectionManager
     {
         engine.ClearGeneticFriends();
 
-        if (PaletteSelector != null)
+        var old = PaletteSelector;
+        if (old != null)
         {
-            var oldOutline = PaletteSelector.GetComponent<PointerOutlineStateController>();
+            var oldOutline = old.GetComponent<PointerOutlineStateController>();
             oldOutline?.SetState(0);
             PaletteSelector = null;
+            // notify engine so automatic entangle can re-evaluate this polytron
+            engine.NotifyPolytronStateChanged(old);
         }
     }
 
@@ -35,11 +38,14 @@ public class SelectionManager
     {
         engine.ClearGeneticFriends();
 
-        if (OperatorsSelector != null)
+        var old = OperatorsSelector;
+        if (old != null)
         {
-            var oldOutline = OperatorsSelector.GetComponent<PointerOutlineStateController>();
+            var oldOutline = old.GetComponent<PointerOutlineStateController>();
             oldOutline?.SetState(0);
             OperatorsSelector = null;
+            // notify engine so automatic entangle can re-evaluate this polytron
+            engine.NotifyPolytronStateChanged(old);
         }
     }
 
@@ -79,6 +85,20 @@ public class SelectionManager
         {
             engine.ApplyRecipeToArchitron(arch.recipe);
         }
+
+        // Trigger an engine state refresh so automatic entangle overlays are recomputed
+        engine.NotifyPolytronStateChanged(arch);
+    }
+
+    /// <summary>
+    /// Clears the saved Architron recipe that would be restored when genetic mode or selection mode exits.
+    /// Called after Breed() to prevent recipe overwrites.
+    /// </summary>
+    internal void ClearArchitronSavedRecipe()
+    {
+        ArchitronSavedRecipeForSelection = null;
+        architronHoverSavedRecipe = null;
+        architronHoverOverrideActive = false;
     }
 
     internal void OnPolytronClicked(Polytron p)

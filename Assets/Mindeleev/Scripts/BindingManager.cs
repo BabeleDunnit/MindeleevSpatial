@@ -560,7 +560,7 @@ public class BindingManager
         {
             Debug.Assert(sink.boundPolytron == p, "If a polytron is bound to a sink, it is supposed that the sink backlinks the polytron");
 
-            Debug.Log($"[UnbindPolytron] UNBINDING polytron_id={p.sealNumber} from sink={sink.name}");
+//            Debug.Log($"[UnbindPolytron] UNBINDING polytron_id={p.sealNumber} from sink={sink.name}");
             
             sink.boundPolytron = null;
             p.boundSink = null;
@@ -832,7 +832,7 @@ public class BindingManager
                     
                     if (TryBindEligiblePolytronToTile(targetHcd, op.ops))
                     {
-                        Debug.Log($"[PolytronsDance] BORN: Called eligible polytron to (ring={op.targetTile.Value.ring}, idx={op.targetTile.Value.idxInRing}) with ops=<{op.ops}>");
+                       //Debug.Log($"[PolytronsDance] BORN: Called eligible polytron to (ring={op.targetTile.Value.ring}, idx={op.targetTile.Value.idxInRing}) with ops=<{op.ops}>");
                         bornCount++;
                     }
                     else

@@ -38,7 +38,7 @@ public class PolyhedronRecipeTests
 
         Assert.AreEqual(0, parsed.PaletteIdx);
 
-        Assert.AreEqual(recipe, parsed.ToString());
+        Assert.AreEqual(recipe, parsed.ToStringWithParameters());
     }
 
     [Test]
@@ -119,7 +119,8 @@ public class PolyhedronRecipeTests
         Assert.AreEqual(0, parsed.Tokens[0].PositionalParameters[1]);
         Assert.AreEqual(0.1f, (float)parsed.Tokens[0].PositionalParameters[2], 1e-6);
 
-        Assert.AreEqual("t(1,0,0.1)00C", parsed.ToString());
+        Assert.AreEqual("t(1,0,0.1)00C", parsed.ToStringWithParameters());
+        Assert.AreEqual("t00C", parsed.ToString());
     }
 
     [Test]
@@ -128,7 +129,7 @@ public class PolyhedronRecipeTests
         var recipe = "tnlkC";
         var parsed = PolyhedronRecipeParser.Parse(recipe);
 
-        Assert.AreEqual("TruInSteKiArchCub", parsed.RecipeName());
+        Assert.AreEqual("TruInSteKiArchCub", parsed.EmanationName());
     }
 
     [Test]
@@ -136,7 +137,7 @@ public class PolyhedronRecipeTests
     {
         var recipe = "dkdkakd05T";
         var parsed = PolyhedronRecipeParser.Parse(recipe);
-        Assert.AreEqual("DuKiDuKiAmKiDuGebTet", parsed.RecipeName());
+        Assert.AreEqual("DuKiDuKiAmKiDuGebTet", parsed.EmanationName());
 
     }
 
@@ -153,7 +154,8 @@ public class PolyhedronRecipeTests
 
         Assert.AreEqual(2, parsed.Tokens[0].PositionalParameters[0]);
 
-        Assert.AreEqual("k(2,3,-0.5)00C", parsed.ToString());
+        Assert.AreEqual("k(2,3,-0.5)00C", parsed.ToStringWithParameters());
+        Assert.AreEqual("k00C", parsed.ToString());
     }
 
     [Test]
@@ -178,7 +180,7 @@ public class PolyhedronRecipeTests
         Assert.AreEqual(0.1f, (float)parsed.Tokens[0].Parameter("centerVertexHeight"), 1e-6);
         Assert.AreEqual(9, parsed.PaletteIdx);
 
-        Assert.AreEqual("k(1,0,0.1)09C", parsed.ToString());
+        Assert.AreEqual("k(1,0,0.1)09C", parsed.ToStringWithParameters());
 
     }
 
@@ -213,7 +215,7 @@ public class PolyhedronRecipeTests
         var parsed = PolyhedronRecipeParser.Parse(recipe);
 
         Assert.AreEqual(5, parsed.Tokens[0].Parameter("faceSignatureRounding"));
-        Assert.AreEqual("a(5)08C", parsed.ToString());
+        Assert.AreEqual("a(5)08C", parsed.ToStringWithParameters());
     }
 
     [Test]
@@ -224,7 +226,8 @@ public class PolyhedronRecipeTests
 
         Assert.AreEqual(5, parsed.Tokens[0].Parameter("faceSignatureRounding"));
         Assert.AreEqual(99, parsed.PaletteIdx);
-        Assert.AreEqual("a(5)99C", parsed.ToString());
+        Assert.AreEqual("a(5)99C", parsed.ToStringWithParameters());
+        Assert.AreEqual("a99C", parsed.ToString());
     }
 
 
@@ -237,7 +240,8 @@ public class PolyhedronRecipeTests
 
         Assert.AreEqual(1, parsed.Tokens[0].Parameter("faceSignatureRounding"));
         Assert.AreEqual(11, parsed.PaletteIdx);
-        Assert.AreEqual("d(1)11C", parsed.ToString());
+        Assert.AreEqual("d(1)11C", parsed.ToStringWithParameters());
+        Assert.AreEqual("d11C", parsed.ToString());
     }
 
     [Test]
@@ -379,7 +383,7 @@ public class PolyhedronRecipeTests
         var chars = new HashSet<char> { 'a', 'd', 't' };
         var perms = PolyhedronRecipeUtils.AllPermutationsWithRepetition(chars, 5);
         Debug.Log($"Permutations with repetitions: {string.Join(", ", perms)}");
-        Debug.Log($"Names: {string.Join(", ", perms.Skip(1).Select(r => PolyhedronRecipeParser.Parse(r + "03C").RecipeName()))}");
+        Debug.Log($"Names: {string.Join(", ", perms.Skip(1).Select(r => PolyhedronRecipeParser.Parse(r + "03C").EmanationName()))}");
 
     }
 
@@ -778,8 +782,9 @@ public class PolyhedronRecipeTests
                 );
         }
 
+        csv.Save("Complexities.csv");
 
-        // now sort by energy
+        // now sort by energy and see which recipes give the same relative complexity when applied to all the base polyhedra
 
         CsvTable csv2 = new();
         csv2.AddRow("T", "C", "O", "D", "I", "opSeq");
@@ -813,10 +818,158 @@ public class PolyhedronRecipeTests
             );
         }
 
-        csv2.Save("SortIdxByEnergy.csv");
+        csv2.Save("SortIdxByComplexity.csv");
 
     }
 
+    [Test]
+    public void ComplexityUpperBound_FindSequenceSeedThreshold()
+    {
+
+        // Assert.AreEqual(1, 0);
+
+        // Test to find the maximum operatorSequenceSeed value before hitting various vertex count upper bounds
+        // For each complexity bound (500 to 5000 in steps of 20), enumerate recipes with increasing opSeqSeed
+        // Stop when the polyhedron construction hits the bound for each base polyhedron
+        // We combine IntToOperatorsSequence() with 5 different base polyhedra and palette 01
+
+        List<char> basePolyhedra = new List<char> { 'T', 'C', 'O', 'D', 'I' };
+        List<int> complexityBounds = new List<int>();
+        for (int bound = 500; bound <= 1000; bound += 100)
+        {
+            complexityBounds.Add(bound);
+        }
+
+        // Build output table
+        StringBuilder sb = new StringBuilder();
+
+        // Build header
+        sb.Append("vertices count upper bound");
+        foreach (char poly in basePolyhedra)
+        {
+            sb.Append($",max {poly} vertices");
+            sb.Append($",max {poly} opSeqSeed");
+            sb.Append($",{poly} recipe");
+            sb.Append($",{poly} complexity");
+        }
+        sb.AppendLine();
+
+        // For each complexity bound (outer loop)
+        foreach (int bound in complexityBounds)
+        {
+            sb.Append(bound);
+
+            // For each base polyhedron
+            foreach (char poly in basePolyhedra)
+            {
+                int maxOpSeqSeed = -1;
+
+                // Enumerate recipes with increasing operatorSequenceSeed
+                for (int opSeqSeed = 0; opSeqSeed < 5000; opSeqSeed++)
+                {
+                    string opSeq = PolyhedronRecipeKabbalah.IntToOperatorsSequence(opSeqSeed);
+                    string recipeStr = opSeq + poly;
+                    PolyhedronRecipe recipe = PolyhedronRecipeParser.Parse(recipeStr);
+
+                    // Build with specific maxVertices limit (palette 01 for all)
+                    recipe.PaletteIdx = 1;
+                    var meshData = PolyhedronRecipeBuilder.Build(recipe, paletteColorsCount: 6, maxVertices: bound);
+                    bool hitLimit = PolyhedronRecipeBuilder.LastBuildHitVertexLimit;
+
+                    if (hitLimit)
+                    {
+                        // Hit the limit, stop searching for this polyhedron
+                        Debug.Log($"recipe {recipe}(opSeq: {opSeqSeed}) hit a limit for {bound} vertices (it has {meshData.Item1.Count()} vertices)");
+                        break;
+                    }
+                    else
+                    {
+                        // This opSeqSeed didn't hit the limit, record it as a candidate
+                        maxOpSeqSeed = opSeqSeed;
+                    }
+                }
+
+                string maxOpSeq = PolyhedronRecipeKabbalah.IntToOperatorsSequence(maxOpSeqSeed);
+                string maxRecipeStr = maxOpSeq + poly;
+                var maxRecipe = PolyhedronRecipeParser.Parse(maxRecipeStr);
+                float complexity = PolyhedronRecipeUtils.ComputeComplexity(maxRecipe);
+                var maxMeshData = PolyhedronRecipeBuilder.Build(maxRecipe, paletteColorsCount: 6, maxVertices: -1);
+
+                sb.Append($",{maxMeshData.Item1.Count()}");
+                sb.Append($",{maxOpSeqSeed}");
+                sb.Append($",{maxRecipeStr}");
+                sb.Append($",{complexity}");
+
+            }
+            sb.AppendLine();
+        }
+
+        // Print to console for visibility
+        Debug.Log(sb.ToString());
+
+        // Also save to file
+        string filePath = Path.Combine(".", "ComplexityUpperBoundThreshold.csv");
+        System.IO.File.WriteAllText(filePath, sb.ToString());
+        Debug.Log($"Complexity upper bound threshold test saved to {filePath}");
+    }
+
+    [Test]
+    public void Table_PolyhedraBuildStats()
+    {
+
+        Assert.AreEqual(1,0);
+
+        List<char> basePolyhedra = new List<char> { 'T', 'C', 'O', 'D', 'I' };
+
+        // Build output table
+        StringBuilder sb = new StringBuilder();
+
+        sb.Append("opSeqSeed");
+        sb.Append(",opSeq");
+
+        // Build header
+        foreach (char poly in basePolyhedra)
+        {
+            sb.Append($",{poly} vertices");
+            sb.Append($",{poly} complexity");
+        }
+        sb.AppendLine();
+
+        // For each base polyhedron
+
+        // Enumerate recipes with increasing operatorSequenceSeed
+        for (int opSeqSeed = 0; opSeqSeed <= 2000; opSeqSeed++)
+        {
+            sb.Append($"{opSeqSeed}");
+            string opSeq = PolyhedronRecipeKabbalah.IntToOperatorsSequence(opSeqSeed);
+            sb.Append($",{opSeq}");
+
+            foreach (char poly in basePolyhedra)
+            {
+
+                string recipeStr = opSeq + poly;
+                PolyhedronRecipe recipe = PolyhedronRecipeParser.Parse(recipeStr);
+
+                // Build with specific maxVertices limit (palette 01 for all)
+                var meshData = PolyhedronRecipeBuilder.Build(recipe, paletteColorsCount: 6, maxVertices: -1);
+
+                float complexity = PolyhedronRecipeUtils.ComputeComplexity(recipe);
+
+                sb.Append($",{meshData.Item1.Count()}");
+                sb.Append($",{complexity}");
+            }
+
+            sb.AppendLine();
+        }
+
+        // Print to console for visibility
+        Debug.Log(sb.ToString());
+
+        // Also save to file
+        string filePath = Path.Combine(".", "PolyhedraBuildStats.csv");
+        System.IO.File.WriteAllText(filePath, sb.ToString());
+        Debug.Log($"PolyhedraBuildStats saved to {filePath}");
+    }
 
     public class CsvTable
     {
