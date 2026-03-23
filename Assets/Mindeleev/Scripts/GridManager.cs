@@ -179,11 +179,21 @@ public class GridManager
     {
         if (!engine.gridCellsMap.TryGetValue(coord, out var cell)) return;
         PolyhedronGenerator tile = cell.tile;
-        if (tile != null && tile.recipe != recipe)
+        if (tile == null)
         {
-            tile.recipe = recipe;
-            tile.RebuildMesh();
+            Debug.LogWarning($"[GridManager.RebuildTileMesh] no tile found at coord={coord} to rebuild with recipe={recipe}");
+            return;
         }
+
+        if (tile.recipe == recipe)
+        {
+            Debug.Log($"[GridManager.RebuildTileMesh] coord={coord} recipe unchanged ({recipe}), skipping rebuild");
+            return;
+        }
+
+        Debug.Log($"[GridManager.RebuildTileMesh] Rebuilding tile at coord={coord}: oldRecipe={tile.recipe} newRecipe={recipe}");
+        tile.recipe = recipe;
+        tile.RebuildMesh();
     }
 
     // Update all tiles for the current level configuration

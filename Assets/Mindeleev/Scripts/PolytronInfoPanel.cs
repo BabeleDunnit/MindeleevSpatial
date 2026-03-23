@@ -499,8 +499,8 @@ public class PolytronInfoPanel : MonoBehaviour
             }
             else if (!geneticActive && state.Role == PolytronRole.Architron)
             {
-                if (button3 != null) button3Text = BTN_MIND_ELEEV;
-                Debug.Log($"[PolytronInfoPanel] Setting button3='{BTN_MIND_ELEEV}' for Architron {state.SealNumber}");
+                if (button3 != null) button3Text = (providerEngine != null && providerEngine.InMTV) ? "Mutatron" : BTN_MIND_ELEEV;
+                Debug.Log($"[PolytronInfoPanel] Setting button3='" + (providerEngine != null && providerEngine.InMTV ? "Mutatron" : BTN_MIND_ELEEV) + $"' for Architron {state.SealNumber}");
             }
             else
             {
@@ -1213,7 +1213,27 @@ public class PolytronInfoPanel : MonoBehaviour
     // Stub invoked when Entangle button is pressed on Architron in normal mode
     public void MindEleev()
     {
-        Debug.Log("[PolytronInfoPanel] Entering Mind-Eleeev");
+        Debug.Log("[PolytronInfoPanel] MindEleev toggle invoked");
+        if (providerEngine == null) return;
+
+        try
+        {
+            if (!providerEngine.InMTV)
+            {
+                providerEngine.EnterMTV();
+                // update UI immediately
+                if (button3 != null) button3Text = "Mutatron";
+            }
+            else
+            {
+                providerEngine.ExitMTV();
+                if (button3 != null) button3Text = BTN_MIND_ELEEV;
+            }
+        }
+        catch (System.Exception ex)
+        {
+            Debug.LogWarning($"[PolytronInfoPanel] MindEleev toggle failed: {ex}");
+        }
     }
 
     // Stub invoked when Acquire Emanation button is pressed on non-Architron polytrons

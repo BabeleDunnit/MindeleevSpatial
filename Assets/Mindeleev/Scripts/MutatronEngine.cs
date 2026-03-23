@@ -36,6 +36,12 @@ public class MutatronEngine : MonoBehaviour, IPolytronStateProvider
     // per-polytron home cooldown (must stay home for this many Evolve turns before being callable again)
     internal Dictionary<int, int> polytronHomeCooldown = new Dictionary<int, int>();
     internal int currentlyHoveredPolytronSealNumber = -1;
+    // MTV (Mindeleev Table Visualization) runtime flags and snapshot
+    private bool isInMTV = false;
+    private MTVSnapshot currentMTVSnapshot = null;
+    private bool restoringFromMTV = false;
+
+    public bool InMTV => isInMTV;
 
     public class HexCellData
     {
@@ -127,6 +133,12 @@ public class MutatronEngine : MonoBehaviour, IPolytronStateProvider
                 {
                     // mutatron not ready, the architron follows the avatar
                     architronBehaviour = 1;
+                }
+
+                // If we are in Mindeleev Table Visualization mode, force Architron to be at center
+                if (isInMTV)
+                {
+                    architronBehaviour = 0;
                 }
 
                 Debug.Assert(architronBehaviour != -1);
@@ -321,6 +333,231 @@ public class MutatronEngine : MonoBehaviour, IPolytronStateProvider
         }
     }
 
+    // --- MTV (Mindeleev Table Visualization) helpers ---
+    private MTVSnapshot CreateSnapshot()
+    {
+        var snap = new MTVSnapshot();
+        snap.architronFollowingAvatar = this.architronFollowingAvatar;
+        snap.architronIdx = this.architronIdx;
+
+        // polytron bindings (store coords)
+        for (int i = 0; i < polytrons.Count; i++)
+        {
+            var p = polytrons[i];
+            if (p == null) continue;
+            if (p.boundSink != null)
+            {
+                snap.polytronBoundCoords[p.sealNumber] = p.boundSink.hexCoord;
+            }
+            else
+            {
+                snap.polytronBoundCoords[p.sealNumber] = null;
+            }
+        }
+
+        // copy cooldowns
+        foreach (var kv in polytronHomeCooldown)
+        {
+            snap.homeCooldowns[kv.Key] = kv.Value;
+        }
+
+        // save tile recipes and polytronic numbers for the current Mutatron cells (including center)
+        foreach (var kv in gridCellsMap)
+        {
+            var coord = kv.Key;
+            var hcd = kv.Value;
+            if (hcd.ring > actualLevelConfig.actualRingsCount) continue; // skip homes / outside
+            try
+            {
+                if (hcd.tile != null)
+                {
+                    snap.tileRecipes[coord] = hcd.tile.recipe;
+                }
+                snap.polytronicNumbers[coord] = hcd.polytronicNumber;
+            }
+            catch { }
+        }
+
+        Debug.Log($"[CreateSnapshot] captured {snap.tileRecipes.Count} tile recipes and {snap.polytronicNumbers.Count} polytronic numbers");
+        return snap;
+    }
+
+    public void EnterMTV()
+    {
+        if (isInMTV) return;
+        if (isRebuildingLevel) return; // avoid entering while rebuilding
+
+        Debug.Log("[MutatronEngine] Entering MTV: snapshotting state and sending polytrons home");
+
+        currentMTVSnapshot = CreateSnapshot();
+
+        // Mirror L-key behaviour: send all polytrons home and clear graphics
+        try
+        {
+            bindingManager.SendAllPolytronsHome();
+        }
+        catch { }
+
+        ResetLevelGraphics();
+
+        // Disable architron following avatar and pin to center
+        architronFollowingAvatar = false;
+        var arch = polytrons != null && architronIdx >= 0 && architronIdx < polytrons.Count ? polytrons[architronIdx] : null;
+        if (arch != null)
+        {
+            try { bindingManager.UnbindPolytron(arch); } catch { }
+            try { bindingManager.BindPolytronToSink(arch, mutatronCenter.sink); } catch { }
+            NotifyPolytronStateChanged(arch);
+        }
+
+        // notify all polytrons so UI updates
+        foreach (var p in polytrons) NotifyPolytronStateChanged(p);
+
+        isInMTV = true;
+    }
+
+    public void ExitMTV()
+    {
+        if (!isInMTV) return;
+
+        Debug.Log("[MutatronEngine] Exiting MTV: restoring previous Mutatron state");
+
+        // clear visual artifacts and rebuild tiles, then apply snapshot in AfterTilesCreation via restoringFromMTV
+        // Clear visuals but keep center tile; start metatron graphics coroutine so cube/lines redraw
+        ResetLevelGraphics();
+        // Start drawing graphics (mirrors BuildLevel behavior)
+        StartCoroutine(DrawMetatronGraphicsCoroutine());
+
+        InitializeCellsCAParametersForCurrentLevel();
+
+        restoringFromMTV = true;
+        isRebuildingLevel = true;
+
+        // trigger tile creation which will call AfterTilesCreation()
+        StartCoroutine(gridManager.BuildTilesCoroutine());
+
+        isInMTV = false;
+    }
+
+    private void ApplySnapshot(MTVSnapshot snap)
+    {
+        if (snap == null) return;
+
+        Debug.Log("[MutatronEngine] Applying MTV snapshot");
+
+        // Restore cooldowns
+        foreach (var kv in snap.homeCooldowns)
+        {
+            polytronHomeCooldown[kv.Key] = kv.Value;
+        }
+
+        // Restore architron flags
+        architronFollowingAvatar = snap.architronFollowingAvatar;
+        if (snap.architronIdx >= 0) architronIdx = snap.architronIdx;
+
+        // Restore tile recipes and polytronic numbers first so pre-bind rebuilds can use them
+        int restoredNumbers = 0;
+        int restoredRecipes = 0;
+        var missingCoords = new List<HexCoord>();
+
+        foreach (var kv in snap.polytronicNumbers)
+        {
+            var coord = kv.Key;
+            int seed = kv.Value;
+            if (gridCellsMap.ContainsKey(coord))
+            {
+                var cell = gridCellsMap[coord];
+                cell.polytronicNumber = seed;
+                restoredNumbers++;
+            }
+            else
+            {
+                missingCoords.Add(coord);
+            }
+        }
+
+        foreach (var kv in snap.tileRecipes)
+        {
+            var coord = kv.Key;
+            var recipe = kv.Value;
+            if (gridCellsMap.ContainsKey(coord))
+            {
+                var cell = gridCellsMap[coord];
+                try
+                {
+                    string beforeRecipe = cell.tile != null ? cell.tile.recipe : "<no-tile>";
+                    int beforeNumber = cell.polytronicNumber;
+                    Debug.Log($"[ApplySnapshot] coord={coord} beforeRecipe={beforeRecipe} beforeNumber={beforeNumber} desiredRecipe={recipe}");
+                    // Update tile recipe and rebuild mesh
+                    if (cell.tile != null)
+                    {
+                        cell.tile.recipe = recipe;
+                        RebuildTileMesh(coord, recipe);
+                        string afterRecipe = cell.tile != null ? cell.tile.recipe : "<no-tile>";
+                        int afterNumber = cell.polytronicNumber;
+                        Debug.Log($"[ApplySnapshot] coord={coord} afterRecipe={afterRecipe} afterNumber={afterNumber}");
+                        restoredRecipes++;
+                    }
+                    else
+                    {
+                        // If tile missing, still set the polytronicNumber and let GridManager create the tile
+                        // (unlikely because ApplySnapshot runs after tile creation)
+                    }
+                }
+                catch (System.Exception) { }
+            }
+            else
+            {
+                if (!missingCoords.Contains(coord)) missingCoords.Add(coord);
+            }
+        }
+
+        Debug.Log($"[ApplySnapshot] restoredNumbers={restoredNumbers}, restoredRecipes={restoredRecipes}, missingCoords={missingCoords.Count}");
+        if (missingCoords.Count > 0)
+        {
+            Debug.LogWarning($"[ApplySnapshot] missing coords example: {string.Join(", ", missingCoords.Take(5))}");
+        }
+
+        // Rebind polytrons according to saved coordinates. If missing, bind home.
+        foreach (var kv in snap.polytronBoundCoords)
+        {
+            int seal = kv.Key;
+            HexCoord? coord = kv.Value;
+            if (seal < 0 || seal >= polytrons.Count) continue;
+            var p = polytrons[seal];
+            if (p == null) continue;
+
+            try { bindingManager.UnbindPolytron(p); } catch { }
+
+            if (coord.HasValue && gridCellsMap.ContainsKey(coord.Value))
+            {
+                var target = gridCellsMap[coord.Value];
+                try { bindingManager.BindPolytronToSink(p, target.sink); } catch { }
+            }
+            else
+            {
+                // fallback to home
+                try { bindingManager.BindPolytronToSink(p, polytronsHomes[p.sealNumber]); } catch { }
+            }
+
+            NotifyPolytronStateChanged(p);
+        }
+
+        // Ensure Architron is bound to center sink if it was
+        if (architronIdx >= 0 && architronIdx < polytrons.Count)
+        {
+            var arch = polytrons[architronIdx];
+            if (arch != null)
+            {
+                try { bindingManager.UnbindPolytron(arch); } catch { }
+                try { bindingManager.BindPolytronToSink(arch, mutatronCenter.sink); } catch { }
+                NotifyPolytronStateChanged(arch);
+            }
+        }
+
+        currentMTVSnapshot = null;
+    }
+
     // Build level helper - sets up level config and starts grid/tile/polytron creation
     bool BuildLevel(int levelNumber)
     {
@@ -359,7 +596,14 @@ public class MutatronEngine : MonoBehaviour, IPolytronStateProvider
     // Kept as a small extension point for debug or additional initialization.
     public void AfterTilesCreation()
     {
-        // Bind the Architron to the center tile
+        // If we are restoring from MTV, apply the snapshot instead of the normal initial recall
+        if (restoringFromMTV && currentMTVSnapshot != null)
+        {
+            StartCoroutine(ApplySnapshotCoroutine(currentMTVSnapshot));
+            return;
+        }
+
+        // Default behavior: Bind the Architron to the center tile
         bindingManager.UnbindPolytron(polytrons[architronIdx]);
         bindingManager.BindPolytronToSink(polytrons[architronIdx], mutatronCenter.sink);
 
@@ -367,6 +611,27 @@ public class MutatronEngine : MonoBehaviour, IPolytronStateProvider
         bindingManager.RecallPolytronsToInitialConfiguration();
 
         isRebuildingLevel = false;
+    }
+
+    IEnumerator ApplySnapshotCoroutine(MTVSnapshot snap)
+    {
+        // Wait a frame and a short delay to ensure GridManager created tiles and assigned references
+        yield return null;
+        yield return new WaitForSeconds(0.05f);
+
+        try
+        {
+            ApplySnapshot(snap);
+        }
+        catch (System.Exception ex)
+        {
+            Debug.LogWarning($"[ApplySnapshotCoroutine] failed: {ex}");
+        }
+
+        currentMTVSnapshot = null;
+        restoringFromMTV = false;
+        isRebuildingLevel = false;
+        yield break;
     }
 
     public static GameObject CreateTileLabel(string s, Vector3 position)
@@ -413,7 +678,9 @@ public class MutatronEngine : MonoBehaviour, IPolytronStateProvider
     {
         foreach (HexCellData hcd in gridCellsMap.Values)
         {
+            // Preserve homes (ring 12) and the Mutatron center (0,0) so center tile remains available
             if (hcd.ring == 12) continue;
+            if (IsMutatronCenter(hcd)) continue;
 
             if (hcd.circle)
             {
