@@ -40,6 +40,8 @@ public class MutatronEngine : MonoBehaviour, IPolytronStateProvider
     private bool isInMTV = false;
     private MTVSnapshot currentMTVSnapshot = null;
     private bool restoringFromMTV = false;
+    // When true, GridManager should avoid overwriting tile recipes/meshes (used during snapshot restore)
+    internal bool suppressTileUpdates = false;
 
     public bool InMTV => isInMTV;
 
@@ -428,7 +430,28 @@ public class MutatronEngine : MonoBehaviour, IPolytronStateProvider
         // Start drawing graphics (mirrors BuildLevel behavior)
         StartCoroutine(DrawMetatronGraphicsCoroutine());
 
-        InitializeCellsCAParametersForCurrentLevel();
+        // CRITICAL FIX: When restoring from MTV, pre-restore polytronicNumbers from snapshot BEFORE tile creation.
+        // This ensures BuildTilesCoroutine creates tiles with correct recipes, not reset to initial state.
+        // Do NOT call InitializeCellsCAParametersForCurrentLevel() when restoring from MTV.
+        if (currentMTVSnapshot != null)
+        {
+            Debug.Log("[ExitMTV] pre-restoring polytronicNumbers from snapshot before tile creation");
+            foreach (var kv in currentMTVSnapshot.polytronicNumbers)
+            {
+                var coord = kv.Key;
+                int seed = kv.Value;
+                if (gridCellsMap.ContainsKey(coord))
+                {
+                    gridCellsMap[coord].polytronicNumber = seed;
+                    Debug.Log($"[ExitMTV] pre-restored polytronicNumber at {coord} = {seed}");
+                }
+            }
+        }
+        else
+        {
+            // Normal level build: initialize cells to ring values (no snapshot)
+            InitializeCellsCAParametersForCurrentLevel();
+        }
 
         restoringFromMTV = true;
         isRebuildingLevel = true;
@@ -617,7 +640,11 @@ public class MutatronEngine : MonoBehaviour, IPolytronStateProvider
     {
         // Wait a frame and a short delay to ensure GridManager created tiles and assigned references
         yield return null;
-        yield return new WaitForSeconds(0.05f);
+        // allow more time for any tile creation coroutines to finish
+        yield return new WaitForSeconds(0.2f);
+
+        // prevent other code paths from updating tiles while we apply the snapshot
+        suppressTileUpdates = true;
 
         try
         {
@@ -631,6 +658,9 @@ public class MutatronEngine : MonoBehaviour, IPolytronStateProvider
         currentMTVSnapshot = null;
         restoringFromMTV = false;
         isRebuildingLevel = false;
+
+        // allow tile updates again
+        suppressTileUpdates = false;
         yield break;
     }
 

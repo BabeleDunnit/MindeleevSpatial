@@ -177,6 +177,11 @@ public class GridManager
     // Rebuild a single tile mesh if it's different from the requested recipe
     public void RebuildTileMesh(HexCoord coord, string recipe)
     {
+        if (engine != null && engine.suppressTileUpdates)
+        {
+            Debug.Log($"[GridManager.RebuildTileMesh] suppressed rebuild at coord={coord} newRecipe={recipe}");
+            return;
+        }
         if (!engine.gridCellsMap.TryGetValue(coord, out var cell)) return;
         PolyhedronGenerator tile = cell.tile;
         if (tile == null)
@@ -199,6 +204,11 @@ public class GridManager
     // Update all tiles for the current level configuration
     public void UpdateTiles()
     {
+        if (engine != null && engine.suppressTileUpdates)
+        {
+            Debug.Log("[GridManager.UpdateTiles] suppressed");
+            return;
+        }
         foreach (var hckv in engine.gridCellsMap)
         {
             if (hckv.Value.ring > engine.actualLevelConfig.actualRingsCount) continue;
