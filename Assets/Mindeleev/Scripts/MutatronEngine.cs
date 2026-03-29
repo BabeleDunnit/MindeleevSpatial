@@ -45,6 +45,8 @@ public class MutatronEngine : MonoBehaviour, IPolytronStateProvider
 
     // MTV temporary homes: 70 radial sinks created during MTV state
     private List<PolytronSink> mtvTemporarySinks = new List<PolytronSink>();
+    // MTV polytrons without emanations: tracked during rebinding, scaled during MTV
+    private HashSet<Polytron> polytronsMissingEmanations = new HashSet<Polytron>();
 
     public bool InMTV => isInMTV;
 
@@ -131,44 +133,191 @@ public class MutatronEngine : MonoBehaviour, IPolytronStateProvider
     }
 
     /// <summary>
-    /// Rebind polytrons to MTV temporary sinks, skipping Architron.
-    /// Yields every 15 polytrons to avoid frame stalls.
+    /// Scale specified polytrons to the given scale factor (batched to avoid frame blocking).
+    /// If polytronList is null, scales all polytrons.
+    /// </summary>
+    private IEnumerator ScalePolytronsBatchedCoroutine(float scaleFactor, HashSet<Polytron> polytronList = null)
+    {
+        int scaledCount = 0;
+        
+        if (polytronList != null)
+        {
+            // Scale only specified polytrons
+            Debug.Log($"[ScalePolytronsBatchedCoroutine] Scaling {polytronList.Count} polytrons to {scaleFactor}x");
+            foreach (var poly in polytronList)
+            {
+                if (poly != null)
+                {
+                    poly.transform.localScale = new Vector3(scaleFactor, scaleFactor, scaleFactor);
+                    scaledCount++;
+                    if (scaledCount % 20 == 0) yield return null;
+                }
+            }
+        }
+        else
+        {
+            // Scale all polytrons
+            if (polytrons == null || polytrons.Count == 0) yield break;
+            Debug.Log($"[ScalePolytronsBatchedCoroutine] Scaling {polytrons.Count} polytrons to {scaleFactor}x");
+            for (int i = 0; i < polytrons.Count; i++)
+            {
+                var poly = polytrons[i];
+                if (poly != null)
+                {
+                    poly.transform.localScale = new Vector3(scaleFactor, scaleFactor, scaleFactor);
+                    scaledCount++;
+                    if (scaledCount % 20 == 0) yield return null;
+                }
+            }
+        }
+
+        Debug.Log($"[ScalePolytronsBatchedCoroutine] Scaled {scaledCount} polytrons to {scaleFactor}x");
+    }
+
+    /// <summary>
+    /// Rebind polytrons to MTV temporary sinks using RING-FIRST ordering:
+    /// - Polytron[0-9] at distance 2 (one per radius: palette 0-9)
+    /// - Polytron[10-19] at distance 4 (one per radius: palette 0-9)
+    /// - ... up to distance 14
+    /// 
+    /// For each polytron, apply MindeleevTable visualization:
+    /// - Look up Architron emanation for (palette, polytronic_number)
+    /// - If found: apply that emanation
+    /// - If not found: reset to base polyhedron + 80% transparent
+    /// 
+    /// Skip Architron (keeps pinned to center).
     /// </summary>
     private IEnumerator RebindPolytronToMTVHomesCoroutine()
     {
-        Debug.Log($"[RebindPolytronToMTVHomesCoroutine] Rebinding polytrons to {mtvTemporarySinks.Count} MTV temporary sinks");
+        Debug.Log($"[RebindPolytronToMTVHomesCoroutine] Rebinding polytrons ring-first to {mtvTemporarySinks.Count} MTV temporary sinks");
 
-        int polyIdx = 0;
-        int sinkIdx = 0;
+        // Clear tracking of polytrons without emanations
+        polytronsMissingEmanations.Clear();
 
-        for (int i = 0; i < polytrons.Count && sinkIdx < mtvTemporarySinks.Count; i++)
+        // Build Architron emanations lookup: palette + polytronic_number -> recipe
+        var architronEmanationsMap = new Dictionary<string, string>();
+        var arch = polytrons != null && architronIdx >= 0 && architronIdx < polytrons.Count ? polytrons[architronIdx] : null;
+        if (arch != null && arch.MindeleevTable != null)
         {
-            var p = polytrons[i];
-            if (p == null) continue;
-            if (p.isArchitron)
+            var emanations = arch.MindeleevTable.GetEmanationsList();
+            if (emanations != null)
             {
-                Debug.Log($"[RebindPolytronToMTVHomesCoroutine] Skipping Architron (polytron {p.sealNumber})");
-                continue; // Skip Architron
+                foreach (var recipe in emanations)
+                {
+                    try
+                    {
+                        var parsed = PolyhedronRecipeParser.Parse(recipe);
+                        int palette = parsed.PaletteIdx;
+                        int? polytronic = arch.MindeleevTable.GetPolytronicNumber(recipe);
+                        if (polytronic.HasValue)
+                        {
+                            string mapKey = $"{palette}_{polytronic.Value}";
+                            if (!architronEmanationsMap.ContainsKey(mapKey))
+                            {
+                                architronEmanationsMap[mapKey] = recipe;
+                            }
+                        }
+                    }
+                    catch { }
+                }
             }
-
-            try
-            {
-                bindingManager.UnbindPolytron(p);
-                var sink = mtvTemporarySinks[sinkIdx];
-                bindingManager.BindPolytronToSink(p, sink);
-                sinkIdx++;
-                polyIdx++;
-            }
-            catch (System.Exception ex)
-            {
-                Debug.LogWarning($"[RebindPolytronToMTVHomesCoroutine] Failed to rebind polytron {p?.sealNumber}: {ex.Message}");
-            }
-
-            // Yield OUTSIDE try-catch to avoid C# compiler error
-            if (polyIdx % 15 == 0) yield return null;
+            Debug.Log($"[RebindPolytronToMTVHomesCoroutine] Captured {architronEmanationsMap.Count} Architron emanations for MindeleevTable viz");
         }
 
-        Debug.Log($"[RebindPolytronToMTVHomesCoroutine] Rebinded {polyIdx} polytrons to MTV homes");
+        // Store emanations map for later visualization and restoration
+        if (currentMTVSnapshot != null)
+        {
+            currentMTVSnapshot.architronEmanationsMap = architronEmanationsMap;
+        }
+
+        // Ring-first rebinding: distance loops, then radiuses
+        int polyIdx = 0;
+        int sinkIdx = 0;
+        int skipped = 0;
+
+        for (int distIdx = 0; distIdx < 7; distIdx++)  // 7 distances: 2,4,6,8,10,12,14
+        {
+            for (int radiusIdx = 0; radiusIdx < 10; radiusIdx++)  // 10 radiuses: palette 0-9
+            {
+                if (sinkIdx >= mtvTemporarySinks.Count) break;
+
+                // Find next non-architron polytron
+                Polytron selectedPoly = null;
+                while (polyIdx < polytrons.Count)
+                {
+                    var p = polytrons[polyIdx];
+                    polyIdx++;
+
+                    if (p == null) continue;
+                    if (p.isArchitron)
+                    {
+                        skipped++;
+                        continue;  // Skip Architron
+                    }
+
+                    selectedPoly = p;
+                    break;
+                }
+
+                if (selectedPoly == null) break;  // No more polytrons to bind
+
+                try
+                {
+                    bindingManager.UnbindPolytron(selectedPoly);
+                    var sink = mtvTemporarySinks[sinkIdx];
+                    bindingManager.BindPolytronToSink(selectedPoly, sink);
+
+                    // Apply MindeleevTable visualization: look up Architron emanation for this (palette, polytronic)
+                    string mapKey = $"{radiusIdx:D2}_{distIdx}";  // palette (radius) and polytronic (distance)
+                    if (architronEmanationsMap.ContainsKey(mapKey))
+                    {
+                        // Architron has this emanation: apply it
+                        string emanation = architronEmanationsMap[mapKey];
+                        try
+                        {
+                            selectedPoly.recipe = emanation;
+                            selectedPoly.RebuildMesh();
+                            Debug.Log($"[RebindPolytronToMTVHomesCoroutine] Polytron {selectedPoly.sealNumber} at ({radiusIdx}, {distIdx}): applied emanation {emanation}");
+                        }
+                        catch { }
+                    }
+                    else
+                    {
+                        // Architron does NOT have this emanation: reset to base + transparent
+                        try
+                        {
+                            var currentParsed = PolyhedronRecipeParser.Parse(selectedPoly.recipe);
+                            selectedPoly.recipe = currentParsed.BasePolyhedron.ToString();
+                            selectedPoly.RebuildMesh();
+                            // Set 80% transparency (20% opacity)
+                            var mr = selectedPoly.GetComponent<MeshRenderer>();
+                            if (mr != null)
+                            {
+                                foreach (var mat in mr.materials)
+                                {
+                                    mat.SetFloat("_Alpha", 0.2f);  // 20% visible = 80% transparent
+                                }
+                            }
+                            // Track this polytron for scaling later
+                            polytronsMissingEmanations.Add(selectedPoly);
+                            Debug.Log($"[RebindPolytronToMTVHomesCoroutine] Polytron {selectedPoly.sealNumber} at ({radiusIdx}, {distIdx}): base + transparent (no emanation)");
+                        }
+                        catch { }
+                    }
+
+                    sinkIdx++;
+                }
+                catch (System.Exception ex)
+                {
+                    Debug.LogWarning($"[RebindPolytronToMTVHomesCoroutine] Failed to rebind polytron {selectedPoly?.sealNumber}: {ex.Message}");
+                }
+
+                // Yield every 10 polytrons  
+                if ((polyIdx - skipped) % 10 == 0) yield return null;
+            }
+        }
+
+        Debug.Log($"[RebindPolytronToMTVHomesCoroutine] Rebinded {polyIdx - skipped} polytrons to MTV homes (skipped {skipped} Architrons); {polytronsMissingEmanations.Count} polytrons will be scaled");
     }
 
     public class HexCellData
@@ -519,11 +668,12 @@ public class MutatronEngine : MonoBehaviour, IPolytronStateProvider
         snap.architronFollowingAvatar = this.architronFollowingAvatar;
         snap.architronIdx = this.architronIdx;
 
-        // polytron bindings (store coords) - batch yields
+        // polytron bindings (store coords) and emanations - batch yields
         for (int i = 0; i < polytrons.Count; i++)
         {
             var p = polytrons[i];
             if (p == null) continue;
+            
             if (p.boundSink != null)
             {
                 snap.polytronBoundCoords[p.sealNumber] = p.boundSink.hexCoord;
@@ -532,6 +682,13 @@ public class MutatronEngine : MonoBehaviour, IPolytronStateProvider
             {
                 snap.polytronBoundCoords[p.sealNumber] = null;
             }
+
+            // Capture polytron's current emanation for restoration on MTV exit
+            snap.polytronEmanations[p.sealNumber] = p.recipe;
+
+            // Capture polytron's current scale for restoration on MTV exit
+            snap.polytronScales[p.sealNumber] = p.transform.localScale;
+
             if (i % 20 == 0) yield return null;
         }
 
@@ -565,7 +722,7 @@ public class MutatronEngine : MonoBehaviour, IPolytronStateProvider
         }
 
         currentMTVSnapshot = snap;
-        Debug.Log($"[CreateSnapshotCoroutine] captured {snap.tileRecipes.Count} tile recipes and {snap.polytronicNumbers.Count} polytronic numbers");
+        Debug.Log($"[CreateSnapshotCoroutine] captured {snap.tileRecipes.Count} tile recipes, {snap.polytronicNumbers.Count} polytronic numbers, {snap.polytronEmanations.Count} polytron emanations, and {snap.polytronScales.Count} polytron scales");
     }
 
     /// <summary>
@@ -672,6 +829,42 @@ public class MutatronEngine : MonoBehaviour, IPolytronStateProvider
             if (notifyCount % 20 == 0) yield return null;
         }
 
+        // Step 4a: Pause breathing animation on all polytrons to prevent scale reset
+        int pausedCount = 0;
+        foreach (var p in polytrons)
+        {
+            if (p != null)
+            {
+                var wa = p.GetComponent<WaveAnimation>();
+                wa?.Pause(true);
+                pausedCount++;
+                if (pausedCount % 20 == 0) yield return null;
+            }
+        }
+        Debug.Log($"[EnterMTVCoroutine] Paused breathing animation on {pausedCount} polytrons");
+
+        // Step 4b: Scale only polytrons without emanations to 1/5 size (0.2x) LAST (after all state updates)
+        yield return StartCoroutine(ScalePolytronsBatchedCoroutine(0.2f, polytronsMissingEmanations));
+
+        // Step 4c: Update WaveAnimation reference scales for polytrons without emanations
+        // This ensures that when PolytronInfoPanel.Activate pauses/resumes the animation,
+        // it won't reset the scale back to the original 1.0x
+        int refScaleCount = 0;
+        foreach (var p in polytronsMissingEmanations)
+        {
+            if (p != null)
+            {
+                var wa = p.GetComponent<WaveAnimation>();
+                if (wa != null)
+                {
+                    wa.SetReferenceTransform(new Vector3(0.2f, 0.2f, 0.2f));
+                    refScaleCount++;
+                    if (refScaleCount % 20 == 0) yield return null;
+                }
+            }
+        }
+        Debug.Log($"[EnterMTVCoroutine] Updated reference scales on {refScaleCount} polytrons");
+
         isInMTV = true;
         Debug.Log("[MutatronEngine] EnterMTV: transition complete");
     }
@@ -688,6 +881,58 @@ public class MutatronEngine : MonoBehaviour, IPolytronStateProvider
     private IEnumerator ExitMTVCoroutine()
     {
         Debug.Log("[MutatronEngine] Exiting MTV: destroying temporary homes and restoring previous Mutatron state");
+
+        // Restore polytron scales and WaveAnimation reference scales from snapshot BEFORE unpausing
+        // This is critical: Pause(false) sets scale to referenceLocalScale, so we must set it correctly first
+        int scalesRestored = 0;
+        if (currentMTVSnapshot != null && currentMTVSnapshot.polytronScales.Count > 0)
+        {
+            foreach (var kv in currentMTVSnapshot.polytronScales)
+            {
+                int seal = kv.Key;
+                Vector3 snapshotScale = kv.Value;
+                if (seal < 0 || seal >= polytrons.Count) continue;
+                var p = polytrons[seal];
+                if (p == null) continue;
+
+                try
+                {
+                    // Set the actual transform scale to snapshot value
+                    p.transform.localScale = snapshotScale;
+                    
+                    // Set WaveAnimation reference to snapshot scale so Pause(false) doesn't override it
+                    var wa = p.GetComponent<WaveAnimation>();
+                    if (wa != null)
+                    {
+                        wa.SetReferenceTransform(snapshotScale);
+                    }
+                    
+                    scalesRestored++;
+                }
+                catch (System.Exception ex)
+                {
+                    Debug.LogWarning($"[ExitMTVCoroutine] Failed to restore scale for polytron {seal}: {ex.Message}");
+                }
+                
+                if (scalesRestored % 20 == 0) yield return null;
+            }
+        }
+        Debug.Log($"[ExitMTVCoroutine] Pre-restored {scalesRestored} polytron scales and reference transforms");
+
+        // NOW unpause breathing animation on all polytrons (after scales and references are set)
+        int unPausedCount = 0;
+        foreach (var p in polytrons)
+        {
+            if (p != null)
+            {
+                var wa = p.GetComponent<WaveAnimation>();
+                wa?.Pause(false);
+                unPausedCount++;
+            }
+            
+            if (unPausedCount % 20 == 0) yield return null;
+        }
+        Debug.Log($"[ExitMTVCoroutine] Resumed breathing animation on {unPausedCount} polytrons");
 
         // Destroy MTV temporary sinks immediately
         DestroyMTVTemporarySinks();
@@ -834,6 +1079,62 @@ public class MutatronEngine : MonoBehaviour, IPolytronStateProvider
 
             NotifyPolytronStateChanged(p);
         }
+
+        // Restore polytron emanations from MTV visualization
+        int emanationsRestored = 0;
+        foreach (var kv in snap.polytronEmanations)
+        {
+            int seal = kv.Key;
+            string emanation = kv.Value;
+            if (seal < 0 || seal >= polytrons.Count) continue;
+            var p = polytrons[seal];
+            if (p == null) continue;
+
+            try
+            {
+                p.recipe = emanation;
+                p.RebuildMesh();
+                // Restore full opacity (1.0)
+                var mr = p.GetComponent<MeshRenderer>();
+                if (mr != null)
+                {
+                    foreach (var mat in mr.materials)
+                    {
+                        mat.SetFloat("_Alpha", 1.0f);
+                    }
+                }
+                emanationsRestored++;
+            }
+            catch (System.Exception ex)
+            {
+                Debug.LogWarning($"[ApplySnapshot] Failed to restore emanation for polytron {seal}: {ex.Message}");
+            }
+        }
+
+        Debug.Log($"[ApplySnapshot] Restored {emanationsRestored} polytron emanations");
+
+        // Restore polytron scales
+        int scalesRestored = 0;
+        foreach (var kv in snap.polytronScales)
+        {
+            int seal = kv.Key;
+            Vector3 scale = kv.Value;
+            if (seal < 0 || seal >= polytrons.Count) continue;
+            var p = polytrons[seal];
+            if (p == null) continue;
+
+            try
+            {
+                p.transform.localScale = scale;
+                scalesRestored++;
+            }
+            catch (System.Exception ex)
+            {
+                Debug.LogWarning($"[ApplySnapshot] Failed to restore scale for polytron {seal}: {ex.Message}");
+            }
+        }
+
+        Debug.Log($"[ApplySnapshot] Restored {scalesRestored} polytron scales");
 
         // Ensure Architron is bound to center sink if it was
         if (architronIdx >= 0 && architronIdx < polytrons.Count)
