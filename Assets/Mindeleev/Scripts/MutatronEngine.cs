@@ -175,15 +175,18 @@ public class MutatronEngine : MonoBehaviour, IPolytronStateProvider
     }
 
     /// <summary>
-    /// Rebind polytrons to MTV temporary sinks using RING-FIRST ordering:
-    /// - Polytron[0-9] at distance 2 (one per radius: palette 0-9)
-    /// - Polytron[10-19] at distance 4 (one per radius: palette 0-9)
-    /// - ... up to distance 14
+    /// Rebind polytrons to MTV temporary sinks using RADIUS-FIRST ordering:
+    /// - Radius 0 (all 7 distances) → Palette 01
+    /// - Radius 1 (all 7 distances) → Palette 02
+    /// - ... up to Radius 9 (all 7 distances) → Palette 10
+    /// 
+    /// This ensures same radiusIdx always maps to same palette (like idxInRing in Mutatron),
+    /// while distIdx determines polytronic number progression (like ring distance in Mutatron).
     /// 
     /// For each polytron, apply MindeleevTable visualization:
     /// - Look up Architron emanation for (palette, polytronic_number)
     /// - If found: apply that emanation
-    /// - If not found: reset to base polyhedron + 80% transparent
+    /// - If not found: reset to base polyhedron with palette-specific color + 80% transparent
     /// 
     /// Skip Architron (keeps pinned to center).
     /// </summary>
@@ -211,7 +214,8 @@ public class MutatronEngine : MonoBehaviour, IPolytronStateProvider
                         int? polytronic = arch.MindeleevTable.GetPolytronicNumber(recipe);
                         if (polytronic.HasValue)
                         {
-                            string mapKey = $"{palette}_{polytronic.Value}";
+                            // Format palette as two digits (01-10) to match MTV visualization lookup format
+                            string mapKey = $"{palette:D2}_{polytronic.Value}";
                             if (!architronEmanationsMap.ContainsKey(mapKey))
                             {
                                 architronEmanationsMap[mapKey] = recipe;
@@ -230,14 +234,16 @@ public class MutatronEngine : MonoBehaviour, IPolytronStateProvider
             currentMTVSnapshot.architronEmanationsMap = architronEmanationsMap;
         }
 
-        // Ring-first rebinding: distance loops, then radiuses
+        // Ring-first rebinding: radiuses loops first, then distances
+        // This ensures same radiusIdx always maps to same palette (01-10),
+        // while distIdx determines increasing polytronic number (like Mutatron's idxInRing vs ring)
         int polyIdx = 0;
         int sinkIdx = 0;
         int skipped = 0;
 
-        for (int distIdx = 0; distIdx < 7; distIdx++)  // 7 distances: 2,4,6,8,10,12,14
+        for (int radiusIdx = 0; radiusIdx < 10; radiusIdx++)  // 10 radiuses: palette 01-10
         {
-            for (int radiusIdx = 0; radiusIdx < 10; radiusIdx++)  // 10 radiuses: palette 0-9
+            for (int distIdx = 0; distIdx < 7; distIdx++)  // 7 distances: 0-6 (polytronic numbers)
             {
                 if (sinkIdx >= mtvTemporarySinks.Count) break;
 
@@ -268,7 +274,7 @@ public class MutatronEngine : MonoBehaviour, IPolytronStateProvider
                     bindingManager.BindPolytronToSink(selectedPoly, sink);
 
                     // Apply MindeleevTable visualization: look up Architron emanation for this (palette, polytronic)
-                    string mapKey = $"{radiusIdx:D2}_{distIdx}";  // palette (radius) and polytronic (distance)
+                    string mapKey = $"{radiusIdx + 1:D2}_{distIdx}";  // palette (radius+1, 01-10) and polytronic (distance)
                     if (architronEmanationsMap.ContainsKey(mapKey))
                     {
                         // Architron has this emanation: apply it
@@ -283,11 +289,12 @@ public class MutatronEngine : MonoBehaviour, IPolytronStateProvider
                     }
                     else
                     {
-                        // Architron does NOT have this emanation: reset to base + transparent
+                        // Architron does NOT have this emanation: reset to base polyhedron with palette corresponding to radius
                         try
                         {
                             var currentParsed = PolyhedronRecipeParser.Parse(selectedPoly.recipe);
-                            selectedPoly.recipe = currentParsed.BasePolyhedron.ToString();
+                            // Use radiusIdx+1 as palette (01-10) formatted as two digits to ensure each radius gets its own color palette
+                            selectedPoly.recipe = $"{radiusIdx + 1:D2}{currentParsed.BasePolyhedron}";
                             selectedPoly.RebuildMesh();
                             // Set 80% transparency (20% opacity)
                             var mr = selectedPoly.GetComponent<MeshRenderer>();
@@ -300,7 +307,7 @@ public class MutatronEngine : MonoBehaviour, IPolytronStateProvider
                             }
                             // Track this polytron for scaling later
                             polytronsMissingEmanations.Add(selectedPoly);
-                            Debug.Log($"[RebindPolytronToMTVHomesCoroutine] Polytron {selectedPoly.sealNumber} at ({radiusIdx}, {distIdx}): base + transparent (no emanation)");
+                            Debug.Log($"[RebindPolytronToMTVHomesCoroutine] Polytron {selectedPoly.sealNumber} at ({radiusIdx}, {distIdx}): palette {radiusIdx + 1:D2} base + transparent (no emanation)");
                         }
                         catch { }
                     }
