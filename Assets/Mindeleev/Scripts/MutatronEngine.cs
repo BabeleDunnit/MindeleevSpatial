@@ -43,7 +43,133 @@ public class MutatronEngine : MonoBehaviour, IPolytronStateProvider
     // When true, GridManager should avoid overwriting tile recipes/meshes (used during snapshot restore)
     internal bool suppressTileUpdates = false;
 
+    // MTV temporary homes: 70 radial sinks created during MTV state
+    private List<PolytronSink> mtvTemporarySinks = new List<PolytronSink>();
+
     public bool InMTV => isInMTV;
+
+    /// <summary>
+    /// Generates 70 radial grid positions: 10 radiuses (every 36°), 7 homes per radius.
+    /// Returns list of Vector3 world positions centered at mutatronCenter.
+    /// </summary>
+    private List<Vector3> GenerateMTVRadialGridPositions()
+    {
+        var positions = new List<Vector3>();
+        Vector3 centerPos = mutatronCenter.worldCoords;
+
+        // 10 radiuses: 0°, 36°, 72°, 108°, 144°, 180°, 216°, 252°, 288°, 324°
+        for (int radiusIdx = 0; radiusIdx < 10; radiusIdx++)
+        {
+            float angleRad = (radiusIdx * 36f) * Mathf.Deg2Rad;
+            float cosA = Mathf.Cos(angleRad);
+            float sinA = Mathf.Sin(angleRad);
+
+            // 7 homes per radius at distances 2, 4, 6, 8, 10, 12, 14
+            for (int homeIdx = 0; homeIdx < 7; homeIdx++)
+            {
+                float distance = 2f * (homeIdx + 1); // 2, 4, 6, 8, 10, 12, 14
+                Vector3 pos = centerPos + new Vector3(cosA * distance, 0f, sinA * distance);
+                positions.Add(pos);
+            }
+        }
+
+        return positions;
+    }
+
+    /// <summary>
+    /// Create 70 temporary sinks at radial grid positions for MTV state.
+    /// </summary>
+    private void CreateMTVTemporarySinks()
+    {
+        if (mtvTemporarySinks.Count > 0)
+        {
+            Debug.LogWarning("[CreateMTVTemporarySinks] Temporary sinks already exist; clearing them first");
+            DestroyMTVTemporarySinks();
+        }
+
+        var positions = GenerateMTVRadialGridPositions();
+        Debug.Log($"[CreateMTVTemporarySinks] Creating {positions.Count} temporary sinks for MTV state");
+
+        foreach (var pos in positions)
+        {
+            // Create a temporary sink GameObject
+            GameObject sinkGO = PolytronsFactory.Instance.Create("sink/tC", 0.3f);
+            sinkGO.transform.position = new Vector3(pos.x, 1.0f, pos.z);
+            sinkGO.name = $"MTV_TemporarySink_{mtvTemporarySinks.Count}";
+
+            var sink = sinkGO.GetComponent<PolytronSink>();
+            if (sink != null)
+            {
+                sink.weight = 0.2f;
+                sink.GetComponent<MeshRenderer>().enabled = false;
+                mtvTemporarySinks.Add(sink);
+            }
+            else
+            {
+                Debug.LogWarning("[CreateMTVTemporarySinks] Failed to get PolytronSink from created sink GameObject");
+                GameObject.Destroy(sinkGO);
+            }
+        }
+
+        Debug.Log($"[CreateMTVTemporarySinks] Created {mtvTemporarySinks.Count} temporary sinks");
+    }
+
+    /// <summary>
+    /// Destroy all MTV temporary sinks.
+    /// </summary>
+    private void DestroyMTVTemporarySinks()
+    {
+        foreach (var sink in mtvTemporarySinks)
+        {
+            if (sink != null && sink.gameObject != null)
+            {
+                GameObject.Destroy(sink.gameObject);
+            }
+        }
+        mtvTemporarySinks.Clear();
+        Debug.Log("[DestroyMTVTemporarySinks] All temporary sinks destroyed");
+    }
+
+    /// <summary>
+    /// Rebind polytrons to MTV temporary sinks, skipping Architron.
+    /// Yields every 15 polytrons to avoid frame stalls.
+    /// </summary>
+    private IEnumerator RebindPolytronToMTVHomesCoroutine()
+    {
+        Debug.Log($"[RebindPolytronToMTVHomesCoroutine] Rebinding polytrons to {mtvTemporarySinks.Count} MTV temporary sinks");
+
+        int polyIdx = 0;
+        int sinkIdx = 0;
+
+        for (int i = 0; i < polytrons.Count && sinkIdx < mtvTemporarySinks.Count; i++)
+        {
+            var p = polytrons[i];
+            if (p == null) continue;
+            if (p.isArchitron)
+            {
+                Debug.Log($"[RebindPolytronToMTVHomesCoroutine] Skipping Architron (polytron {p.sealNumber})");
+                continue; // Skip Architron
+            }
+
+            try
+            {
+                bindingManager.UnbindPolytron(p);
+                var sink = mtvTemporarySinks[sinkIdx];
+                bindingManager.BindPolytronToSink(p, sink);
+                sinkIdx++;
+                polyIdx++;
+            }
+            catch (System.Exception ex)
+            {
+                Debug.LogWarning($"[RebindPolytronToMTVHomesCoroutine] Failed to rebind polytron {p?.sealNumber}: {ex.Message}");
+            }
+
+            // Yield OUTSIDE try-catch to avoid C# compiler error
+            if (polyIdx % 15 == 0) yield return null;
+        }
+
+        Debug.Log($"[RebindPolytronToMTVHomesCoroutine] Rebinded {polyIdx} polytrons to MTV homes");
+    }
 
     public class HexCellData
     {
@@ -384,25 +510,150 @@ public class MutatronEngine : MonoBehaviour, IPolytronStateProvider
         return snap;
     }
 
+    /// <summary>
+    /// Batched snapshot creation that yields frequently to avoid frame stalls.
+    /// </summary>
+    private IEnumerator CreateSnapshotCoroutine()
+    {
+        var snap = new MTVSnapshot();
+        snap.architronFollowingAvatar = this.architronFollowingAvatar;
+        snap.architronIdx = this.architronIdx;
+
+        // polytron bindings (store coords) - batch yields
+        for (int i = 0; i < polytrons.Count; i++)
+        {
+            var p = polytrons[i];
+            if (p == null) continue;
+            if (p.boundSink != null)
+            {
+                snap.polytronBoundCoords[p.sealNumber] = p.boundSink.hexCoord;
+            }
+            else
+            {
+                snap.polytronBoundCoords[p.sealNumber] = null;
+            }
+            if (i % 20 == 0) yield return null;
+        }
+
+        // copy cooldowns
+        foreach (var kv in polytronHomeCooldown)
+        {
+            snap.homeCooldowns[kv.Key] = kv.Value;
+        }
+
+        yield return null;
+
+        // save tile recipes and polytronic numbers - batched
+        int cellCount = 0;
+        foreach (var kv in gridCellsMap)
+        {
+            var coord = kv.Key;
+            var hcd = kv.Value;
+            if (hcd.ring > actualLevelConfig.actualRingsCount) continue; // skip homes / outside
+            try
+            {
+                if (hcd.tile != null)
+                {
+                    snap.tileRecipes[coord] = hcd.tile.recipe;
+                }
+                snap.polytronicNumbers[coord] = hcd.polytronicNumber;
+            }
+            catch { }
+
+            cellCount++;
+            if (cellCount % 50 == 0) yield return null;
+        }
+
+        currentMTVSnapshot = snap;
+        Debug.Log($"[CreateSnapshotCoroutine] captured {snap.tileRecipes.Count} tile recipes and {snap.polytronicNumbers.Count} polytronic numbers");
+    }
+
+    /// <summary>
+    /// Batched graphics reset that yields frequently to avoid frame stalls.
+    /// Clears floor graphics (circles, tiles, lines) while preserving center tile.
+    /// </summary>
+    private IEnumerator ResetLevelGraphicsCoroutine()
+    {
+        int ops = 0;
+        const int BATCH = 30;
+
+        foreach (var hcd in gridCellsMap.Values)
+        {
+            if (hcd.ring == 12) continue;
+            if (IsMutatronCenter(hcd)) continue;
+
+            // Clear existing circle renderer if present
+            if (hcd.circle)
+            {
+                var lr = hcd.circle.GetComponent<LineRenderer>();
+                if (lr != null) lr.positionCount = 0; // clear quickly
+            }
+            else
+            {
+                hcd.circle = gridManager.CreateCircle(hcd.ring, hcd.idxInRing);
+            }
+
+            // Hide tile visuals quickly
+            if (hcd.tile)
+            {
+                var mr = hcd.tile.GetComponent<MeshRenderer>();
+                if (mr != null) mr.enabled = false;
+            }
+
+            ops++;
+            if (ops >= BATCH)
+            {
+                ops = 0;
+                yield return null;
+            }
+        }
+
+        // Destroy existing Line objects under engine transform in batches
+        var lineChildren = new List<GameObject>();
+        foreach (Transform child in transform)
+        {
+            if (child == null) continue;
+            if (child.gameObject.name == "Line") lineChildren.Add(child.gameObject);
+        }
+
+        int destroyed = 0;
+        foreach (var go in lineChildren)
+        {
+            if (go != null) GameObject.Destroy(go);
+            destroyed++;
+            if (destroyed % 25 == 0) yield return null;
+        }
+
+        yield return null;
+    }
+
     public void EnterMTV()
     {
         if (isInMTV) return;
         if (isRebuildingLevel) return; // avoid entering while rebuilding
 
-        Debug.Log("[MutatronEngine] Entering MTV: snapshotting state and sending polytrons home");
+        Debug.Log("[MutatronEngine] Entering MTV: creating radial homes and transitioning");
 
-        currentMTVSnapshot = CreateSnapshot();
+        // Use coroutine to avoid blocking main thread
+        StartCoroutine(EnterMTVCoroutine());
+    }
 
-        // Mirror L-key behaviour: send all polytrons home and clear graphics
-        try
-        {
-            bindingManager.SendAllPolytronsHome();
-        }
-        catch { }
+    private IEnumerator EnterMTVCoroutine()
+    {
+        // Step 0: Create MTV temporary sinks at radial grid positions
+        CreateMTVTemporarySinks();
+        yield return null;
 
-        ResetLevelGraphics();
+        // Step 1: Create snapshot (batched) - captures current polytron positions BEFORE moving them
+        yield return StartCoroutine(CreateSnapshotCoroutine());
 
-        // Disable architron following avatar and pin to center
+        // Step 2: Rebind polytrons to MTV temporary homes (batched, skip Architron)
+        yield return StartCoroutine(RebindPolytronToMTVHomesCoroutine());
+
+        // Step 3: Reset/hide graphics (batched)
+        yield return StartCoroutine(ResetLevelGraphicsCoroutine());
+
+        // Ensure Architron stays at center and avatar-following is disabled
         architronFollowingAvatar = false;
         var arch = polytrons != null && architronIdx >= 0 && architronIdx < polytrons.Count ? polytrons[architronIdx] : null;
         if (arch != null)
@@ -412,21 +663,39 @@ public class MutatronEngine : MonoBehaviour, IPolytronStateProvider
             NotifyPolytronStateChanged(arch);
         }
 
-        // notify all polytrons so UI updates
-        foreach (var p in polytrons) NotifyPolytronStateChanged(p);
+        // notify all polytrons so UI updates (batched)
+        int notifyCount = 0;
+        foreach (var p in polytrons)
+        {
+            if (p != null) NotifyPolytronStateChanged(p);
+            notifyCount++;
+            if (notifyCount % 20 == 0) yield return null;
+        }
 
         isInMTV = true;
+        Debug.Log("[MutatronEngine] EnterMTV: transition complete");
     }
 
     public void ExitMTV()
     {
         if (!isInMTV) return;
 
-        Debug.Log("[MutatronEngine] Exiting MTV: restoring previous Mutatron state");
+        Debug.Log("[MutatronEngine] Exiting MTV: starting async restore");
+
+        StartCoroutine(ExitMTVCoroutine());
+    }
+
+    private IEnumerator ExitMTVCoroutine()
+    {
+        Debug.Log("[MutatronEngine] Exiting MTV: destroying temporary homes and restoring previous Mutatron state");
+
+        // Destroy MTV temporary sinks immediately
+        DestroyMTVTemporarySinks();
+        yield return null;
 
         // clear visual artifacts and rebuild tiles, then apply snapshot in AfterTilesCreation via restoringFromMTV
-        // Clear visuals but keep center tile; start metatron graphics coroutine so cube/lines redraw
-        ResetLevelGraphics();
+        // Clear visuals but keep center tile; use async graphics reset
+        StartCoroutine(ResetLevelGraphicsCoroutine());
         // Start drawing graphics (mirrors BuildLevel behavior)
         StartCoroutine(DrawMetatronGraphicsCoroutine());
 
