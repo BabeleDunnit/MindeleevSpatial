@@ -64,10 +64,10 @@ public class MutatronEngine : MonoBehaviour, IPolytronStateProvider
             float cosA = Mathf.Cos(angleRad);
             float sinA = Mathf.Sin(angleRad);
 
-            // 7 homes per radius at distances 2, 4, 6, 8, 10, 12, 14
+            // 7 homes per radius at distances 
             for (int homeIdx = 0; homeIdx < 7; homeIdx++)
             {
-                float distance = 2f * (homeIdx + 1); // 2, 4, 6, 8, 10, 12, 14
+                float distance = (3f * (homeIdx + 1)) + 1f; 
                 Vector3 pos = centerPos + new Vector3(cosA * distance, 0f, sinA * distance);
                 positions.Add(pos);
             }
